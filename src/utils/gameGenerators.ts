@@ -1,6 +1,7 @@
 import type { AgeLevel, ColorInfo, FigureId, FigureItem, ShapeInfo } from '../types';
 import { COLOR_MIXES, COLORS, FIGURES, RHYME_PAIRS, SHAPES } from '../data/catalog';
 
+/** Embaralha uma cópia do array usando Fisher-Yates. */
 export function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -10,6 +11,7 @@ export function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
+/** Seleciona um item aleatório de um array não vazio. */
 export function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }

@@ -32,6 +32,7 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+/** Provedor global de estado do EduKids (perfis, progresso, áudio e narração). */
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(() => loadAppState());
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -197,6 +198,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 };
 
+/** Hook para acessar o estado global, perfil ativo e ações do EduKids. */
 export function useApp(): AppContextValue {
   const ctx = useContext(AppContext);
   if (!ctx) throw new Error('useApp must be used inside AppProvider');

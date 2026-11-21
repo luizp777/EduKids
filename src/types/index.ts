@@ -1,5 +1,7 @@
+/** Faixas etárias suportadas pelo EduKids (3–4: Exploradores, 5–6: Descobridores). */
 export type AgeLevel = '3-4' | '5-6';
 
+/** Identificadores dos 5 pilares pedagógicos do aplicativo. */
 export type PillarId =
   | 'literacy'
   | 'math'
@@ -7,6 +9,7 @@ export type PillarId =
   | 'figures-logic'
   | 'tracing';
 
+/** Avatares SVG disponíveis para o perfil da criança. */
 export type AvatarId =
   | 'owl'
   | 'bear'
@@ -15,6 +18,7 @@ export type AvatarId =
   | 'fox'
   | 'dino';
 
+/** Estatísticas acumuladas de um perfil em um pilar específico. */
 export interface PillarStats {
   completedRounds: number;
   correctAnswers: number;
@@ -22,6 +26,7 @@ export interface PillarStats {
   lastPlayedAt?: string;
 }
 
+/** Perfil local de uma criança armazenado no navegador. */
 export interface ChildProfile {
   id: string;
   name: string;
@@ -33,8 +38,10 @@ export interface ChildProfile {
   createdAt: string;
 }
 
+/** Velocidade de reprodução da narração dos exercícios. */
 export type VoiceSpeed = 'slow' | 'normal' | 'fast';
 
+/** Preferências globais de áudio do aplicativo. */
 export interface AudioSettings {
   voiceEnabled: boolean;
   sfxEnabled: boolean;
@@ -42,6 +49,7 @@ export interface AudioSettings {
   voiceURI?: string;
 }
 
+/** Estado raiz persistido em `localStorage`. */
 export interface AppState {
   version: number;
   activeProfileId: string;

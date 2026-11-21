@@ -36,6 +36,12 @@ if (typeof window !== 'undefined') {
 
 export type SfxType = 'pop' | 'success' | 'encourage' | 'celebration' | 'draw';
 
+/**
+ * Reproduz um efeito sonoro sintetizado via Web Audio API.
+ *
+ * @param type - Tipo do efeito (`pop`, `success`, `encourage`, `celebration` ou `draw`).
+ * @param enabled - Se `false`, não reproduz som.
+ */
 export function playSfx(type: SfxType, enabled = true): void {
   if (!enabled) return;
   const ctx = getAudioContext();
@@ -516,6 +522,10 @@ function speakWithWebSpeech(text: string, opts: SpeakOptions): void {
   }
 }
 
+/**
+ * Reproduz a narração de um texto em português usando os clipes MP3 neurais
+ * pré-gerados e fazendo fallback para `speechSynthesis` apenas quando necessário.
+ */
 export function speak(text: string, options: SpeakOptions | boolean = true): void {
   const opts: SpeakOptions =
     typeof options === 'boolean' ? { enabled: options } : options;
@@ -540,6 +550,7 @@ export function speak(text: string, options: SpeakOptions | boolean = true): voi
   speakWithWebSpeech(text, opts);
 }
 
+/** Interrompe imediatamente qualquer clipe MP3 ou síntese de voz em andamento. */
 export function stopSpeaking(): void {
   playbackSession += 1;
   clipQueue = [];

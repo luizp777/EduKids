@@ -1,8 +1,10 @@
 import type { AgeLevel, AppState, AvatarId, ChildProfile, PillarId, PillarStats } from '../types';
 import { STICKERS } from '../data/catalog';
 
+/** Chave de versionamento usada no `localStorage` do navegador. */
 export const STORAGE_KEY = 'edukids_state_v1';
 
+/** Cria um mapa inicial zerado de estatísticas para todos os 5 pilares. */
 export function createEmptyStats(): Record<PillarId, PillarStats> {
   return {
     literacy: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
@@ -13,6 +15,13 @@ export function createEmptyStats(): Record<PillarId, PillarStats> {
   };
 }
 
+/**
+ * Cria um novo perfil infantil com figurinha inicial de boas-vindas.
+ *
+ * @param name - Nome da criança.
+ * @param avatar - Identificador do avatar SVG.
+ * @param ageLevel - Faixa etária (`'3-4'` ou `'5-6'`).
+ */
 export function createProfile(
   name: string,
   avatar: AvatarId,
@@ -45,6 +54,7 @@ export function createDefaultState(): AppState {
   };
 }
 
+/** Carrega o estado salvo do `localStorage` com fallback seguro para o estado padrão. */
 export function loadAppState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -74,6 +84,7 @@ export function loadAppState(): AppState {
   }
 }
 
+/** Persiste o estado da aplicação no `localStorage`. */
 export function saveAppState(state: AppState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -82,6 +93,11 @@ export function saveAppState(state: AppState): void {
   }
 }
 
+/**
+ * Sorteia a próxima figurinha ainda bloqueada no álbum.
+ *
+ * @returns ID da figurinha sorteada ou `null` quando o álbum estiver completo.
+ */
 export function pickNextSticker(unlockedIds: string[]): string | null {
   const locked = STICKERS.filter((s) => !unlockedIds.includes(s.id));
   if (locked.length === 0) return null;
