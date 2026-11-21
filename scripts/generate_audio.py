@@ -1,0 +1,241 @@
+import asyncio
+import json
+import os
+import re
+import unicodedata
+import edge_tts
+
+VOICE = "pt-BR-FranciscaNeural"
+PITCH = "+4Hz"
+RATE = "-6%"
+
+OUT_DIR = os.path.join(os.path.dirname(__file__), "..", "public", "audio", "pt-br")
+MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "src", "data", "audioClips.ts")
+
+
+def slugify(text: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", text)
+    ascii_str = "".join(c for c in nfkd if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", "-", ascii_str.lower()).strip("-")
+
+
+# Exact phrase -> (filename, spoken_text_for_tts)
+PHRASES: dict[str, str] = {
+    # Welcome & UI
+    "som-ligado": "Som ligado!",
+    "lumi-home": "Olá! Eu sou a Lumi! Escolha uma atividade divertida para brincar!",
+    "lumi-teste": "Olá! Eu sou a Lumi e vou ler os exercícios com você!",
+    "sticker-locked": "Jogue mais atividades para ganhar esta figurinha!",
+
+    # Celebrate & Encourage
+    "cel-0": "Muito bem! Você acertou!",
+    "cel-1": "Parabéns! Incrível!",
+    "cel-2": "Isso mesmo! Você brilhou!",
+    "cel-3": "Arrasou! Que esperteza!",
+    "enc-0": "Quase lá! Tente de novo!",
+    "enc-1": "Você consegue! Vamos tentar mais uma vez!",
+    "enc-2": "Ops, tente outra opção!",
+    "enc-3": "Muito bem por tentar! Qual será a certa?",
+
+    # Connectors
+    "isso": "Isso!",
+    "par-de": "Par de",
+    "de": "de",
+    "mais": "mais",
+    "igual-a": "é igual a",
+    "sao": "São",
+    "ficaram": "Ficaram",
+    "o-numero": "O número",
+    "com": "com",
+    "sairam": "saíram.",
+    "quantos-ficaram": "Quantos ficaram?",
+    "pertence-grupo": "pertence a qual grupo?",
+    "voce-desenhou": "Você desenhou",
+    "voce-montou": "Você montou",
+
+    # Prompts
+    "p-letra-inicial": "Qual figura começa com a letra",
+    "p-letra-falta": "Qual letra falta na palavra",
+    "p-rima": "Qual figura rima com",
+    "p-silabas": "Vamos bater palmas! Quantos pedacinhos tem a palavra",
+    "p-contar": "Vamos contar! Quantas figuras aparecem na tela?",
+    "p-somar": "Vamos somar! Quanto é",
+    "p-mais": "Toque no grupo que tem mais figuras!",
+    "p-menos": "Toque no grupo que tem menos figuras!",
+    "p-tinha": "Tinha",
+    "p-sequencia-num": "Qual número está faltando na sequência?",
+    "p-encaixe-formas": "Encaixe cada forma no seu lugar! Você pode arrastar ou tocar.",
+    "p-toque-cor": "Toque nas figuras da cor",
+    "p-mistura-cores": "Qual cor aparece quando misturamos",
+    "p-padrao-seq": "Observe a sequência! Qual forma vem depois?",
+    "p-padrao-obs": "Observe o padrão! Qual forma vem depois?",
+    "p-memoria": "Encontre os pares de figuras iguais!",
+    "p-sombra": "De qual figura é esta sombra?",
+    "p-diferente": "Qual figura é diferente das outras?",
+    "p-puzzle": "Toque em duas peças para trocar e montar",
+    "p-tracar": "Use o dedinho para traçar",
+
+    # Tracing template spoken names
+    "tr-linha-reta": "a linha reta!",
+    "tr-ondinha": "a ondinha!",
+    "tr-zigue-zague": "o zigue-zague!",
+    "tr-circulo": "o Círculo!",
+    "tr-quadrado": "o Quadrado!",
+    "tr-triangulo": "o Triângulo!",
+    "tr-coracao": "o Coração!",
+    "tr-estrela": "a Estrela!",
+}
+
+# Letters
+LETTERS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+LETTER_TTS = {"E": "É", "O": "Ó", "A": "Á", "I": "Í", "U": "Ú"}
+for ch in LETTERS:
+    PHRASES[f"letter-{ch.lower()}"] = LETTER_TTS.get(ch, ch)
+    PHRASES[f"tr-letra-{ch.lower()}"] = f"a letra {LETTER_TTS.get(ch, ch)}!"
+
+# Numbers 0..15
+for n in range(16):
+    PHRASES[f"num-{n}"] = str(n)
+    if n <= 9:
+        PHRASES[f"tr-num-{n}"] = f"o número {n}!"
+
+# Figures
+FIGURES = [
+    ("abelha", "abelha"),
+    ("elefante", "elefante"),
+    ("ilha", "ilha"),
+    ("ovelha", "ovelha"),
+    ("urso", "urso"),
+    ("bola", "bola"),
+    ("casa", "casa"),
+    ("dado", "dado"),
+    ("flor", "flor"),
+    ("gato", "gato"),
+    ("lua", "lua"),
+    ("maca", "maçã"),
+    ("nuvem", "nuvem"),
+    ("pato", "pato"),
+    ("sapo", "sapo"),
+    ("sol", "sol"),
+    ("peixe", "peixe"),
+    ("morango", "morango"),
+    ("banana", "banana"),
+    ("borboleta", "borboleta"),
+    ("carro", "carro"),
+    ("foguete", "foguete"),
+    ("rato", "rato"),
+    ("pao", "pão"),
+    ("mao", "mão"),
+    ("uva", "uva"),
+    ("arvore", "árvore"),
+    ("estrela", "estrela"),
+]
+for fid, spoken in FIGURES:
+    PHRASES[f"fig-{fid}"] = spoken
+
+# Shapes
+SHAPES = [
+    ("circulo", "Círculo"),
+    ("quadrado", "Quadrado"),
+    ("triangulo", "Triângulo"),
+    ("estrela", "Estrela"),
+    ("coracao", "Coração"),
+    ("retangulo", "Retângulo"),
+]
+for sid, spoken in SHAPES:
+    PHRASES[f"shape-{sid}"] = spoken
+
+# Colors
+COLORS = [
+    ("vermelho", "vermelho"),
+    ("azul", "azul"),
+    ("amarelo", "amarelo"),
+    ("verde", "verde"),
+    ("laranja", "laranja"),
+    ("roxo", "roxo"),
+]
+for cid, spoken in COLORS:
+    PHRASES[f"color-{cid}"] = spoken
+
+# Categories
+CATEGORIES = [
+    ("animais", "Animais"),
+    ("frutas", "Frutas"),
+    ("natureza", "Natureza"),
+    ("objetos", "Objetos"),
+]
+for cid, spoken in CATEGORIES:
+    PHRASES[f"cat-{cid}"] = spoken
+
+# Sticker names
+STICKERS = [
+    ("abelha", "Abelha Zuzu"),
+    ("elefante", "Elefante Dudu"),
+    ("gato", "Gatinho Mimi"),
+    ("sapo", "Sapo Pipoca"),
+    ("urso", "Urso Mel"),
+    ("borboleta", "Borboleta Lili"),
+    ("pato", "Patinho Quá"),
+    ("peixe", "Peixe Bolha"),
+    ("rato", "Ratinho Tico"),
+    ("foguete", "Foguete Turbo"),
+    ("lua", "Lua Soneca"),
+    ("sol", "Sol Brilhante"),
+    ("estrela", "Estrela Guia"),
+    ("nuvem", "Nuvem Fofa"),
+    ("flor", "Flor Mágica"),
+    ("ilha", "Ilha Feliz"),
+    ("arvore", "Árvore Viva"),
+    ("maca", "Maçã Doce"),
+    ("morango", "Moranguinho"),
+    ("banana", "Banana Pop"),
+    ("uva", "Uva Roxinha"),
+    ("carro", "Carrinho Vrum"),
+]
+for sid, spoken in STICKERS:
+    PHRASES[f"stk-{sid}"] = spoken
+
+
+async def synth_one(sem: asyncio.Semaphore, clip_id: str, text: str) -> None:
+    out_file = os.path.join(OUT_DIR, f"{clip_id}.mp3")
+    if os.path.exists(out_file) and os.path.getsize(out_file) > 100:
+        return
+    async with sem:
+        for attempt in range(3):
+            try:
+                comm = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
+                await comm.save(out_file)
+                return
+            except Exception:
+                if attempt == 2:
+                    raise
+                await asyncio.sleep(1.0)
+
+
+async def main() -> None:
+    os.makedirs(OUT_DIR, exist_ok=True)
+    sem = asyncio.Semaphore(6)
+    tasks = [synth_one(sem, cid, text) for cid, text in PHRASES.items()]
+    await asyncio.gather(*tasks)
+
+    # Write TypeScript lookup manifest
+    ts_content = (
+        "// Auto-generated by scripts/generate_audio.py\n"
+        "export const AUDIO_CLIP_IDS = new Set<string>([\n"
+        + "".join(f"  {json.dumps(cid)},\n" for cid in sorted(PHRASES.keys()))
+        + "]);\n"
+    )
+    with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
+        f.write(ts_content)
+
+    # Write JSON manifest for Service Worker offline pre-caching
+    sw_manifest_path = os.path.join(OUT_DIR, "manifest.json")
+    audio_urls = [f"/audio/pt-br/{cid}.mp3" for cid in sorted(PHRASES.keys())]
+    with open(sw_manifest_path, "w", encoding="utf-8") as f:
+        json.dump(audio_urls, f, indent=2)
+
+    print(f"Generated {len(PHRASES)} audio clips in {OUT_DIR}")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

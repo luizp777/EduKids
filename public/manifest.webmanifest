@@ -1,0 +1,19 @@
+{
+  "name": "EduKids — Brincar e Aprender",
+  "short_name": "EduKids",
+  "description": "Atividades educativas para crianças de 3 a 6 anos: alfabetização, matemática, formas, cores, figuras e coordenação motora.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#FFF9F0",
+  "theme_color": "#6C5CE7",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

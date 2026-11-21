@@ -1,0 +1,90 @@
+import type { AgeLevel, AppState, AvatarId, ChildProfile, PillarId, PillarStats } from '../types';
+import { STICKERS } from '../data/catalog';
+
+export const STORAGE_KEY = 'edukids_state_v1';
+
+export function createEmptyStats(): Record<PillarId, PillarStats> {
+  return {
+    literacy: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    math: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    'shapes-colors': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    'figures-logic': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    tracing: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+  };
+}
+
+export function createProfile(
+  name: string,
+  avatar: AvatarId,
+  ageLevel: AgeLevel
+): ChildProfile {
+  return {
+    id: `child-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    name: name.trim() || 'Pequeno Explorador',
+    avatar,
+    ageLevel,
+    stars: 0,
+    unlockedStickers: ['stk-abelha'], // Starter welcome sticker!
+    stats: createEmptyStats(),
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function createDefaultState(): AppState {
+  const defaultChild = createProfile('Explorador', 'owl', '3-4');
+  return {
+    version: 1,
+    activeProfileId: defaultChild.id,
+    profiles: [defaultChild],
+    audio: {
+      voiceEnabled: true,
+      sfxEnabled: true,
+      voiceSpeed: 'normal',
+      voiceURI: '',
+    },
+  };
+}
+
+export function loadAppState(): AppState {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return createDefaultState();
+    const parsed = JSON.parse(raw) as AppState;
+    if (!parsed || !Array.isArray(parsed.profiles) || parsed.profiles.length === 0) {
+      return createDefaultState();
+    }
+    const activeExists = parsed.profiles.some((p) => p.id === parsed.activeProfileId);
+    return {
+      version: 1,
+      activeProfileId: activeExists ? parsed.activeProfileId : parsed.profiles[0].id,
+      profiles: parsed.profiles.map((p) => ({
+        ...p,
+        stats: { ...createEmptyStats(), ...(p.stats || {}) },
+        unlockedStickers: Array.isArray(p.unlockedStickers) ? p.unlockedStickers : [],
+      })),
+      audio: {
+        voiceEnabled: parsed.audio?.voiceEnabled ?? true,
+        sfxEnabled: parsed.audio?.sfxEnabled ?? true,
+        voiceSpeed: parsed.audio?.voiceSpeed ?? 'normal',
+        voiceURI: parsed.audio?.voiceURI ?? '',
+      },
+    };
+  } catch {
+    return createDefaultState();
+  }
+}
+
+export function saveAppState(state: AppState): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function pickNextSticker(unlockedIds: string[]): string | null {
+  const locked = STICKERS.filter((s) => !unlockedIds.includes(s.id));
+  if (locked.length === 0) return null;
+  const idx = Math.floor(Math.random() * locked.length);
+  return locked[idx].id;
+}
