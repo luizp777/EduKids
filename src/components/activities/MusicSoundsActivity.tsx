@@ -68,21 +68,27 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     setSimonPlaying(true);
     setSimonUserIdx(0);
     setFeedback('Ouça a melodia com atenção!');
-    say('Ouça a melodia com atenção!');
 
-    seq.forEach((noteIdx, i) => {
-      schedule(() => {
-        setActiveKey(noteIdx);
-        playMusicalNote(noteIdx, state.audio.sfxEnabled);
-        schedule(() => setActiveKey(null), 350);
-      }, 900 + i * 580);
+    say('Ouça a melodia com atenção!', {
+      onEnd: () => {
+        const startDelay = 350;
+        const stepMs = 620;
+
+        seq.forEach((noteIdx, i) => {
+          schedule(() => {
+            setActiveKey(noteIdx);
+            playMusicalNote(noteIdx, state.audio.sfxEnabled);
+            schedule(() => setActiveKey(null), 350);
+          }, startDelay + i * stepMs);
+        });
+
+        schedule(() => {
+          setSimonPlaying(false);
+          setFeedback('Agora é a sua vez! Repita a melodia!');
+          say('Agora é a sua vez! Repita a melodia!');
+        }, startDelay + seq.length * stepMs + 250);
+      },
     });
-
-    schedule(() => {
-      setSimonPlaying(false);
-      setFeedback('Agora é a sua vez! Repita a melodia!');
-      say('Agora é a sua vez! Repita a melodia!');
-    }, 950 + seq.length * 580);
   };
 
   useEffect(() => {
@@ -156,29 +162,35 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
         recordCorrectAnswer('music-sounds');
         const praise = pickRandom(CELEBRATE_PHRASES);
         setFeedback(praise);
-        say(praise);
 
         const nextRound = simonRound + 1;
         setSimonRound(nextRound);
-        schedule(() => {
-          setLocked(false);
-          if (nextRound >= 3) {
-            sfx('celebration');
-            setReward(completeRound('music-sounds', 3));
-          } else {
-            const nextSeq = createSimonSequence(simonLen);
-            setSimonSeq(nextSeq);
-            playSimonSequence(nextSeq);
-          }
-        }, 1200);
+        say(praise, {
+          onEnd: () => {
+            schedule(() => {
+              setLocked(false);
+              if (nextRound >= 3) {
+                sfx('celebration');
+                setReward(completeRound('music-sounds', 3));
+              } else {
+                const nextSeq = createSimonSequence(simonLen);
+                setSimonSeq(nextSeq);
+                playSimonSequence(nextSeq);
+              }
+            }, 400);
+          },
+        });
       }
     } else {
       sfx('encourage');
       setMood('encouraging');
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
-      say(phrase);
-      schedule(() => playSimonSequence(simonSeq), 1400);
+      say(phrase, {
+        onEnd: () => {
+          schedule(() => playSimonSequence(simonSeq), 400);
+        },
+      });
     }
   };
 

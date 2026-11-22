@@ -26,7 +26,7 @@ interface AppContextValue {
   updateAudio: (patch: Partial<AudioSettings>) => void;
   recordCorrectAnswer: (pillar: PillarId) => void;
   completeRound: (pillar: PillarId, starsAwarded?: number) => RoundReward;
-  say: (text: string, opts?: Pick<SpeakOptions, 'queue'>) => void;
+  say: (text: string, opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) => void;
   sfx: (type: SfxType) => void;
 }
 
@@ -165,13 +165,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { starsAwarded, newStickerId };
   };
 
-  const say = (text: string, opts?: Pick<SpeakOptions, 'queue'>) =>
+  const say = (text: string, opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) =>
     speak(text, {
       enabled: state.audio.voiceEnabled,
       speed: state.audio.voiceSpeed,
       ageLevel: activeProfile.ageLevel,
       voiceURI: state.audio.voiceURI,
       queue: opts?.queue,
+      onEnd: opts?.onEnd,
     });
   const sfx = (type: SfxType) => playSfx(type, state.audio.sfxEnabled);
 

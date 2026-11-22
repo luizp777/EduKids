@@ -538,6 +538,13 @@ let speakTimerId: number | null = null;
 let currentAudio: HTMLAudioElement | null = null;
 let clipQueue: string[] = [];
 let playbackSession = 0;
+let onPlaybackEnd: (() => void) | null = null;
+
+function flushPlaybackEnd() {
+  const cb = onPlaybackEnd;
+  onPlaybackEnd = null;
+  if (cb) cb();
+}
 
 function notifySpeaking(speaking: boolean) {
   for (const fn of listeners) fn(speaking);
@@ -556,6 +563,7 @@ export interface SpeakOptions {
   ageLevel?: AgeLevel;
   voiceURI?: string;
   queue?: boolean;
+  onEnd?: () => void;
 }
 
 function playNextClip(session: number, rate: number, fallbackText: string, opts: SpeakOptions): void {
@@ -564,6 +572,7 @@ function playNextClip(session: number, rate: number, fallbackText: string, opts:
   if (!nextId) {
     currentAudio = null;
     notifySpeaking(false);
+    flushPlaybackEnd();
     return;
   }
 
@@ -589,13 +598,20 @@ function playNextClip(session: number, rate: number, fallbackText: string, opts:
     currentAudio = null;
     clipQueue = [];
     notifySpeaking(false);
+    flushPlaybackEnd();
   });
 }
 
 function speakWithWebSpeech(text: string, opts: SpeakOptions): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    flushPlaybackEnd();
+    return;
+  }
   const cleanText = formatSpeechText(text);
-  if (!cleanText) return;
+  if (!cleanText) {
+    flushPlaybackEnd();
+    return;
+  }
 
   const runSpeak = () => {
     try {
@@ -607,12 +623,19 @@ function speakWithWebSpeech(text: string, opts: SpeakOptions): void {
       if (voice) utterance.voice = voice;
 
       utterance.onstart = () => notifySpeaking(true);
-      utterance.onend = () => notifySpeaking(false);
-      utterance.onerror = () => notifySpeaking(false);
+      utterance.onend = () => {
+        notifySpeaking(false);
+        flushPlaybackEnd();
+      };
+      utterance.onerror = () => {
+        notifySpeaking(false);
+        flushPlaybackEnd();
+      };
 
       window.speechSynthesis.speak(utterance);
     } catch {
       notifySpeaking(false);
+      flushPlaybackEnd();
     }
   };
 
@@ -649,29 +672,36 @@ export function speak(text: string, options: SpeakOptions | boolean = true): voi
   const opts: SpeakOptions =
     typeof options === 'boolean' ? { enabled: options } : options;
   const enabled = opts.enabled ?? true;
-  if (!enabled || typeof window === 'undefined') return;
+  if (!enabled || typeof window === 'undefined') {
+    opts.onEnd?.();
+    return;
+  }
 
   const clips = resolveAudioClips(text);
   if (clips && clips.length > 0) {
     const rate = getAudioPlaybackRate(opts.speed, opts.ageLevel);
     if (opts.queue && (currentAudio || clipQueue.length > 0)) {
       clipQueue.push(...clips);
+      if (opts.onEnd) onPlaybackEnd = opts.onEnd;
       return;
     }
 
     stopSpeaking();
+    onPlaybackEnd = opts.onEnd ?? null;
     const session = ++playbackSession;
     clipQueue = [...clips];
     playNextClip(session, rate, text, opts);
     return;
   }
 
+  onPlaybackEnd = opts.onEnd ?? null;
   speakWithWebSpeech(text, opts);
 }
 
 /** Interrompe imediatamente qualquer clipe MP3 ou síntese de voz em andamento. */
 export function stopSpeaking(): void {
   playbackSession += 1;
+  onPlaybackEnd = null;
   clipQueue = [];
   if (currentAudio) {
     currentAudio.onended = null;
