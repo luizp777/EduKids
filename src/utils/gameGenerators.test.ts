@@ -6,21 +6,25 @@ import {
   generateColorMixRounds,
   generateColorRound,
   generateCompareQuestions,
+  generateInitialSyllableQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
+  generateMatrixLogicQuestions,
+  generateNumberQuantityQuestions,
   generateOddOneOutQuestions,
   generateOrderSizeQuestions,
   generatePatternQuestions,
   generateRhymeQuestions,
   generateSequenceQuestions,
   generateShadowQuestions,
+  generateShapeObjectQuestions,
   generateShapeRound,
   generateSubtractionQuestions,
   generateSyllableQuestions,
   generateWordBuilderQuestions,
 } from './gameGenerators';
 import { createProfile, pickNextSticker } from '../state/storage';
-import { STICKERS } from '../data/catalog';
+import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
 
 describe('EduKids game generators', () => {
   it('generates age-appropriate literacy questions for 3-4 (vowels only, 3 options)', () => {
@@ -190,6 +194,43 @@ describe('EduKids game generators', () => {
     for (const s of sounds) {
       expect(s.options).toHaveLength(4);
       expect(s.options.some((o) => o.id === s.target.id)).toBe(true);
+    }
+  });
+
+  it('generates v3 expanded catalog and new activity generators', () => {
+    expect(FIGURES.length).toBeGreaterThanOrEqual(36);
+    expect(RHYME_PAIRS.length).toBeGreaterThanOrEqual(10);
+    expect(TRACING_TEMPLATES.length).toBeGreaterThanOrEqual(40);
+
+    const initSyl = generateInitialSyllableQuestions('3-4', 4);
+    expect(initSyl).toHaveLength(4);
+    for (const q of initSyl) {
+      expect(q.options).toHaveLength(3);
+      expect(q.options).toContain(q.correctSyllable);
+    }
+
+    const numQty = generateNumberQuantityQuestions('5-6', 4);
+    expect(numQty).toHaveLength(4);
+    for (const q of numQty) {
+      expect(q.options).toHaveLength(4);
+      expect(q.options.some((o) => o.count === q.targetNumber)).toBe(true);
+    }
+
+    const shapeObjs = generateShapeObjectQuestions('3-4', 4);
+    expect(shapeObjs).toHaveLength(4);
+    for (const q of shapeObjs) {
+      expect(q.options).toHaveLength(3);
+      expect(q.options.some((o) => o.id === q.shape.id)).toBe(true);
+    }
+
+    const matrices = generateMatrixLogicQuestions('5-6', 8);
+    expect(matrices).toHaveLength(8);
+    for (const m of matrices) {
+      expect(m.options).toHaveLength(4);
+      expect(m.options.some((o) => o.id === m.answer.id)).toBe(true);
+      const validRowMatch = m.topLeft.id === m.topRight.id && m.bottomLeft.id === m.answer.id;
+      const validColMatch = m.topLeft.id === m.bottomLeft.id && m.topRight.id === m.answer.id;
+      expect(validRowMatch || validColMatch).toBe(true);
     }
   });
 });

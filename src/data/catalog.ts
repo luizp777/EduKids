@@ -9,16 +9,25 @@ import type {
   TracingTemplate,
 } from '../types';
 
+/** Metadados visuais e pedagógicos de um pilar na tela inicial. */
 export interface PillarMeta {
+  /** Identificador do pilar. */
   id: PillarId;
+  /** Título exibido no cartão. */
   title: string;
+  /** Subtítulo resumindo os modos disponíveis. */
   subtitle: string;
+  /** Saudação falada pela Lumi ao apresentar o pilar. */
   spokenIntro: string;
+  /** Classes Tailwind de gradiente de fundo. */
   bgGradient: string;
+  /** Cor hexadecimal de borda. */
   borderColor: string;
+  /** Cor hexadecimal do selo de destaque. */
   badgeColor: string;
 }
 
+/** Catálogo dos 8 pilares pedagógicos do EduKids. */
 export const PILLARS: PillarMeta[] = [
   {
     id: 'literacy',
@@ -94,6 +103,7 @@ export const PILLARS: PillarMeta[] = [
   },
 ];
 
+/** Paleta principal de cores usadas nos modos de classificação, pintura e mistura. */
 export const COLORS: ColorInfo[] = [
   {
     id: 'vermelho',
@@ -151,18 +161,24 @@ export const COLORS: ColorInfo[] = [
   },
 ];
 
+/** Receita de mistura entre duas cores primárias e a cor secundária resultante. */
 export interface ColorMixRecipe {
+  /** Primeira cor da mistura. */
   colorA: ColorId;
+  /** Segunda cor da mistura. */
   colorB: ColorId;
+  /** Cor resultante da combinação. */
   result: ColorId;
 }
 
+/** Receitas de mistura de cores disponíveis no modo "Misturar". */
 export const COLOR_MIXES: ColorMixRecipe[] = [
   { colorA: 'vermelho', colorB: 'amarelo', result: 'laranja' },
   { colorA: 'azul', colorB: 'amarelo', result: 'verde' },
   { colorA: 'vermelho', colorB: 'azul', result: 'roxo' },
 ];
 
+/** Formas geométricas suportadas nos jogos de encaixe, padrões e objetos do mundo. */
 export const SHAPES: ShapeInfo[] = [
   { id: 'circulo', name: 'Círculo', colorHex: '#FF595E', accentHex: '#FF8A8E' },
   { id: 'quadrado', name: 'Quadrado', colorHex: '#3A86FF', accentHex: '#7FB2FF' },
@@ -172,6 +188,7 @@ export const SHAPES: ShapeInfo[] = [
   { id: 'retangulo', name: 'Retângulo', colorHex: '#52B788', accentHex: '#84D4AE' },
 ];
 
+/** Catálogo completo das 36 figuras ilustradas usadas transversalmente nos pilares. */
 export const FIGURES: FigureItem[] = [
   { id: 'abelha', name: 'ABELHA', letter: 'A', isVowel: true, colorId: 'amarelo', category: 'animal', missingLetterIndex: 0, syllables: ['A', 'BE', 'LHA'] },
   { id: 'elefante', name: 'ELEFANTE', letter: 'E', isVowel: true, colorId: 'azul', category: 'animal', missingLetterIndex: 0, syllables: ['E', 'LE', 'FAN', 'TE'] },
@@ -201,16 +218,31 @@ export const FIGURES: FigureItem[] = [
   { id: 'uva', name: 'UVA', letter: 'U', isVowel: true, colorId: 'roxo', category: 'fruta', missingLetterIndex: 0, syllables: ['U', 'VA'] },
   { id: 'arvore', name: 'ÁRVORE', letter: 'A', isVowel: true, colorId: 'verde', category: 'natureza', missingLetterIndex: 2, syllables: ['ÁR', 'VO', 'RE'] },
   { id: 'estrela', name: 'ESTRELA', letter: 'E', isVowel: true, colorId: 'amarelo', category: 'natureza', missingLetterIndex: 0, syllables: ['ES', 'TRE', 'LA'] },
+  { id: 'cachorro', name: 'CACHORRO', letter: 'C', isVowel: false, colorId: 'laranja', category: 'animal', missingLetterIndex: 0, syllables: ['CA', 'CHOR', 'RO'] },
+  { id: 'leao', name: 'LEÃO', letter: 'L', isVowel: false, colorId: 'amarelo', category: 'animal', missingLetterIndex: 0, syllables: ['LE', 'ÃO'] },
+  { id: 'passaro', name: 'PÁSSARO', letter: 'P', isVowel: false, colorId: 'azul', category: 'animal', missingLetterIndex: 0, syllables: ['PÁS', 'SA', 'RO'] },
+  { id: 'tartaruga', name: 'TARTARUGA', letter: 'T', isVowel: false, colorId: 'verde', category: 'animal', missingLetterIndex: 0, syllables: ['TAR', 'TA', 'RU', 'GA'] },
+  { id: 'aviao', name: 'AVIÃO', letter: 'A', isVowel: true, colorId: 'azul', category: 'objeto', missingLetterIndex: 0, syllables: ['A', 'VI', 'ÃO'] },
+  { id: 'livro', name: 'LIVRO', letter: 'L', isVowel: false, colorId: 'vermelho', category: 'objeto', missingLetterIndex: 0, syllables: ['LI', 'VRO'] },
+  { id: 'arcoiris', name: 'ARCO-ÍRIS', letter: 'A', isVowel: true, colorId: 'roxo', category: 'natureza', missingLetterIndex: 0, syllables: ['AR', 'CO', 'Í', 'RIS'] },
+  { id: 'melancia', name: 'MELANCIA', letter: 'M', isVowel: false, colorId: 'vermelho', category: 'fruta', missingLetterIndex: 0, syllables: ['ME', 'LAN', 'CI', 'A'] },
 ];
 
+/** Pares de rimas fonéticas corretas usados no modo "Rimas". */
 export const RHYME_PAIRS: [FigureId, FigureId][] = [
   ['gato', 'pato'],
   ['gato', 'rato'],
   ['pato', 'rato'],
   ['pao', 'mao'],
   ['abelha', 'ovelha'],
+  ['leao', 'aviao'],
+  ['leao', 'pao'],
+  ['leao', 'mao'],
+  ['aviao', 'pao'],
+  ['aviao', 'mao'],
 ];
 
+/** Catálogo das 29 figurinhas colecionáveis do Álbum de Figurinhas. */
 export const STICKERS: StickerItem[] = [
   { id: 'stk-abelha', name: 'Abelha Zuzu', theme: 'Animais', figureId: 'abelha', bgHex: '#FFF3BF' },
   { id: 'stk-elefante', name: 'Elefante Dudu', theme: 'Animais', figureId: 'elefante', bgHex: '#D0EBFF' },
@@ -234,8 +266,16 @@ export const STICKERS: StickerItem[] = [
   { id: 'stk-banana', name: 'Banana Pop', theme: 'Frutas', figureId: 'banana', bgHex: '#FFF3BF' },
   { id: 'stk-uva', name: 'Uva Roxinha', theme: 'Frutas', figureId: 'uva', bgHex: '#F3D9FA' },
   { id: 'stk-carro', name: 'Carrinho Vrum', theme: 'Espaço', figureId: 'carro', bgHex: '#FFE3E3' },
+  { id: 'stk-cachorro', name: 'Cachorrinho Au', theme: 'Animais', figureId: 'cachorro', bgHex: '#FFE8CC' },
+  { id: 'stk-leao', name: 'Leão Juba', theme: 'Animais', figureId: 'leao', bgHex: '#FFF3BF' },
+  { id: 'stk-passaro', name: 'Passarinho Azul', theme: 'Animais', figureId: 'passaro', bgHex: '#D0EBFF' },
+  { id: 'stk-tartaruga', name: 'Tartaruga Tina', theme: 'Animais', figureId: 'tartaruga', bgHex: '#D3F9D8' },
+  { id: 'stk-aviao', name: 'Avião Veloz', theme: 'Espaço', figureId: 'aviao', bgHex: '#D0EBFF' },
+  { id: 'stk-arcoiris', name: 'Arco-íris Vivo', theme: 'Natureza', figureId: 'arcoiris', bgHex: '#F3D9FA' },
+  { id: 'stk-melancia', name: 'Melancia Doce', theme: 'Frutas', figureId: 'melancia', bgHex: '#FFE3E3' },
 ];
 
+/** Modelos de traçado (caminhos, formas, letras e números) ordenados por categoria e nível. */
 export const TRACING_TEMPLATES: TracingTemplate[] = [
   // Caminhos Motores
   {
@@ -269,6 +309,51 @@ export const TRACING_TEMPLATES: TracingTemplate[] = [
     svgPath: 'M 14 70 L 38 30 L 62 70 L 86 30',
     checkpoints: [
       { x: 14, y: 70 }, { x: 38, y: 30 }, { x: 62, y: 70 }, { x: 86, y: 30 },
+    ],
+  },
+  {
+    id: 'trace-montanha',
+    label: 'Montanha',
+    spokenName: 'a montanha',
+    category: 'caminho',
+    minLevel: '3-4',
+    svgPath: 'M 14 76 L 50 22 L 86 76',
+    checkpoints: [
+      { x: 14, y: 76 }, { x: 32, y: 49 }, { x: 50, y: 22 }, { x: 68, y: 49 }, { x: 86, y: 76 },
+    ],
+  },
+  {
+    id: 'trace-curva',
+    label: 'Curva Dupla',
+    spokenName: 'a curva dupla',
+    category: 'caminho',
+    minLevel: '3-4',
+    svgPath: 'M 16 24 C 82 24 18 76 84 76',
+    checkpoints: [
+      { x: 16, y: 24 }, { x: 52, y: 28 }, { x: 50, y: 50 }, { x: 48, y: 72 }, { x: 84, y: 76 },
+    ],
+  },
+  {
+    id: 'trace-castelo',
+    label: 'Castelo',
+    spokenName: 'o castelo',
+    category: 'caminho',
+    minLevel: '5-6',
+    svgPath: 'M 14 74 L 30 74 L 30 34 L 50 34 L 50 74 L 70 74 L 70 34 L 86 34',
+    checkpoints: [
+      { x: 14, y: 74 }, { x: 30, y: 54 }, { x: 30, y: 34 }, { x: 50, y: 34 },
+      { x: 50, y: 74 }, { x: 70, y: 54 }, { x: 86, y: 34 },
+    ],
+  },
+  {
+    id: 'trace-espiral',
+    label: 'Caracol',
+    spokenName: 'o caracol',
+    category: 'caminho',
+    minLevel: '5-6',
+    svgPath: 'M 50 50 C 58 50 58 38 48 38 C 34 38 34 64 52 64 C 74 64 74 22 48 22 C 20 22 20 80 54 80',
+    checkpoints: [
+      { x: 50, y: 50 }, { x: 48, y: 38 }, { x: 52, y: 64 }, { x: 48, y: 22 }, { x: 22, y: 50 }, { x: 54, y: 80 },
     ],
   },
 
@@ -331,6 +416,29 @@ export const TRACING_TEMPLATES: TracingTemplate[] = [
     checkpoints: [
       { x: 50, y: 14 }, { x: 86, y: 40 }, { x: 72, y: 84 },
       { x: 28, y: 84 }, { x: 14, y: 40 },
+    ],
+  },
+  {
+    id: 'trace-retangulo',
+    label: 'Retângulo',
+    spokenName: 'o Retângulo',
+    category: 'forma',
+    minLevel: '3-4',
+    svgPath: 'M 14 28 L 86 28 L 86 72 L 14 72 Z',
+    checkpoints: [
+      { x: 14, y: 28 }, { x: 50, y: 28 }, { x: 86, y: 28 },
+      { x: 86, y: 72 }, { x: 50, y: 72 }, { x: 14, y: 72 },
+    ],
+  },
+  {
+    id: 'trace-losango',
+    label: 'Diamante',
+    spokenName: 'o Diamante',
+    category: 'forma',
+    minLevel: '5-6',
+    svgPath: 'M 50 14 L 82 50 L 50 86 L 18 50 Z',
+    checkpoints: [
+      { x: 50, y: 14 }, { x: 82, y: 50 }, { x: 50, y: 86 }, { x: 18, y: 50 },
     ],
   },
 
@@ -450,6 +558,83 @@ export const TRACING_TEMPLATES: TracingTemplate[] = [
       { x: 68, y: 22 }, { x: 34, y: 26 }, { x: 50, y: 50 }, { x: 70, y: 68 }, { x: 32, y: 78 },
     ],
   },
+  {
+    id: 'trace-D',
+    label: 'D',
+    spokenName: 'a letra D',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 28 16 L 28 84 M 28 16 L 52 16 C 80 16 80 84 52 84 L 28 84',
+    checkpoints: [
+      { x: 28, y: 18 }, { x: 28, y: 50 }, { x: 28, y: 82 }, { x: 64, y: 30 }, { x: 74, y: 50 }, { x: 64, y: 70 },
+    ],
+  },
+  {
+    id: 'trace-F',
+    label: 'F',
+    spokenName: 'a letra F',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 72 18 L 28 18 L 28 84 M 28 50 L 64 50',
+    checkpoints: [
+      { x: 70, y: 18 }, { x: 28, y: 18 }, { x: 28, y: 50 }, { x: 28, y: 82 }, { x: 62, y: 50 },
+    ],
+  },
+  {
+    id: 'trace-G',
+    label: 'G',
+    spokenName: 'a letra G',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 74 28 C 60 12 24 16 24 50 C 24 84 60 88 74 72 L 74 52 L 54 52',
+    checkpoints: [
+      { x: 70, y: 24 }, { x: 42, y: 18 }, { x: 24, y: 50 }, { x: 44, y: 82 }, { x: 74, y: 56 }, { x: 56, y: 52 },
+    ],
+  },
+  {
+    id: 'trace-P',
+    label: 'P',
+    spokenName: 'a letra P',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 30 16 L 30 84 M 30 16 L 58 16 C 78 16 78 52 56 52 L 30 52',
+    checkpoints: [
+      { x: 30, y: 18 }, { x: 30, y: 50 }, { x: 30, y: 82 }, { x: 68, y: 34 }, { x: 54, y: 52 },
+    ],
+  },
+  {
+    id: 'trace-R',
+    label: 'R',
+    spokenName: 'a letra R',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 30 16 L 30 84 M 30 16 L 58 16 C 76 16 76 50 56 50 L 30 50 M 50 50 L 74 84',
+    checkpoints: [
+      { x: 30, y: 18 }, { x: 30, y: 50 }, { x: 30, y: 82 }, { x: 68, y: 34 }, { x: 52, y: 50 }, { x: 72, y: 82 },
+    ],
+  },
+  {
+    id: 'trace-T',
+    label: 'T',
+    spokenName: 'a letra T',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 20 18 L 80 18 M 50 18 L 50 84',
+    checkpoints: [
+      { x: 22, y: 18 }, { x: 50, y: 18 }, { x: 78, y: 18 }, { x: 50, y: 50 }, { x: 50, y: 82 },
+    ],
+  },
+  {
+    id: 'trace-V',
+    label: 'V',
+    spokenName: 'a letra V',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 22 18 L 50 84 L 78 18',
+    checkpoints: [
+      { x: 22, y: 18 }, { x: 36, y: 50 }, { x: 50, y: 84 }, { x: 64, y: 50 }, { x: 78, y: 18 },
+    ],
+  },
 
   // Números 0 a 9
   {
@@ -567,6 +752,7 @@ export const TRACING_TEMPLATES: TracingTemplate[] = [
   },
 ];
 
+/** Frases de incentivo gentil exibidas e faladas quando a criança erra uma tentativa. */
 export const ENCOURAGE_PHRASES = [
   'Quase lá! Tente de novo!',
   'Você consegue! Vamos tentar mais uma vez!',
@@ -574,6 +760,7 @@ export const ENCOURAGE_PHRASES = [
   'Muito bem por tentar! Qual será a certa?',
 ];
 
+/** Frases de celebração exibidas e faladas a cada acerto. */
 export const CELEBRATE_PHRASES = [
   'Muito bem! Você acertou!',
   'Parabéns! Incrível!',

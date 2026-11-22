@@ -103,6 +103,22 @@ PHRASES: dict[str, str] = {
     "p-habitat": "Onde este bichinho mora?",
     "p-clima": "O que devemos usar neste clima?",
 
+    # New v3 prompts
+    "p-silaba-inicial": "Com qual pedacinho começa a palavra",
+    "p-grupo-tem": "Toque no grupo que tem",
+    "p-parece-forma": "parece com qual forma?",
+    "p-matriz": "Observe o quadro! Qual figura está faltando?",
+    "p-som-cachorro": "Quem faz Au, Au?",
+    "p-som-leao": "Quem ruge forte: Roar!",
+    "p-som-passaro": "Quem faz Piu, Piu?",
+    "p-som-urso": "Quem faz Grrr, Grrr?",
+    "p-grave-agudo": "Ouça o som! Ele é grave como o elefante ou agudo como o passarinho?",
+    "p-onde-encontramos": "Onde encontramos",
+    "p-cuidar-agua": "A florzinha está com sede! O que ajuda ela a crescer?",
+    "p-cuidar-sol": "A árvore precisa de luz e calor! Quem ajuda?",
+    "p-cuidar-polen": "Quem ajuda a levar o pólen de flor em flor?",
+    "p-cuidar-jardim": "Qual bichinho também mora e cuida do jardim?",
+
     # Situations & items for pre-readers
     "sit-abraco": "Ganhou um abraço bem apertado!",
     "sit-sorvete": "O sorvete caiu no chão!",
@@ -130,6 +146,12 @@ PHRASES: dict[str, str] = {
     "tr-triangulo": "o Triângulo!",
     "tr-coracao": "o Coração!",
     "tr-estrela": "a Estrela!",
+    "tr-montanha": "a montanha!",
+    "tr-curva-dupla": "a curva dupla!",
+    "tr-castelo": "o castelo!",
+    "tr-caracol": "o caracol!",
+    "tr-retangulo": "o Retângulo!",
+    "tr-diamante": "o Diamante!",
 }
 
 # Letters
@@ -175,6 +197,14 @@ FIGURES = [
     ("uva", "uva"),
     ("arvore", "árvore"),
     ("estrela", "estrela"),
+    ("cachorro", "cachorro"),
+    ("leao", "leão"),
+    ("passaro", "pássaro"),
+    ("tartaruga", "tartaruga"),
+    ("aviao", "avião"),
+    ("livro", "livro"),
+    ("arcoiris", "arco-íris"),
+    ("melancia", "melancia"),
 ]
 for fid, spoken in FIGURES:
     PHRASES[f"fig-{fid}"] = spoken
@@ -237,6 +267,13 @@ STICKERS = [
     ("banana", "Banana Pop"),
     ("uva", "Uva Roxinha"),
     ("carro", "Carrinho Vrum"),
+    ("cachorro", "Cachorrinho Au"),
+    ("leao", "Leão Juba"),
+    ("passaro", "Passarinho Azul"),
+    ("tartaruga", "Tartaruga Tina"),
+    ("aviao", "Avião Veloz"),
+    ("arcoiris", "Arco-íris Vivo"),
+    ("melancia", "Melancia Doce"),
 ]
 for sid, spoken in STICKERS:
     PHRASES[f"stk-{sid}"] = spoken

@@ -53,6 +53,7 @@ export function createDefaultState(): AppState {
       sfxEnabled: true,
       voiceSpeed: 'normal',
       voiceURI: '',
+      volume: 0.85,
     },
   };
 }
@@ -80,6 +81,7 @@ export function loadAppState(): AppState {
         sfxEnabled: parsed.audio?.sfxEnabled ?? true,
         voiceSpeed: parsed.audio?.voiceSpeed ?? 'normal',
         voiceURI: parsed.audio?.voiceURI ?? '',
+        volume: typeof parsed.audio?.volume === 'number' ? parsed.audio.volume : 0.85,
       },
     };
   } catch {

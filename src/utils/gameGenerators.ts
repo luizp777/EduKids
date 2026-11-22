@@ -17,6 +17,7 @@ export function pickRandom<T>(arr: T[]): T {
 }
 
 // --- Literacy ---
+/** Questão gerada para os modos de letra inicial e completar palavra. */
 export interface LiteracyQuestion {
   mode: 'initial-letter' | 'complete-word';
   target: FigureItem;
@@ -29,6 +30,13 @@ export interface LiteracyQuestion {
 
 const ALL_LETTERS = 'ABCDEFGHIJLMNOPRSTUV'.split('');
 
+/**
+ * Gera questões de alfabetização (som inicial ou completar palavra) adaptadas à faixa etária.
+ *
+ * @param ageLevel - Faixa etária (`'3-4'` usa apenas vogais; `'5-6'` inclui todo o catálogo).
+ * @param count - Quantidade de questões da rodada.
+ * @param forcedMode - Opcionalmente força `'initial-letter'` ou `'complete-word'`.
+ */
 export function generateLiteracyQuestions(
   ageLevel: AgeLevel,
   count = 5,
@@ -79,6 +87,7 @@ export function generateLiteracyQuestions(
   });
 }
 
+/** Questão gerada para o modo de associação de rimas. */
 export interface RhymeQuestion {
   anchor: FigureItem;
   match: FigureItem;
@@ -87,6 +96,7 @@ export interface RhymeQuestion {
   spokenPrompt: string;
 }
 
+/** Gera rodadas de associação de rimas fonéticas entre figuras do catálogo. */
 export function generateRhymeQuestions(ageLevel: AgeLevel, count = 4): RhymeQuestion[] {
   const optionCount = ageLevel === '3-4' ? 3 : 4;
   const pairs = shuffle(RHYME_PAIRS).slice(0, count);
@@ -116,6 +126,7 @@ export function generateRhymeQuestions(ageLevel: AgeLevel, count = 4): RhymeQues
   });
 }
 
+/** Questão gerada para o modo de contagem de sílabas. */
 export interface SyllableQuestion {
   target: FigureItem;
   syllableCount: number;
@@ -124,6 +135,7 @@ export interface SyllableQuestion {
   spokenPrompt: string;
 }
 
+/** Gera rodadas de contagem de sílabas (até 3 sílabas para `3-4`; todas para `5-6`). */
 export function generateSyllableQuestions(ageLevel: AgeLevel, count = 4): SyllableQuestion[] {
   const pool =
     ageLevel === '3-4'
@@ -141,6 +153,7 @@ export function generateSyllableQuestions(ageLevel: AgeLevel, count = 4): Syllab
 }
 
 // --- Math ---
+/** Questão gerada para contagem visual ou adição simples. */
 export interface MathQuestion {
   mode: 'count' | 'addition';
   figure: FigureItem;
@@ -153,9 +166,13 @@ export interface MathQuestion {
 }
 
 const COUNTABLE_FIGURES = FIGURES.filter((f) =>
-  ['maca', 'morango', 'banana', 'bola', 'flor', 'pato', 'peixe', 'abelha', 'gato', 'carro'].includes(f.id)
+  [
+    'maca', 'morango', 'banana', 'bola', 'flor', 'pato', 'peixe',
+    'abelha', 'gato', 'carro', 'cachorro', 'passaro', 'melancia', 'livro', 'estrela', 'uva',
+  ].includes(f.id)
 );
 
+/** Gera rodadas de contagem ou soma visual conforme a faixa etária. */
 export function generateMathQuestions(
   ageLevel: AgeLevel,
   count = 5,
@@ -214,6 +231,7 @@ export function generateMathQuestions(
   return questions;
 }
 
+/** Questão de comparação de quantidades entre dois grupos ("mais" ou "menos"). */
 export interface CompareQuestion {
   figure: FigureItem;
   leftCount: number;
@@ -224,6 +242,7 @@ export interface CompareQuestion {
   spokenPrompt: string;
 }
 
+/** Gera comparações entre dois grupos de figuras ("mais" para `3-4`; alternado "mais"/"menos" para `5-6`). */
 export function generateCompareQuestions(ageLevel: AgeLevel, count = 4): CompareQuestion[] {
   const maxN = ageLevel === '3-4' ? 5 : 8;
   return Array.from({ length: count }, (_, idx) => {
@@ -255,6 +274,7 @@ export function generateCompareQuestions(ageLevel: AgeLevel, count = 4): Compare
   });
 }
 
+/** Questão visual de subtração simples. */
 export interface SubtractionQuestion {
   figure: FigureItem;
   startCount: number;
@@ -265,6 +285,7 @@ export interface SubtractionQuestion {
   spokenPrompt: string;
 }
 
+/** Gera problemas visuais de subtração simples com itens saindo do grupo. */
 export function generateSubtractionQuestions(ageLevel: AgeLevel, count = 4): SubtractionQuestion[] {
   const maxStart = ageLevel === '3-4' ? 5 : 8;
   return Array.from({ length: count }, () => {
@@ -292,6 +313,7 @@ export function generateSubtractionQuestions(ageLevel: AgeLevel, count = 4): Sub
   });
 }
 
+/** Questão de sequência numérica com lacuna. */
 export interface SequenceQuestion {
   items: (number | null)[];
   missingIndex: number;
@@ -301,12 +323,16 @@ export interface SequenceQuestion {
   spokenPrompt: string;
 }
 
+/** Gera sequências numéricas com um elemento oculto para completar. */
 export function generateSequenceQuestions(ageLevel: AgeLevel, count = 4): SequenceQuestion[] {
   return Array.from({ length: count }, () => {
     const step = ageLevel === '5-6' && Math.random() > 0.65 ? 2 : 1;
     const start = ageLevel === '3-4' ? 1 : 1 + Math.floor(Math.random() * 5);
     const full = [start, start + step, start + step * 2, start + step * 3];
-    const missingIndex = 1 + Math.floor(Math.random() * 2); // index 1 or 2
+    const missingIndex =
+      ageLevel === '3-4'
+        ? 1 + Math.floor(Math.random() * 2)
+        : Math.floor(Math.random() * 4);
     const answer = full[missingIndex];
     const items = full.map((n, idx) => (idx === missingIndex ? null : n));
     const optionCount = ageLevel === '3-4' ? 3 : 4;
@@ -329,16 +355,19 @@ export function generateSequenceQuestions(ageLevel: AgeLevel, count = 4): Sequen
 }
 
 // --- Shapes & Colors ---
+/** Rodada de caça às figuras da cor selecionada. */
 export interface ColorSortRound {
   targetColor: ColorInfo;
   items: { figure: FigureItem; isMatch: boolean }[];
 }
 
+/** Seleciona as formas geométricas de uma rodada de encaixe (`3` para `3-4`; `4` para `5-6`). */
 export function generateShapeRound(ageLevel: AgeLevel): ShapeInfo[] {
   const count = ageLevel === '3-4' ? 3 : 4;
   return shuffle(SHAPES).slice(0, count);
 }
 
+/** Gera uma rodada de caça às figuras da cor alvo selecionada. */
 export function generateColorRound(ageLevel: AgeLevel): ColorSortRound {
   const availableColors = COLORS.filter(
     (c) => FIGURES.filter((f) => f.colorId === c.id).length >= 2
@@ -361,6 +390,7 @@ export function generateColorRound(ageLevel: AgeLevel): ColorSortRound {
   };
 }
 
+/** Rodada de descoberta de mistura entre duas cores primárias. */
 export interface ColorMixRound {
   colorA: ColorInfo;
   colorB: ColorInfo;
@@ -368,6 +398,7 @@ export interface ColorMixRound {
   options: ColorInfo[];
 }
 
+/** Gera rodadas de mistura de cores primárias para descobrir a cor secundária resultante. */
 export function generateColorMixRounds(): ColorMixRound[] {
   const colorMap = new Map(COLORS.map((c) => [c.id, c]));
   return shuffle(COLOR_MIXES).map((mix) => {
@@ -386,6 +417,7 @@ export function generateColorMixRounds(): ColorMixRound[] {
   });
 }
 
+/** Questão de sequência lógica com formas geométricas. */
 export interface PatternQuestion {
   sequence: ShapeInfo[];
   answer: ShapeInfo;
@@ -394,6 +426,7 @@ export interface PatternQuestion {
   spokenPrompt: string;
 }
 
+/** Gera sequências lógicas de formas geométricas para completar o padrão. */
 export function generatePatternQuestions(ageLevel: AgeLevel, count = 4): PatternQuestion[] {
   return Array.from({ length: count }, () => {
     if (ageLevel === '3-4') {
@@ -429,11 +462,13 @@ export function generatePatternQuestions(ageLevel: AgeLevel, count = 4): Pattern
 }
 
 // --- Figures & Logic ---
+/** Questão de associação entre silhueta e figura. */
 export interface ShadowQuestion {
   target: FigureItem;
   options: FigureItem[];
 }
 
+/** Gera desafios de correspondência entre silhuetas e figuras coloridas. */
 export function generateShadowQuestions(ageLevel: AgeLevel, count = 4): ShadowQuestion[] {
   const optionCount = ageLevel === '3-4' ? 3 : 4;
   const targets = shuffle(FIGURES).slice(0, count);
@@ -449,12 +484,14 @@ export function generateShadowQuestions(ageLevel: AgeLevel, count = 4): ShadowQu
   });
 }
 
+/** Questão de identificação da figura diferente na grade. */
 export interface OddOneOutQuestion {
   commonFigure: FigureItem;
   oddFigure: FigureItem;
   items: { figure: FigureItem; isOdd: boolean; key: string }[];
 }
 
+/** Gera grades onde apenas uma figura é diferente das demais. */
 export function generateOddOneOutQuestions(ageLevel: AgeLevel, count = 4): OddOneOutQuestion[] {
   const totalSlots = ageLevel === '3-4' ? 4 : 6;
   const maxPairs = Math.floor(FIGURES.length / 2);
@@ -483,12 +520,15 @@ export function generateOddOneOutQuestions(ageLevel: AgeLevel, count = 4): OddOn
   return questions;
 }
 
+/** Metadados de uma categoria semântica no modo Grupos. */
 export interface CategoryGroup {
   id: 'animal' | 'fruta' | 'natureza' | 'objeto';
   label: string;
   colorHex: string;
+  sampleFigureId: FigureId;
 }
 
+/** Rodada de classificação entre dois grupos semânticos. */
 export interface CategorySortRound {
   groupA: CategoryGroup;
   groupB: CategoryGroup;
@@ -496,16 +536,20 @@ export interface CategorySortRound {
 }
 
 const CATEGORY_META: Record<CategoryGroup['id'], CategoryGroup> = {
-  animal: { id: 'animal', label: 'Animais', colorHex: '#FF924C' },
-  fruta: { id: 'fruta', label: 'Frutas', colorHex: '#FF595E' },
-  natureza: { id: 'natureza', label: 'Natureza', colorHex: '#52B788' },
-  objeto: { id: 'objeto', label: 'Objetos', colorHex: '#3A86FF' },
+  animal: { id: 'animal', label: 'Animais', colorHex: '#EA580C', sampleFigureId: 'urso' },
+  fruta: { id: 'fruta', label: 'Frutas', colorHex: '#E11D48', sampleFigureId: 'maca' },
+  natureza: { id: 'natureza', label: 'Natureza', colorHex: '#059669', sampleFigureId: 'arvore' },
+  objeto: { id: 'objeto', label: 'Objetos', colorHex: '#2563EB', sampleFigureId: 'bola' },
 };
 
+/** Gera rodadas de classificação entre dois grupos semânticos (Animais, Frutas, Natureza, Objetos). */
 export function generateCategoryRound(ageLevel: AgeLevel): CategorySortRound {
   const pairs: [CategoryGroup['id'], CategoryGroup['id']][] = [
     ['animal', 'fruta'],
     ['animal', 'objeto'],
+    ['animal', 'natureza'],
+    ['fruta', 'natureza'],
+    ['fruta', 'objeto'],
     ['natureza', 'objeto'],
   ];
   const [idA, idB] = pickRandom(pairs);
@@ -522,6 +566,7 @@ export function generateCategoryRound(ageLevel: AgeLevel): CategorySortRound {
 
 // --- New v2 Generators ---
 
+/** Questão de montagem de palavras com letras embaralhadas. */
 export interface WordBuilderQuestion {
   target: FigureItem;
   letters: { uid: string; char: string }[];
@@ -530,7 +575,9 @@ export interface WordBuilderQuestion {
 }
 
 const BUILDER_WORDS_3_4: FigureId[] = ['sol', 'lua', 'uva', 'pao', 'mao'];
-const BUILDER_WORDS_5_6: FigureId[] = ['bola', 'casa', 'dado', 'gato', 'pato', 'sapo', 'flor', 'urso', 'rato'];
+const BUILDER_WORDS_5_6: FigureId[] = [
+  'bola', 'casa', 'dado', 'gato', 'pato', 'sapo', 'flor', 'urso', 'rato', 'leao', 'livro',
+];
 
 /** Gera rodadas de montagem de palavras com letras embaralhadas conforme a faixa etária. */
 export function generateWordBuilderQuestions(ageLevel: AgeLevel, count = 4): WordBuilderQuestion[] {
@@ -555,12 +602,14 @@ export function generateWordBuilderQuestions(ageLevel: AgeLevel, count = 4): Wor
   });
 }
 
+/** Item ordenável por tamanho ou valor numérico. */
 export interface OrderSizeItem {
   id: string;
   value: number;
   figure?: FigureItem;
 }
 
+/** Questão de ordenação crescente (tamanhos ou números). */
 export interface OrderSizeQuestion {
   mode: 'sizes' | 'numbers';
   items: OrderSizeItem[];
@@ -601,6 +650,7 @@ export function generateOrderSizeQuestions(ageLevel: AgeLevel, count = 4): Order
   });
 }
 
+/** Questão de associação lógica entre pares relacionados. */
 export interface AssociationQuestion {
   anchor: FigureItem;
   match: FigureItem;
@@ -616,6 +666,14 @@ const ASSOCIATION_PAIRS: [FigureId, FigureId][] = [
   ['sol', 'nuvem'],
   ['gato', 'rato'],
   ['pato', 'sapo'],
+  ['cachorro', 'casa'],
+  ['passaro', 'arvore'],
+  ['sol', 'arcoiris'],
+  ['livro', 'estrela'],
+  ['urso', 'abelha'],
+  ['tartaruga', 'ilha'],
+  ['aviao', 'nuvem'],
+  ['morango', 'melancia'],
 ];
 
 /** Gera pares de associação lógica entre figuras do catálogo. */
@@ -640,6 +698,7 @@ export function generateAssociationQuestions(ageLevel: AgeLevel, count = 4): Ass
   });
 }
 
+/** Questão de reconhecimento de onomatopeia animal. */
 export interface AnimalSoundQuestion {
   target: FigureItem;
   onomatopoeia: string;
@@ -653,6 +712,10 @@ const ANIMAL_SOUNDS: { id: FigureId; sound: string; prompt: string }[] = [
   { id: 'sapo', sound: 'Croac, Croac!', prompt: 'Quem faz Croac, Croac?' },
   { id: 'abelha', sound: 'Zum, Zum!', prompt: 'Quem faz Zum, Zum?' },
   { id: 'ovelha', sound: 'Méé, Méé!', prompt: 'Quem faz Méé, Méé?' },
+  { id: 'cachorro', sound: 'Au, Au!', prompt: 'Quem faz Au, Au!' },
+  { id: 'leao', sound: 'Roar, Uau!', prompt: 'Quem ruge forte: Roar!' },
+  { id: 'passaro', sound: 'Piu, Piu!', prompt: 'Quem faz Piu, Piu?' },
+  { id: 'urso', sound: 'Grrr, Grrr!', prompt: 'Quem faz Grrr, Grrr?' },
 ];
 
 /** Gera rodadas de reconhecimento de sons de animais (onomatopeias faladas). */
@@ -673,5 +736,174 @@ export function generateAnimalSoundQuestions(ageLevel: AgeLevel, count = 4): Ani
         options: shuffle([target, ...distractors]),
       };
     });
+}
+
+// --- New v3 Generators ---
+
+/** Questão de identificação da sílaba inicial da palavra. */
+export interface InitialSyllableQuestion {
+  target: FigureItem;
+  correctSyllable: string;
+  options: string[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera rodadas de identificação da sílaba inicial de cada palavra. */
+export function generateInitialSyllableQuestions(
+  ageLevel: AgeLevel,
+  count = 4
+): InitialSyllableQuestion[] {
+  const pool = FIGURES.filter((f) => f.syllables.length >= 2);
+  const selected = shuffle(pool).slice(0, count);
+  const allFirstSyllables = Array.from(new Set(pool.map((f) => f.syllables[0])));
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return selected.map((target) => {
+    const correctSyllable = target.syllables[0];
+    const distractors = shuffle(
+      allFirstSyllables.filter((s) => s !== correctSyllable)
+    ).slice(0, optionCount - 1);
+    return {
+      target,
+      correctSyllable,
+      options: shuffle([correctSyllable, ...distractors]),
+      promptText: `Qual pedacinho começa ${target.name}?`,
+      spokenPrompt: `Com qual pedacinho começa a palavra ${target.name.toLowerCase()}?`,
+    };
+  });
+}
+
+/** Opção de grupo de figuras no modo Quantidades. */
+export interface NumberQuantityOption {
+  id: string;
+  count: number;
+}
+
+/** Questão de correspondência entre numeral e quantidade de figuras. */
+export interface NumberQuantityQuestion {
+  targetNumber: number;
+  figure: FigureItem;
+  options: NumberQuantityOption[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera rodadas para associar um número ao grupo com a quantidade exata de figuras. */
+export function generateNumberQuantityQuestions(
+  ageLevel: AgeLevel,
+  count = 4
+): NumberQuantityQuestion[] {
+  const maxNum = ageLevel === '3-4' ? 5 : 8;
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return Array.from({ length: count }, (_, qIdx) => {
+    const figure = pickRandom(COUNTABLE_FIGURES);
+    const targetNumber = 1 + Math.floor(Math.random() * maxNum);
+    const counts = new Set<number>([targetNumber]);
+    while (counts.size < optionCount) {
+      counts.add(1 + Math.floor(Math.random() * maxNum));
+    }
+    const options = shuffle(Array.from(counts)).map((c, i) => ({
+      id: `nq-${qIdx}-${i}-${c}`,
+      count: c,
+    }));
+    return {
+      targetNumber,
+      figure,
+      options,
+      promptText: `Encontre o grupo com ${targetNumber}!`,
+      spokenPrompt: `Toque no grupo que tem ${targetNumber} ${
+        targetNumber === 1 ? 'figura' : 'figuras'
+      }!`,
+    };
+  });
+}
+
+/** Questão de associação entre objeto cotidiano e forma geométrica. */
+export interface ShapeObjectQuestion {
+  figure: FigureItem;
+  shape: ShapeInfo;
+  options: ShapeInfo[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+const SHAPE_OBJECT_PAIRS: { figureId: FigureId; shapeId: ShapeInfo['id'] }[] = [
+  { figureId: 'bola', shapeId: 'circulo' },
+  { figureId: 'sol', shapeId: 'circulo' },
+  { figureId: 'dado', shapeId: 'quadrado' },
+  { figureId: 'casa', shapeId: 'quadrado' },
+  { figureId: 'livro', shapeId: 'retangulo' },
+  { figureId: 'estrela', shapeId: 'estrela' },
+  { figureId: 'melancia', shapeId: 'triangulo' },
+  { figureId: 'morango', shapeId: 'coracao' },
+];
+
+/** Gera rodadas associando objetos do cotidiano às suas formas geométricas. */
+export function generateShapeObjectQuestions(
+  ageLevel: AgeLevel,
+  count = 4
+): ShapeObjectQuestion[] {
+  const figMap = new Map(FIGURES.map((f) => [f.id, f]));
+  const shapeMap = new Map(SHAPES.map((s) => [s.id, s]));
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return shuffle(SHAPE_OBJECT_PAIRS)
+    .slice(0, count)
+    .map(({ figureId, shapeId }) => {
+      const figure = figMap.get(figureId)!;
+      const shape = shapeMap.get(shapeId)!;
+      const distractors = shuffle(SHAPES.filter((s) => s.id !== shape.id)).slice(
+        0,
+        optionCount - 1
+      );
+      return {
+        figure,
+        shape,
+        options: shuffle([shape, ...distractors]),
+        promptText: `${figure.name} lembra qual forma?`,
+        spokenPrompt: `${figure.name.toLowerCase()} parece com qual forma?`,
+      };
+    });
+}
+
+/** Questão de matriz lógica visual 2×2. */
+export interface MatrixLogicQuestion {
+  topLeft: FigureItem;
+  topRight: FigureItem;
+  bottomLeft: FigureItem;
+  answer: FigureItem;
+  options: FigureItem[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera matrizes lógicas 2x2 onde a criança completa o padrão visual (linha A-B / A-B ou A-A / B-B). */
+export function generateMatrixLogicQuestions(
+  ageLevel: AgeLevel,
+  count = 4
+): MatrixLogicQuestion[] {
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return Array.from({ length: count }, () => {
+    const [a, b, c, d] = shuffle(FIGURES).slice(0, 4);
+    const sameRowPattern = Math.random() > 0.5;
+    const topLeft = a;
+    const topRight = sameRowPattern ? a : b;
+    const bottomLeft = sameRowPattern ? b : a;
+    const answer = b;
+    const distractors = [a, c, d].slice(0, optionCount - 1);
+
+    return {
+      topLeft,
+      topRight,
+      bottomLeft,
+      answer,
+      options: shuffle([answer, ...distractors]),
+      promptText: 'Qual figura completa o quadro?',
+      spokenPrompt: 'Observe o quadro! Qual figura está faltando?',
+    };
+  });
 }
 

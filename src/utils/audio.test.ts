@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatSpeechText, getSpeechRate, resolveAudioClips } from './audio';
+import {
+  formatSpeechText,
+  getMasterVolume,
+  getNormalizedVoiceVolume,
+  getSpeechRate,
+  resolveAudioClips,
+  setMasterVolume,
+} from './audio';
 
 describe('audio speech helpers', () => {
   it('formats isolated vowels and math operators for clearer pt-BR pronunciation', () => {
@@ -126,5 +133,22 @@ describe('audio speech helpers', () => {
       'cli-chuva',
       'p-clima',
     ]);
+  });
+
+  it('normalizes master volume and clamps bounds consistently', () => {
+    setMasterVolume(0.8);
+    expect(getMasterVolume()).toBe(0.8);
+    expect(getNormalizedVoiceVolume()).toBeCloseTo(0.68, 5);
+
+    setMasterVolume(1.5);
+    expect(getMasterVolume()).toBe(1);
+    expect(getNormalizedVoiceVolume()).toBeCloseTo(0.85, 5);
+
+    setMasterVolume(-0.2);
+    expect(getMasterVolume()).toBe(0);
+    expect(getNormalizedVoiceVolume()).toBe(0);
+
+    // Restore default
+    setMasterVolume(0.85);
   });
 });

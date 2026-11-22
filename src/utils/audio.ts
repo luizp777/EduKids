@@ -2,7 +2,37 @@ import type { AgeLevel, VoiceSpeed } from '../types';
 import { AUDIO_CLIP_IDS } from '../data/audioClips';
 
 let audioCtx: AudioContext | null = null;
+let masterGainNode: GainNode | null = null;
+let masterCompressorNode: DynamicsCompressorNode | null = null;
+let masterVolume = 0.85;
 let audioUnlocked = false;
+
+/**
+ * Define o volume mestre global (0.0 a 1.0) para voz, melodia e efeitos sonoros.
+ */
+export function setMasterVolume(volume: number): void {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0.85));
+  masterVolume = clamped;
+  if (masterGainNode && audioCtx) {
+    masterGainNode.gain.setTargetAtTime(clamped, audioCtx.currentTime, 0.015);
+  }
+  if (currentAudio) {
+    currentAudio.volume = getNormalizedVoiceVolume();
+  }
+}
+
+/** Retorna o volume mestre global atual (0.0 a 1.0). */
+export function getMasterVolume(): number {
+  return masterVolume;
+}
+
+/**
+ * Retorna o volume calibrado para narração (MP3/TTS) mantendo equilíbrio
+ * perceptivo com as notas musicais sintetizadas.
+ */
+export function getNormalizedVoiceVolume(): number {
+  return Math.max(0, Math.min(1, masterVolume * 0.85));
+}
 
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -17,6 +47,24 @@ function getAudioContext(): AudioContext | null {
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
+}
+
+function getMasterOutput(ctx: AudioContext): AudioNode {
+  if (!masterGainNode) {
+    masterGainNode = ctx.createGain();
+    masterGainNode.gain.setValueAtTime(masterVolume, ctx.currentTime);
+    masterGainNode.connect(ctx.destination);
+  }
+  if (!masterCompressorNode) {
+    masterCompressorNode = ctx.createDynamicsCompressor();
+    masterCompressorNode.threshold.setValueAtTime(-14, ctx.currentTime);
+    masterCompressorNode.knee.setValueAtTime(12, ctx.currentTime);
+    masterCompressorNode.ratio.setValueAtTime(4, ctx.currentTime);
+    masterCompressorNode.attack.setValueAtTime(0.005, ctx.currentTime);
+    masterCompressorNode.release.setValueAtTime(0.15, ctx.currentTime);
+    masterCompressorNode.connect(masterGainNode);
+  }
+  return masterCompressorNode;
 }
 
 if (typeof window !== 'undefined') {
@@ -46,6 +94,7 @@ export function playSfx(type: SfxType, enabled = true): void {
   if (!enabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
+  const output = getMasterOutput(ctx);
 
   const now = ctx.currentTime;
 
@@ -54,7 +103,7 @@ export function playSfx(type: SfxType, enabled = true): void {
     startOffset: number,
     duration: number,
     wave: OscillatorType = 'sine',
-    volume = 0.16
+    volume = 0.42
   ) => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -64,33 +113,33 @@ export function playSfx(type: SfxType, enabled = true): void {
     gain.gain.exponentialRampToValueAtTime(volume, now + startOffset + 0.02);
     gain.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(output);
     osc.start(now + startOffset);
     osc.stop(now + startOffset + duration + 0.02);
   };
 
   switch (type) {
     case 'pop':
-      playTone(520, 0, 0.08, 'sine', 0.14);
-      playTone(680, 0.03, 0.07, 'triangle', 0.1);
+      playTone(520, 0, 0.08, 'sine', 0.36);
+      playTone(680, 0.03, 0.07, 'triangle', 0.28);
       break;
     case 'draw':
-      playTone(760, 0, 0.05, 'sine', 0.06);
+      playTone(760, 0, 0.05, 'sine', 0.22);
       break;
     case 'success':
-      playTone(523.25, 0, 0.14, 'triangle', 0.18);
-      playTone(659.25, 0.09, 0.14, 'triangle', 0.18);
-      playTone(783.99, 0.18, 0.24, 'triangle', 0.2);
+      playTone(523.25, 0, 0.14, 'triangle', 0.45);
+      playTone(659.25, 0.09, 0.14, 'triangle', 0.45);
+      playTone(783.99, 0.18, 0.24, 'triangle', 0.5);
       break;
     case 'encourage':
-      playTone(349.23, 0, 0.14, 'sine', 0.12);
-      playTone(329.63, 0.11, 0.18, 'sine', 0.1);
+      playTone(349.23, 0, 0.14, 'sine', 0.34);
+      playTone(329.63, 0.11, 0.18, 'sine', 0.3);
       break;
     case 'celebration':
-      playTone(523.25, 0, 0.12, 'triangle', 0.18);
-      playTone(659.25, 0.1, 0.12, 'triangle', 0.18);
-      playTone(783.99, 0.2, 0.14, 'triangle', 0.2);
-      playTone(1046.5, 0.32, 0.36, 'triangle', 0.22);
+      playTone(523.25, 0, 0.12, 'triangle', 0.45);
+      playTone(659.25, 0.1, 0.12, 'triangle', 0.45);
+      playTone(783.99, 0.2, 0.14, 'triangle', 0.48);
+      playTone(1046.5, 0.32, 0.36, 'triangle', 0.52);
       break;
   }
 }
@@ -98,26 +147,71 @@ export function playSfx(type: SfxType, enabled = true): void {
 const XYLOPHONE_FREQS = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
 
 /**
- * Toca uma nota musical suave (escala de Dó maior) para o Xilofone e Memória Musical.
+ * Toca uma nota musical normalizada (escala de Dó maior) para o Xilofone e Memória Musical,
+ * com corpo harmônico e sustentação calibrados para igualar o volume da narração.
  */
 export function playMusicalNote(noteIndex: number, enabled = true): void {
   if (!enabled) return;
   const ctx = getAudioContext();
   if (!ctx) return;
+  const output = getMasterOutput(ctx);
 
   const freq = XYLOPHONE_FREQS[noteIndex % XYLOPHONE_FREQS.length];
   const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'triangle';
-  osc.frequency.setValueAtTime(freq, now);
-  gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.24, now + 0.015);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(now);
-  osc.stop(now + 0.45);
+
+  // Fundamental oscillator with brief sustain plateau for perceived loudness parity
+  const oscMain = ctx.createOscillator();
+  const gainMain = ctx.createGain();
+  oscMain.type = 'triangle';
+  oscMain.frequency.setValueAtTime(freq, now);
+  gainMain.gain.setValueAtTime(0.001, now);
+  gainMain.gain.exponentialRampToValueAtTime(0.78, now + 0.015);
+  gainMain.gain.setValueAtTime(0.72, now + 0.12);
+  gainMain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+  oscMain.connect(gainMain);
+  gainMain.connect(output);
+  oscMain.start(now);
+  oscMain.stop(now + 0.55);
+
+  // Soft octave harmonic for clarity on small mobile speakers
+  const oscHarmonic = ctx.createOscillator();
+  const gainHarmonic = ctx.createGain();
+  oscHarmonic.type = 'sine';
+  oscHarmonic.frequency.setValueAtTime(freq * 2, now);
+  gainHarmonic.gain.setValueAtTime(0.001, now);
+  gainHarmonic.gain.exponentialRampToValueAtTime(0.24, now + 0.01);
+  gainHarmonic.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+  oscHarmonic.connect(gainHarmonic);
+  gainHarmonic.connect(output);
+  oscHarmonic.start(now);
+  oscHarmonic.stop(now + 0.28);
+}
+
+/**
+ * Toca um som grave (elefante/urso) ou agudo (passarinho/abelha) para discriminação auditiva.
+ */
+export function playPitchSound(kind: 'low' | 'high', enabled = true): void {
+  if (!enabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const output = getMasterOutput(ctx);
+
+  const now = ctx.currentTime;
+  const freqs = kind === 'low' ? [130.81, 110.0] : [783.99, 987.77];
+  freqs.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = kind === 'low' ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.22);
+    gain.gain.setValueAtTime(0.001, now + idx * 0.22);
+    gain.gain.exponentialRampToValueAtTime(kind === 'low' ? 0.55 : 0.68, now + idx * 0.22 + 0.025);
+    gain.gain.setValueAtTime(kind === 'low' ? 0.48 : 0.6, now + idx * 0.22 + 0.14);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.22 + 0.34);
+    osc.connect(gain);
+    gain.connect(output);
+    osc.start(now + idx * 0.22);
+    osc.stop(now + idx * 0.22 + 0.36);
+  });
 }
 
 const VOWEL_PRONUNCIATION: Record<string, string> = {
@@ -128,6 +222,7 @@ const VOWEL_PRONUNCIATION: Record<string, string> = {
   U: 'Ú',
 };
 
+/** Normaliza operadores matemáticos e letras isoladas para pronúncia clara em `pt-BR`. */
 export function formatSpeechText(raw: string): string {
   return raw
     .replace(/\bletra\s+([AEIOU])\b/gi, (_, ch: string) => {
@@ -145,12 +240,14 @@ export function formatSpeechText(raw: string): string {
     .trim();
 }
 
+/** Calcula a taxa de velocidade da síntese de voz (`SpeechSynthesis`) por idade e preferência. */
 export function getSpeechRate(speed: VoiceSpeed = 'normal', ageLevel: AgeLevel = '3-4'): number {
   if (speed === 'slow') return ageLevel === '3-4' ? 0.76 : 0.82;
   if (speed === 'fast') return 1.05;
   return ageLevel === '3-4' ? 0.86 : 0.94;
 }
 
+/** Calcula o `playbackRate` dos clipes MP3 neurais por idade e velocidade selecionada. */
 export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', ageLevel: AgeLevel = '3-4'): number {
   if (speed === 'slow') return ageLevel === '3-4' ? 0.86 : 0.9;
   if (speed === 'fast') return 1.12;
@@ -199,6 +296,16 @@ const EXACT_CLIPS: Record<string, string> = {
   'quem faz croac, croac?': 'p-som-sapo',
   'quem faz zum, zum?': 'p-som-abelha',
   'quem faz méé, méé?': 'p-som-ovelha',
+  'quem faz au, au?': 'p-som-cachorro',
+  'quem ruge forte: roar!': 'p-som-leao',
+  'quem faz piu, piu?': 'p-som-passaro',
+  'quem faz grrr, grrr?': 'p-som-urso',
+  'ouça o som! ele é grave como o elefante ou agudo como o passarinho?': 'p-grave-agudo',
+  'observe o quadro! qual figura está faltando?': 'p-matriz',
+  'a florzinha está com sede! o que ajuda ela a crescer?': 'p-cuidar-agua',
+  'a árvore precisa de luz e calor! quem ajuda?': 'p-cuidar-sol',
+  'quem ajuda a levar o pólen de flor em flor?': 'p-cuidar-polen',
+  'qual bichinho também mora e cuida do jardim?': 'p-cuidar-jardim',
   'qual rostinho combina com essa situação?': 'p-emocao',
   'isso acontece de dia ou de noite?': 'p-dia-noite',
   'o que usamos para cuidar da nossa saúde?': 'p-habitos',
@@ -244,6 +351,13 @@ const EXACT_CLIPS: Record<string, string> = {
   'banana pop': 'stk-banana',
   'uva roxinha': 'stk-uva',
   'carrinho vrum': 'stk-carro',
+  'cachorrinho au': 'stk-cachorro',
+  'leão juba': 'stk-leao',
+  'passarinho azul': 'stk-passaro',
+  'tartaruga tina': 'stk-tartaruga',
+  'avião veloz': 'stk-aviao',
+  'arco-íris vivo': 'stk-arcoiris',
+  'melancia doce': 'stk-melancia',
 };
 
 const PRAISE_PREFIXES = [
@@ -346,6 +460,24 @@ export function resolveAudioClips(rawText: string): string[] | null {
   if (m) {
     const fig = resolveSingleToken(m[1]);
     if (fig) return ['p-combinar', fig];
+  }
+
+  m = trimmed.match(/^Com qual pedacinho começa a palavra (.+?)\??$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig && AUDIO_CLIP_IDS.has('p-silaba-inicial')) return ['p-silaba-inicial', fig];
+  }
+
+  m = trimmed.match(/^(.+?) parece com qual forma\??$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig && AUDIO_CLIP_IDS.has('p-parece-forma')) return [fig, 'p-parece-forma'];
+  }
+
+  m = trimmed.match(/^Onde encontramos (.+?)\??$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig && AUDIO_CLIP_IDS.has('p-onde-encontramos')) return ['p-onde-encontramos', fig];
   }
 
   // Pre-reader situation + question composite prompts
@@ -550,6 +682,7 @@ function notifySpeaking(speaking: boolean) {
   for (const fn of listeners) fn(speaking);
 }
 
+/** Registra um ouvinte para mudanças no estado de fala ativa da Lumi. */
 export function subscribeSpeaking(fn: SpeakingListener): () => void {
   listeners.add(fn);
   return () => {
@@ -557,12 +690,19 @@ export function subscribeSpeaking(fn: SpeakingListener): () => void {
   };
 }
 
+/** Opções de reprodução de fala para `speak`. */
 export interface SpeakOptions {
+  /** Se `false`, não reproduz áudio e dispara `onEnd` imediatamente. */
   enabled?: boolean;
+  /** Velocidade da narração (`slow`, `normal` ou `fast`). */
   speed?: VoiceSpeed;
+  /** Faixa etária da criança para ajuste automático de ritmo. */
   ageLevel?: AgeLevel;
+  /** URI opcional de voz para o fallback `speechSynthesis`. */
   voiceURI?: string;
+  /** Se `true`, enfileira após a fala atual em vez de interrompê-la. */
   queue?: boolean;
+  /** Callback executado ao término da reprodução. */
   onEnd?: () => void;
 }
 
@@ -578,6 +718,7 @@ function playNextClip(session: number, rate: number, fallbackText: string, opts:
 
   const audio = new Audio(`/audio/pt-br/${nextId}.mp3`);
   audio.playbackRate = rate;
+  audio.volume = getNormalizedVoiceVolume();
   currentAudio = audio;
   notifySpeaking(true);
 
@@ -619,6 +760,7 @@ function speakWithWebSpeech(text: string, opts: SpeakOptions): void {
       utterance.lang = 'pt-BR';
       utterance.rate = getSpeechRate(opts.speed, opts.ageLevel);
       utterance.pitch = 1.06;
+      utterance.volume = getNormalizedVoiceVolume();
       const voice = resolveVoice(opts.voiceURI);
       if (voice) utterance.voice = voice;
 

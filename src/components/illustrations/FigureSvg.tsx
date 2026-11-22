@@ -1,14 +1,21 @@
 import React from 'react';
 import type { FigureId } from '../../types';
 
+/** Propriedades do componente `FigureSvg`. */
 interface FigureSvgProps {
+  /** Identificador da figura do catálogo. */
   figureId: FigureId;
+  /** Dimensão em pixels (largura e altura). */
   size?: number;
+  /** Se `true`, renderiza como silhueta escura para o jogo de Sombras ou álbum bloqueado. */
   silhouette?: boolean;
+  /** ViewBox customizado usado para recortar peças do quebra-cabeça. */
   viewBox?: string;
+  /** Classes CSS adicionais. */
   className?: string;
 }
 
+/** Renderiza uma das 36 figuras ilustradas em SVG, com suporte a modo silhueta e recorte para quebra-cabeça. */
 export const FigureSvg: React.FC<FigureSvgProps> = ({
   figureId,
   size = 84,
@@ -22,7 +29,7 @@ export const FigureSvg: React.FC<FigureSvgProps> = ({
       height={size}
       viewBox={viewBox}
       className={className}
-      style={silhouette ? { filter: 'brightness(0) saturate(0) opacity(0.32)' } : undefined}
+      style={silhouette ? { filter: 'brightness(0) saturate(0) opacity(0.68)' } : undefined}
       aria-label={figureId}
     >
       {figureId === 'abelha' && (
@@ -396,6 +403,117 @@ export const FigureSvg: React.FC<FigureSvgProps> = ({
           <circle cx="42" cy="48" r="3.5" fill="#2D3436" />
           <circle cx="58" cy="48" r="3.5" fill="#2D3436" />
           <path d="M44 57 Q50 63 56 57" stroke="#2D3436" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        </g>
+      )}
+
+      {figureId === 'cachorro' && (
+        <g>
+          <ellipse cx="24" cy="48" rx="12" ry="22" fill="#A6633C" transform="rotate(14 24 48)" />
+          <ellipse cx="76" cy="48" rx="12" ry="22" fill="#A6633C" transform="rotate(-14 76 48)" />
+          <circle cx="50" cy="54" r="28" fill="#F4A261" />
+          <ellipse cx="50" cy="64" rx="15" ry="12" fill="#FFE8CC" />
+          <circle cx="40" cy="48" r="4" fill="#2D3436" />
+          <circle cx="60" cy="48" r="4" fill="#2D3436" />
+          <ellipse cx="50" cy="58" rx="6" ry="4.5" fill="#2D3436" />
+          <path d="M44 67 Q50 72 56 67" stroke="#2D3436" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+          <ellipse cx="50" cy="73" rx="4" ry="5" fill="#FF758F" />
+        </g>
+      )}
+
+      {figureId === 'leao' && (
+        <g>
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => (
+            <circle
+              key={deg}
+              cx="50"
+              cy="18"
+              r="11"
+              fill="#D97706"
+              transform={`rotate(${deg} 50 52)`}
+            />
+          ))}
+          <circle cx="32" cy="28" r="8" fill="#FBBF24" />
+          <circle cx="68" cy="28" r="8" fill="#FBBF24" />
+          <circle cx="50" cy="52" r="26" fill="#FCD34D" />
+          <circle cx="40" cy="48" r="3.8" fill="#2D3436" />
+          <circle cx="60" cy="48" r="3.8" fill="#2D3436" />
+          <path d="M45 57 L55 57 L50 62 Z" fill="#92400E" />
+          <path d="M43 66 Q50 71 57 66" stroke="#92400E" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        </g>
+      )}
+
+      {figureId === 'passaro' && (
+        <g>
+          <path d="M64 60 L86 48 L78 68 Z" fill="#1D5FD1" />
+          <ellipse cx="48" cy="56" rx="26" ry="22" fill="#3A86FF" />
+          <ellipse cx="44" cy="64" rx="16" ry="12" fill="#A9DEF9" />
+          <circle cx="34" cy="46" r="14" fill="#3A86FF" />
+          <path d="M22 46 L10 50 L22 54 Z" fill="#FFCA3A" />
+          <circle cx="31" cy="44" r="3.5" fill="#2D3436" />
+          <circle cx="32" cy="43" r="1.2" fill="#FFF" />
+          <path d="M46 50 Q62 42 66 56 Q54 64 44 58 Z" fill="#74B9FF" />
+        </g>
+      )}
+
+      {figureId === 'tartaruga' && (
+        <g>
+          <rect x="28" y="68" width="10" height="14" rx="4" fill="#74C69D" />
+          <rect x="62" y="68" width="10" height="14" rx="4" fill="#74C69D" />
+          <circle cx="80" cy="54" r="11" fill="#74C69D" />
+          <circle cx="84" cy="51" r="2.5" fill="#2D3436" />
+          <path d="M80 58 Q84 61 88 58" stroke="#1B4332" strokeWidth="2" fill="none" strokeLinecap="round" />
+          <path d="M18 66 C18 32 76 32 76 66 Z" fill="#2D8A60" stroke="#1B4332" strokeWidth="2.5" />
+          <circle cx="36" cy="52" r="6" fill="#52B788" />
+          <circle cx="52" cy="46" r="7" fill="#52B788" />
+          <circle cx="62" cy="56" r="5" fill="#52B788" />
+        </g>
+      )}
+
+      {figureId === 'aviao' && (
+        <g>
+          <path d="M36 42 L20 20 L38 22 L56 42 Z" fill="#1D5FD1" />
+          <path d="M36 58 L20 80 L38 78 L56 58 Z" fill="#1D5FD1" />
+          <path d="M16 44 L10 34 L22 36 L26 46 Z" fill="#FF595E" />
+          <path d="M16 50 C16 40 74 38 86 50 C74 62 16 60 16 50 Z" fill="#3A86FF" stroke="#1D5FD1" strokeWidth="2" />
+          <circle cx="66" cy="48" r="5" fill="#A9DEF9" />
+          <circle cx="50" cy="49" r="4" fill="#A9DEF9" />
+          <circle cx="36" cy="49" r="4" fill="#A9DEF9" />
+        </g>
+      )}
+
+      {figureId === 'livro' && (
+        <g>
+          <rect x="18" y="20" width="64" height="60" rx="8" fill="#FF595E" stroke="#C9383D" strokeWidth="3" />
+          <rect x="26" y="20" width="52" height="54" rx="4" fill="#FFFDF9" />
+          <rect x="18" y="20" width="12" height="60" rx="4" fill="#C9383D" />
+          <line x1="38" y1="36" x2="68" y2="36" stroke="#CBD5E1" strokeWidth="4" strokeLinecap="round" />
+          <line x1="38" y1="48" x2="68" y2="48" stroke="#CBD5E1" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="54" cy="62" r="7" fill="#FFCA3A" />
+        </g>
+      )}
+
+      {figureId === 'arcoiris' && (
+        <g>
+          <path d="M16 70 A34 34 0 0 1 84 70" fill="none" stroke="#FF595E" strokeWidth="7" strokeLinecap="round" />
+          <path d="M23 70 A27 27 0 0 1 77 70" fill="none" stroke="#FFCA3A" strokeWidth="7" strokeLinecap="round" />
+          <path d="M30 70 A20 20 0 0 1 70 70" fill="none" stroke="#52B788" strokeWidth="7" strokeLinecap="round" />
+          <path d="M37 70 A13 13 0 0 1 63 70" fill="none" stroke="#8338EC" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="18" cy="72" r="9" fill="#FFFFFF" stroke="#BAE6FD" strokeWidth="2" />
+          <circle cx="28" cy="74" r="8" fill="#FFFFFF" stroke="#BAE6FD" strokeWidth="2" />
+          <circle cx="82" cy="72" r="9" fill="#FFFFFF" stroke="#BAE6FD" strokeWidth="2" />
+          <circle cx="72" cy="74" r="8" fill="#FFFFFF" stroke="#BAE6FD" strokeWidth="2" />
+        </g>
+      )}
+
+      {figureId === 'melancia' && (
+        <g>
+          <path d="M14 44 A36 36 0 0 0 86 44 Z" fill="#52B788" stroke="#2D8A60" strokeWidth="3" />
+          <path d="M20 44 A30 30 0 0 0 80 44 Z" fill="#FF595E" />
+          <circle cx="36" cy="54" r="2.5" fill="#2D3436" />
+          <circle cx="50" cy="60" r="2.5" fill="#2D3436" />
+          <circle cx="64" cy="54" r="2.5" fill="#2D3436" />
+          <circle cx="44" cy="50" r="2.5" fill="#2D3436" />
+          <circle cx="56" cy="50" r="2.5" fill="#2D3436" />
         </g>
       )}
     </svg>

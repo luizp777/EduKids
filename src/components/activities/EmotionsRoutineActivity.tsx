@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Smile, Sun, Moon, HeartHandshake } from 'lucide-react';
+import { Smile, Sun, Moon, HeartHandshake, ListOrdered } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
@@ -7,21 +7,23 @@ import { useTimers } from '../../utils/useTimers';
 import type { FigureId, MascotMood } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
+import { LumiPromptBanner } from '../ui/LumiPromptBanner';
 import { FigureSvg } from '../illustrations/FigureSvg';
-import { LumiMascot } from '../illustrations/LumiMascot';
 
 interface Props {
   onBack: () => void;
 }
 
-type EmotionMode = 'feelings' | 'day-night' | 'habits';
-type FeelingId = 'feliz' | 'triste' | 'surpreso' | 'sono';
+type EmotionMode = 'feelings' | 'day-night' | 'habits' | 'routine-order';
+type FeelingId = 'feliz' | 'triste' | 'surpreso' | 'sono' | 'calmo' | 'bravo';
 
 const FEELINGS: { id: FeelingId; label: string; color: string }[] = [
   { id: 'feliz', label: 'Feliz', color: '#FFCA3A' },
   { id: 'triste', label: 'Triste', color: '#74B9FF' },
   { id: 'surpreso', label: 'Surpreso', color: '#FF924C' },
   { id: 'sono', label: 'Com Sono', color: '#B57BFF' },
+  { id: 'calmo', label: 'Calmo', color: '#52B788' },
+  { id: 'bravo', label: 'Bravo', color: '#FF595E' },
 ];
 
 const FEELING_QUESTIONS: { situation: string; answer: FeelingId }[] = [
@@ -29,6 +31,12 @@ const FEELING_QUESTIONS: { situation: string; answer: FeelingId }[] = [
   { situation: 'O sorvete caiu no chão!', answer: 'triste' },
   { situation: 'Abriu um presente surpresa!', answer: 'surpreso' },
   { situation: 'Hora de dormir na caminha!', answer: 'sono' },
+  { situation: 'Respirar fundo olhando o jardim!', answer: 'calmo' },
+  { situation: 'O brinquedo quebrou sem querer!', answer: 'bravo' },
+  { situation: 'Brincar no parque com os amigos!', answer: 'feliz' },
+  { situation: 'O amigo foi embora mais cedo!', answer: 'triste' },
+  { situation: 'Viu um arco-íris gigante no céu!', answer: 'surpreso' },
+  { situation: 'Ouvir uma historinha calminha antes de dormir!', answer: 'calmo' },
 ];
 
 const DAY_NIGHT_ITEMS: { label: string; figureId: FigureId; period: 'day' | 'night' }[] = [
@@ -37,6 +45,11 @@ const DAY_NIGHT_ITEMS: { label: string; figureId: FigureId; period: 'day' | 'nig
   { label: 'Lua no céu', figureId: 'lua', period: 'night' },
   { label: 'Ver as estrelas', figureId: 'estrela', period: 'night' },
   { label: 'Passear no jardim', figureId: 'flor', period: 'day' },
+  { label: 'Ver o arco-íris', figureId: 'arcoiris', period: 'day' },
+  { label: 'Ouvir os passarinhos', figureId: 'passaro', period: 'day' },
+  { label: 'Andar de carro ao passeio', figureId: 'carro', period: 'day' },
+  { label: 'Ler historinha na cama', figureId: 'livro', period: 'night' },
+  { label: 'Dormir com o ursinho', figureId: 'urso', period: 'night' },
 ];
 
 interface HabitOption {
@@ -106,7 +119,96 @@ const HABIT_ITEMS: {
     distractorLabel: 'Foguete',
     distractorFigure: 'foguete',
   },
+  {
+    situation: 'Comer frutas refrescantes no calor!',
+    answerLabel: 'Comer Melancia',
+    answerFigure: 'melancia',
+    distractorLabel: 'Jogar Dado',
+    distractorFigure: 'dado',
+  },
+  {
+    situation: 'Aprender e descansar com uma história!',
+    answerLabel: 'Ler um Livro',
+    answerFigure: 'livro',
+    distractorLabel: 'Andar de Avião',
+    distractorFigure: 'aviao',
+  },
+  {
+    situation: 'Comer uvas docinhas no lanche!',
+    answerLabel: 'Comer Uva',
+    answerFigure: 'uva',
+    distractorLabel: 'Soltar Foguete',
+    distractorFigure: 'foguete',
+  },
+  {
+    situation: 'Tomar café da manhã saudável!',
+    answerLabel: 'Comer Pão',
+    answerFigure: 'pao',
+    distractorLabel: 'Brincar de Carro',
+    distractorFigure: 'carro',
+  },
 ];
+
+interface RoutineStepItem {
+  id: string;
+  order: number;
+  label: string;
+  figureId: FigureId;
+}
+
+interface RoutineOrderQuestion {
+  title: string;
+  items: RoutineStepItem[];
+}
+
+const ROUTINE_SEQUENCES: { title: string; steps: { label: string; figureId: FigureId }[] }[] = [
+  {
+    title: 'Rotina da Manhã: do começo ao fim!',
+    steps: [
+      { label: 'Acordar com o Sol', figureId: 'sol' },
+      { label: 'Tomar Café', figureId: 'pao' },
+      { label: 'Brincar com Bola', figureId: 'bola' },
+    ],
+  },
+  {
+    title: 'Rotina da Noite: antes de dormir!',
+    steps: [
+      { label: 'Comer Fruta', figureId: 'maca' },
+      { label: 'Ler Historinha', figureId: 'livro' },
+      { label: 'Dormir na Lua', figureId: 'lua' },
+    ],
+  },
+  {
+    title: 'Ciclo da Florzinha no Jardim!',
+    steps: [
+      { label: 'Chuva da Nuvem', figureId: 'nuvem' },
+      { label: 'Flor Crescendo', figureId: 'flor' },
+      { label: 'Abelha Visitando', figureId: 'abelha' },
+    ],
+  },
+  {
+    title: 'Dia de Passeio Feliz!',
+    steps: [
+      { label: 'Lavar as Mãos', figureId: 'mao' },
+      { label: 'Ir de Carro', figureId: 'carro' },
+      { label: 'Chegar na Ilha', figureId: 'ilha' },
+    ],
+  },
+];
+
+function createRoutineOrderQuestions(): RoutineOrderQuestion[] {
+  return shuffle(ROUTINE_SEQUENCES).map((seq, qIdx) => ({
+    title: seq.title,
+    items: shuffle(
+      seq.steps.map((s, idx) => ({
+        id: `rt-${qIdx}-${idx}`,
+        order: idx + 1,
+        label: s.label,
+        figureId: s.figureId,
+      }))
+    ),
+  }));
+}
 
 const FeelingFaceSvg: React.FC<{ id: FeelingId; size?: number }> = ({ id, size = 76 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" aria-label={id}>
@@ -137,6 +239,15 @@ const FeelingFaceSvg: React.FC<{ id: FeelingId; size?: number }> = ({ id, size =
         {id === 'surpreso' && (
           <circle cx="50" cy="64" r="9" fill="#2D3436" />
         )}
+        {id === 'calmo' && (
+          <path d="M36 60 Q50 68 64 60" stroke="#2D3436" strokeWidth="4" fill="none" strokeLinecap="round" />
+        )}
+        {id === 'bravo' && (
+          <>
+            <path d="M28 33 L42 39 M72 33 L58 39" stroke="#2D3436" strokeWidth="4" strokeLinecap="round" />
+            <path d="M35 68 Q50 56 65 68" stroke="#2D3436" strokeWidth="4.5" fill="none" strokeLinecap="round" />
+          </>
+        )}
       </>
     )}
   </svg>
@@ -154,16 +265,25 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
   const { schedule, clearAll } = useTimers();
 
-  const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS));
-  const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, 4));
-  const [habitQs, setHabitQs] = useState(() => createHabitQuestions());
+  const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS).slice(0, 5));
+  const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
+  const [habitQs, setHabitQs] = useState(() => createHabitQuestions().slice(0, 4));
+  const [routineQs, setRoutineQs] = useState(() => createRoutineOrderQuestions());
+  const [pickedRoutineIds, setPickedRoutineIds] = useState<string[]>([]);
 
   const totalSteps =
-    mode === 'feelings' ? feelingQs.length : mode === 'day-night' ? dayNightQs.length : habitQs.length;
+    mode === 'feelings'
+      ? feelingQs.length
+      : mode === 'day-night'
+        ? dayNightQs.length
+        : mode === 'routine-order'
+          ? routineQs.length
+          : habitQs.length;
 
   const getPromptText = () => {
     if (mode === 'feelings') return 'Qual rostinho combina com essa situação?';
     if (mode === 'day-night') return 'Isso acontece de dia ou de noite?';
+    if (mode === 'routine-order') return routineQs[step]?.title || 'Toque na ordem certa!';
     return 'O que usamos para cuidar da nossa saúde?';
   };
 
@@ -173,6 +293,9 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     }
     if (mode === 'day-night' && dayNightQs[step]) {
       return `${dayNightQs[step].label}! Isso acontece de dia ou de noite?`;
+    }
+    if (mode === 'routine-order' && routineQs[step]) {
+      return `${routineQs[step].title} Toque do primeiro ao último passo!`;
     }
     if (mode === 'habits' && habitQs[step]) {
       return `${habitQs[step].situation} O que usamos para cuidar da nossa saúde?`;
@@ -194,9 +317,11 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     setWrongId(null);
     setLocked(false);
     setReward(null);
-    setFeelingQs(shuffle(FEELING_QUESTIONS));
-    setDayNightQs(shuffle(DAY_NIGHT_ITEMS).slice(0, 4));
-    setHabitQs(createHabitQuestions());
+    setPickedRoutineIds([]);
+    setFeelingQs(shuffle(FEELING_QUESTIONS).slice(0, 5));
+    setDayNightQs(shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
+    setHabitQs(createHabitQuestions().slice(0, 4));
+    setRoutineQs(createRoutineOrderQuestions());
   };
 
   const handleSuccess = () => {
@@ -216,6 +341,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setLocked(false);
+        setPickedRoutineIds([]);
       }
     }, 1150);
   };
@@ -233,9 +359,10 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const currentFeeling = feelingQs[step];
   const currentDN = dayNightQs[step];
   const currentHabit = habitQs[step];
+  const currentRoutine = routineQs[step];
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#E6F8FF] to-[#FFF9F0]">
+    <div className="activity-shell bg-gradient-to-b from-[#E6F8FF] to-[#FFF9F0]">
       <ActivityHeader
         title="Emoções e Rotina"
         currentStep={step}
@@ -246,52 +373,54 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         accentColor="#00BBF9"
       />
 
-      <div className="flex flex-wrap justify-center gap-2 px-4 pt-2">
+      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
         {[
           { id: 'feelings' as EmotionMode, label: 'Emoções', icon: Smile },
           { id: 'day-night' as EmotionMode, label: 'Dia e Noite', icon: Sun },
           { id: 'habits' as EmotionMode, label: 'Hábitos', icon: HeartHandshake },
+          { id: 'routine-order' as EmotionMode, label: 'Ordem da Rotina', icon: ListOrdered },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             type="button"
-            onClick={() => {
+            onClick={(e) => {
               sfx('pop');
+              e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
               resetMode(id);
             }}
-            className={`btn-3d flex items-center gap-1.5 rounded-2xl px-3.5 py-2 font-display text-sm sm:text-base font-bold cursor-pointer ${
+            className={`btn-3d snap-start shrink-0 flex items-center gap-1.5 rounded-2xl px-3 py-1.5 sm:px-3.5 sm:py-2 font-display text-xs sm:text-base font-bold cursor-pointer ${
               mode === id
                 ? 'bg-[#00BBF9] text-white'
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {label}
           </button>
         ))}
       </div>
 
-      <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-4 flex flex-col items-center justify-center gap-6">
-        <div className="flex items-center gap-4 w-full max-w-xl bg-white rounded-3xl p-4 border-2 border-sky-100 card-3d">
-          <LumiMascot mood={mood} size={74} />
-          <p className="font-display text-lg sm:text-xl font-bold text-slate-800">
-            {feedback || getPromptText()}
-          </p>
-        </div>
+      <main className="activity-stage">
+        <LumiPromptBanner
+          mood={mood}
+          text={feedback || getPromptText()}
+          borderClass="border-sky-100"
+          onTap={() => say(getSpokenPrompt())}
+        />
 
         {mode === 'feelings' && currentFeeling && (
-          <>
+          <div className="activity-split">
             <button
               type="button"
               onClick={() => say(getSpokenPrompt())}
-              className="rounded-[28px] bg-white border-4 border-sky-200 px-6 py-5 text-center card-3d max-w-lg w-full cursor-pointer hover:border-sky-300"
+              className="rounded-[24px] sm:rounded-[28px] bg-white border-4 border-sky-200 px-5 py-4 sm:px-6 sm:py-5 text-center card-3d max-w-md w-full cursor-pointer hover:border-sky-300 shrink-0"
             >
-              <p className="font-display text-xl sm:text-2xl font-bold text-slate-800">
+              <p className="font-display text-lg sm:text-2xl font-bold text-slate-800">
                 {currentFeeling.situation}
               </p>
             </button>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full max-w-2xl">
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full max-w-xl">
               {FEELINGS.map((f) => {
                 const isShaking = wrongId === f.id;
                 const isRight = locked && f.id === currentFeeling.answer;
@@ -303,33 +432,33 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                     onClick={() =>
                       f.id === currentFeeling.answer ? handleSuccess() : handleWrong(f.id)
                     }
-                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-3xl p-4 border-4 cursor-pointer ${
+                    className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
                         : 'bg-white border-sky-100 hover:border-sky-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
-                    <FeelingFaceSvg id={f.id} size={74} />
-                    <span className="font-display text-base font-bold text-slate-700">
+                    <FeelingFaceSvg id={f.id} size={58} />
+                    <span className="font-display text-xs sm:text-base font-bold text-slate-700">
                       {f.label}
                     </span>
                   </button>
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
         {mode === 'day-night' && currentDN && (
-          <>
-            <div className="flex flex-col items-center gap-2 rounded-[32px] bg-white border-4 border-sky-200 px-8 py-5 card-3d">
-              <FigureSvg figureId={currentDN.figureId} size={104} />
-              <span className="font-display text-xl font-bold text-slate-800">
+          <div className="activity-split">
+            <div className="flex flex-col items-center gap-1.5 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-sky-200 px-6 py-3.5 sm:px-8 sm:py-5 card-3d shrink-0">
+              <FigureSvg figureId={currentDN.figureId} size={82} className="sm:w-[104px] sm:h-[104px]" />
+              <span className="font-display text-lg sm:text-xl font-bold text-slate-800">
                 {currentDN.label}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
               {[
                 { id: 'day', label: 'Dia', icon: Sun, bg: '#FFCA3A', text: '#5C4100' },
                 { id: 'night', label: 'Noite', icon: Moon, bg: '#5E1DB8', text: '#FFFFFF' },
@@ -342,33 +471,33 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                     type="button"
                     disabled={locked}
                     onClick={() => (id === currentDN.period ? handleSuccess() : handleWrong(id))}
-                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[28px] py-6 border-4 border-white cursor-pointer ${
+                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[28px] py-5 sm:py-6 border-4 border-white cursor-pointer ${
                       isRight ? 'ring-4 ring-[#52B788] scale-105' : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: bg, color: text }}
                   >
-                    <Icon className="h-12 w-12" />
-                    <span className="font-display text-2xl font-bold">{label}</span>
+                    <Icon className="h-10 w-10 sm:h-12 sm:w-12" />
+                    <span className="font-display text-xl sm:text-2xl font-bold">{label}</span>
                   </button>
                 );
               })}
             </div>
-          </>
+          </div>
         )}
 
         {mode === 'habits' && currentHabit && (
-          <>
+          <div className="activity-split">
             <button
               type="button"
               onClick={() => say(getSpokenPrompt())}
-              className="rounded-[28px] bg-white border-4 border-sky-200 px-6 py-5 text-center card-3d max-w-lg w-full cursor-pointer hover:border-sky-300"
+              className="rounded-[24px] sm:rounded-[28px] bg-white border-4 border-sky-200 px-5 py-4 sm:px-6 sm:py-5 text-center card-3d max-w-md w-full cursor-pointer hover:border-sky-300 shrink-0"
             >
-              <p className="font-display text-xl sm:text-2xl font-bold text-slate-800">
+              <p className="font-display text-lg sm:text-2xl font-bold text-slate-800">
                 {currentHabit.situation}
               </p>
             </button>
 
-            <div className="grid grid-cols-2 gap-4 w-full max-w-lg">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
               {currentHabit.options.map((opt) => {
                 const isShaking = wrongId === opt.id;
                 const showRight = locked && opt.isRight;
@@ -378,21 +507,65 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                     type="button"
                     disabled={locked}
                     onClick={() => (opt.isRight ? handleSuccess() : handleWrong(opt.id))}
-                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-3xl p-5 border-4 cursor-pointer ${
+                    className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
                       showRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
                         : 'bg-white border-sky-100 hover:border-sky-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
-                    <FigureSvg figureId={opt.fig} size={88} />
-                    <span className="font-display text-base sm:text-lg font-bold text-slate-700">
+                    <FigureSvg figureId={opt.fig} size={68} className="sm:w-[88px] sm:h-[88px]" />
+                    <span className="font-display text-sm sm:text-lg font-bold text-slate-700 text-center">
                       {opt.label}
                     </span>
                   </button>
                 );
               })}
             </div>
-          </>
+          </div>
+        )}
+        {mode === 'routine-order' && currentRoutine && (
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full max-w-2xl">
+            {currentRoutine.items.map((item) => {
+              const pickedOrder = pickedRoutineIds.indexOf(item.id) + 1;
+              const isPicked = pickedOrder > 0;
+              const isShaking = wrongId === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={locked || isPicked}
+                  onClick={() => {
+                    const expectedOrder = pickedRoutineIds.length + 1;
+                    if (item.order === expectedOrder) {
+                      sfx('pop');
+                      const next = [...pickedRoutineIds, item.id];
+                      setPickedRoutineIds(next);
+                      if (next.length >= currentRoutine.items.length) {
+                        handleSuccess();
+                      }
+                    } else {
+                      handleWrong(item.id);
+                    }
+                  }}
+                  className={`btn-3d relative flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border-4 cursor-pointer ${
+                    isPicked
+                      ? 'bg-[#D3F9D8] border-[#52B788] scale-95'
+                      : 'bg-white border-sky-100 hover:border-sky-300'
+                  } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                >
+                  {isPicked && (
+                    <span className="absolute top-2 right-2 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-[#52B788] font-display text-sm sm:text-lg font-bold text-white">
+                      {pickedOrder}º
+                    </span>
+                  )}
+                  <FigureSvg figureId={item.figureId} size={64} className="sm:w-[86px] sm:h-[86px]" />
+                  <span className="font-display text-xs sm:text-lg font-bold text-slate-700 text-center leading-tight">
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         )}
       </main>
 

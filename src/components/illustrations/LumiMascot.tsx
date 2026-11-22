@@ -1,12 +1,17 @@
 import React from 'react';
 import type { MascotMood } from '../../types';
 
+/** Propriedades da mascote `LumiMascot`. */
 interface LumiMascotProps {
+  /** Estado emocional que define a expressão facial e posição das asas. */
   mood?: MascotMood;
+  /** Dimensão em pixels (largura e altura). */
   size?: number;
+  /** Classes CSS adicionais. */
   className?: string;
 }
 
+/** Ilustração SVG animada da mascote Lumi com expressões dinâmicas (`happy`, `excited`, `encouraging`, `thinking`). */
 export const LumiMascot: React.FC<LumiMascotProps> = ({
   mood = 'happy',
   size = 96,
@@ -27,7 +32,13 @@ export const LumiMascot: React.FC<LumiMascotProps> = ({
         rx="16"
         ry="28"
         fill="#6C5CE7"
-        transform={mood === 'excited' ? 'rotate(-35 26 96)' : 'rotate(12 26 96)'}
+        transform={
+          mood === 'excited'
+            ? 'rotate(-35 26 96)'
+            : mood === 'encouraging'
+              ? 'rotate(-20 26 96)'
+              : 'rotate(12 26 96)'
+        }
       />
       <ellipse
         cx="134"
@@ -35,7 +46,13 @@ export const LumiMascot: React.FC<LumiMascotProps> = ({
         rx="16"
         ry="28"
         fill="#6C5CE7"
-        transform={mood === 'excited' ? 'rotate(35 134 96)' : 'rotate(-12 134 96)'}
+        transform={
+          mood === 'excited'
+            ? 'rotate(35 134 96)'
+            : mood === 'encouraging'
+              ? 'rotate(20 134 96)'
+              : 'rotate(-12 134 96)'
+        }
       />
 
       {/* Feet */}
@@ -76,6 +93,15 @@ export const LumiMascot: React.FC<LumiMascotProps> = ({
       {/* Cheeks */}
       <circle cx="38" cy="92" r="8" fill="#FF7675" opacity="0.65" />
       <circle cx="122" cy="92" r="8" fill="#FF7675" opacity="0.65" />
+
+      {/* Encouraging eyebrows & warm smile */}
+      {mood === 'encouraging' && (
+        <>
+          <path d="M44 54 Q58 48 70 55" stroke="#4C38B8" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+          <path d="M90 55 Q102 48 116 54" stroke="#4C38B8" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+          <path d="M72 103 Q80 109 88 103" stroke="#6C5CE7" strokeWidth="3" fill="none" strokeLinecap="round" />
+        </>
+      )}
 
       {/* Beak */}
       <path d="M72 88 L88 88 L80 100 Z" fill="#FF9F43" />

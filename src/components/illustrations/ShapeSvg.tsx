@@ -2,14 +2,21 @@ import React from 'react';
 import type { ShapeId } from '../../types';
 import { SHAPES } from '../../data/catalog';
 
+/** Propriedades do componente `ShapeSvg`. */
 interface ShapeSvgProps {
+  /** Identificador da forma geométrica. */
   shapeId: ShapeId;
+  /** Dimensão em pixels (largura e altura). */
   size?: number;
+  /** Se `true`, renderiza como contorno/silhueta de encaixe. */
   silhouette?: boolean;
+  /** Cor de preenchimento opcional para sobrepor a cor padrão da forma. */
   colorOverride?: string;
+  /** Classes CSS adicionais. */
   className?: string;
 }
 
+/** Renderiza uma forma geométrica SVG amigável, com suporte a modo silhueta para encaixe. */
 export const ShapeSvg: React.FC<ShapeSvgProps> = ({
   shapeId,
   size = 84,

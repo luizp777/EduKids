@@ -23,21 +23,33 @@ export type AvatarId =
 
 /** Estatísticas acumuladas de um perfil em um pilar específico. */
 export interface PillarStats {
+  /** Quantidade de rodadas concluídas neste pilar. */
   completedRounds: number;
+  /** Total de acertos individuais acumulados. */
   correctAnswers: number;
+  /** Total de estrelas ganhas neste pilar. */
   starsEarned: number;
+  /** Data/hora ISO da última atividade concluída. */
   lastPlayedAt?: string;
 }
 
 /** Perfil local de uma criança armazenado no navegador. */
 export interface ChildProfile {
+  /** Identificador único do perfil. */
   id: string;
+  /** Nome de exibição da criança. */
   name: string;
+  /** Identificador do avatar SVG selecionado. */
   avatar: AvatarId;
+  /** Faixa etária que calibra a dificuldade dos jogos. */
   ageLevel: AgeLevel;
+  /** Saldo acumulado de estrelas do perfil. */
   stars: number;
+  /** Lista de IDs das figurinhas já desbloqueadas no álbum. */
   unlockedStickers: string[];
+  /** Métricas acumuladas indexadas por pilar pedagógico. */
   stats: Record<PillarId, PillarStats>;
+  /** Data/hora ISO de criação do perfil. */
   createdAt: string;
 }
 
@@ -46,17 +58,27 @@ export type VoiceSpeed = 'slow' | 'normal' | 'fast';
 
 /** Preferências globais de áudio do aplicativo. */
 export interface AudioSettings {
+  /** Indica se a narração em voz está ativa. */
   voiceEnabled: boolean;
+  /** Indica se os efeitos sonoros e notas musicais estão ativos. */
   sfxEnabled: boolean;
+  /** Velocidade da leitura em voz alta. */
   voiceSpeed?: VoiceSpeed;
+  /** URI opcional da voz preferida no Web Speech API (fallback). */
   voiceURI?: string;
+  /** Volume global normalizado (0.0 a 1.0) aplicado a voz, melodia e efeitos. */
+  volume?: number;
 }
 
 /** Estado raiz persistido em `localStorage`. */
 export interface AppState {
+  /** Versão do esquema de persistência. */
   version: number;
+  /** ID do perfil infantil selecionado no momento. */
   activeProfileId: string;
+  /** Lista de todos os perfis cadastrados no dispositivo. */
   profiles: ChildProfile[];
+  /** Preferências globais de áudio compartilhadas entre os perfis. */
   audio: AudioSettings;
 }
 
@@ -88,7 +110,15 @@ export type FigureId =
   | 'mao'
   | 'uva'
   | 'arvore'
-  | 'estrela';
+  | 'estrela'
+  | 'cachorro'
+  | 'leao'
+  | 'passaro'
+  | 'tartaruga'
+  | 'aviao'
+  | 'livro'
+  | 'arcoiris'
+  | 'melancia';
 
 export type ColorId =
   | 'vermelho'
@@ -106,54 +136,93 @@ export type ShapeId =
   | 'coracao'
   | 'retangulo';
 
+/** Metadados pedagógicos e visuais de uma figura do catálogo. */
 export interface FigureItem {
+  /** Identificador único da figura. */
   id: FigureId;
+  /** Nome da figura em maiúsculas para exibição nos cartões. */
   name: string;
+  /** Letra inicial da palavra. */
   letter: string;
+  /** Indica se a palavra começa com vogal (usado no nível `3-4`). */
   isVowel: boolean;
+  /** Cor predominante associada à figura. */
   colorId: ColorId;
+  /** Categoria semântica para agrupamento lógico. */
   category: 'animal' | 'natureza' | 'fruta' | 'objeto';
+  /** Índice da letra oculta no modo "Completar Palavra". */
   missingLetterIndex: number;
+  /** Divisão silábica da palavra. */
   syllables: string[];
 }
 
+/** Definição de uma cor com paleta e classes utilitárias Tailwind. */
 export interface ColorInfo {
+  /** Identificador único da cor. */
   id: ColorId;
+  /** Nome da cor em português. */
   name: string;
+  /** Código hexadecimal principal. */
   hex: string;
+  /** Tom escuro para bordas e contraste. */
   darkHex: string;
+  /** Classe Tailwind de fundo. */
   bgClass: string;
+  /** Classe Tailwind de borda. */
   borderClass: string;
+  /** Classe Tailwind de texto. */
   textClass: string;
 }
 
+/** Definição de uma forma geométrica do catálogo. */
 export interface ShapeInfo {
+  /** Identificador único da forma. */
   id: ShapeId;
+  /** Nome da forma em português. */
   name: string;
+  /** Cor de preenchimento principal. */
   colorHex: string;
+  /** Cor de destaque auxiliar. */
   accentHex: string;
 }
 
+/** Item colecionável do Álbum de Figurinhas. */
 export interface StickerItem {
+  /** Identificador único da figurinha. */
   id: string;
+  /** Nome carinhoso da figurinha. */
   name: string;
+  /** Tema da coleção no álbum. */
   theme: 'Animais' | 'Espaço' | 'Natureza' | 'Frutas';
+  /** Figura SVG associada à figurinha. */
   figureId: FigureId;
+  /** Cor de fundo do cartão desbloqueado. */
   bgHex: string;
 }
 
+/** Coordenada normalizada (`0..100`) de um checkpoint no Traçado Mágico. */
 export interface TracingPoint {
+  /** Posição horizontal normalizada (`0..100`). */
   x: number;
+  /** Posição vertical normalizada (`0..100`). */
   y: number;
 }
 
+/** Modelo de exercício de traçado motor, forma, letra ou número. */
 export interface TracingTemplate {
+  /** Identificador único do modelo. */
   id: string;
+  /** Rótulo curto exibido nos botões e badges. */
   label: string;
+  /** Nome falado pela Lumi com artigo (ex.: `"a letra A"`). */
   spokenName: string;
+  /** Categoria do traçado. */
   category: 'caminho' | 'forma' | 'letra' | 'numero';
+  /** Faixa etária mínima para exibição. */
   minLevel: AgeLevel;
+  /** Caminho SVG em viewBox `0 0 100 100`. */
   svgPath: string;
+  /** Sequência de checkpoints que a criança deve percorrer. */
   checkpoints: TracingPoint[];
 }
 

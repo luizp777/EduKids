@@ -1,11 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Lock, X } from 'lucide-react';
 
+/** Propriedades do modal `ParentalGateModal`. */
 interface ParentalGateModalProps {
+  /** Callback executado quando o adulto resolve o desafio corretamente. */
   onSuccess: () => void;
+  /** Callback executado ao fechar ou cancelar a verificação. */
   onCancel: () => void;
 }
 
+/** Modal de verificação adulta (multiplicação simples) que protege o acesso à Área dos Pais. */
 export const ParentalGateModal: React.FC<ParentalGateModalProps> = ({
   onSuccess,
   onCancel,

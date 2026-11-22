@@ -7,26 +7,43 @@ import {
   pickNextSticker,
   saveAppState,
 } from './storage';
-import { playSfx, speak, subscribeSpeaking, type SpeakOptions, type SfxType } from '../utils/audio';
+import { playSfx, setMasterVolume, speak, subscribeSpeaking, type SpeakOptions, type SfxType } from '../utils/audio';
 
+/** Recompensa retornada ao concluir uma rodada de atividade. */
 interface RoundReward {
+  /** Quantidade de estrelas concedidas ao finalizar a rodada. */
   starsAwarded: number;
+  /** ID da nova figurinha desbloqueada, ou `null` se o álbum já estiver completo. */
   newStickerId: string | null;
 }
 
+/** Contrato público do contexto global da aplicação (`useApp`). */
 interface AppContextValue {
+  /** Estado global completo persistido em `localStorage`. */
   state: AppState;
+  /** Perfil infantil atualmente ativo. */
   activeProfile: ChildProfile;
+  /** Indica se a narração da Lumi está em reprodução no momento. */
   isSpeaking: boolean;
+  /** Seleciona outro perfil infantil pelo seu ID. */
   setActiveProfile: (id: string) => void;
+  /** Cria e ativa um novo perfil infantil. */
   addProfile: (name: string, avatar: AvatarId, ageLevel: AgeLevel) => void;
+  /** Atualiza nome, avatar ou faixa etária de um perfil existente. */
   updateProfile: (id: string, patch: Partial<Pick<ChildProfile, 'name' | 'avatar' | 'ageLevel'>>) => void;
+  /** Remove um perfil infantil (mantendo ao menos 1 perfil ativo). */
   deleteProfile: (id: string) => void;
+  /** Zera estrelas, estatísticas e figurinhas de um perfil para o estado inicial. */
   resetProfileProgress: (id: string) => void;
+  /** Atualiza as preferências globais de áudio e volume. */
   updateAudio: (patch: Partial<AudioSettings>) => void;
+  /** Registra um acerto individual e soma 1 estrela no pilar informado. */
   recordCorrectAnswer: (pillar: PillarId) => void;
+  /** Conclui uma rodada, concede estrelas bônus e sorteia uma nova figurinha. */
   completeRound: (pillar: PillarId, starsAwarded?: number) => RoundReward;
+  /** Reproduz uma fala da Lumi respeitando as configurações de áudio do app. */
   say: (text: string, opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) => void;
+  /** Dispara um efeito sonoro sintetizado se os efeitos estiverem habilitados. */
   sfx: (type: SfxType) => void;
 }
 
@@ -40,6 +57,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     saveAppState(state);
   }, [state]);
+
+  useEffect(() => {
+    setMasterVolume(state.audio.volume ?? 0.85);
+  }, [state.audio.volume]);
 
   useEffect(() => subscribeSpeaking(setIsSpeaking), []);
 

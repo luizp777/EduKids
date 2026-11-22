@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AvatarId } from '../../types';
 
+/** Lista de avatares infantis disponíveis para os perfis locais. */
 export const AVATAR_OPTIONS: { id: AvatarId; label: string; bg: string }[] = [
   { id: 'owl', label: 'Coruja', bg: '#E5DBFF' },
   { id: 'bear', label: 'Urso', bg: '#FFE8CC' },
@@ -10,6 +11,7 @@ export const AVATAR_OPTIONS: { id: AvatarId; label: string; bg: string }[] = [
   { id: 'dino', label: 'Dino', bg: '#D3F9D8' },
 ];
 
+/** Renderiza o avatar SVG circular escolhido para o perfil da criança. */
 export const AvatarSvg: React.FC<{ avatar: AvatarId; size?: number; className?: string }> = ({
   avatar,
   size = 56,

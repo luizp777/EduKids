@@ -15,52 +15,53 @@ const THEMES: Array<'Animais' | 'Espaço' | 'Natureza' | 'Frutas'> = [
   'Frutas',
 ];
 
+/** Álbum de Figurinhas organizado por temas, exibindo itens desbloqueados e bloqueados com narração ao toque. */
 export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, say, sfx } = useApp();
   const unlockedCount = activeProfile.unlockedStickers.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FFF6D6] to-[#FFF9F0] pb-10">
-      <header className="max-w-4xl mx-auto px-4 pt-5 pb-4 flex items-center justify-between gap-3">
+    <div className="min-h-dvh bg-gradient-to-b from-[#FFF6D6] to-[#FFF9F0] pb-10">
+      <header className="max-w-5xl mx-auto px-3 sm:px-6 pt-4 pb-3 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => {
             sfx('pop');
             onBack();
           }}
-          className="btn-3d flex h-13 w-13 items-center justify-center rounded-2xl bg-white border-2 border-amber-200 text-slate-700 cursor-pointer"
+          className="btn-3d flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-white border-2 border-amber-200 text-slate-700 cursor-pointer shrink-0"
           aria-label="Voltar"
         >
-          <ArrowLeft className="h-7 w-7" />
+          <ArrowLeft className="h-6 w-6 sm:h-7 sm:w-7" />
         </button>
 
-        <div className="text-center flex-1">
-          <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#6C5CE7]">
+        <div className="text-center flex-1 min-w-0">
+          <h1 className="font-display text-xl sm:text-3xl font-bold text-[#6C5CE7] truncate">
             Álbum de Figurinhas
           </h1>
-          <p className="text-sm font-bold text-slate-500">
+          <p className="text-xs sm:text-sm font-bold text-slate-500">
             {unlockedCount} de {STICKERS.length} figurinhas desbloqueadas
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-2xl bg-[#FFCA3A] px-3.5 py-2 font-display font-bold text-[#5C4100] shadow-sm">
-          <Sparkles className="h-5 w-5" />
+        <div className="flex items-center gap-1.5 rounded-2xl bg-[#FFCA3A] px-3 py-1.5 sm:px-3.5 sm:py-2 font-display text-sm sm:text-base font-bold text-[#5C4100] shadow-sm shrink-0">
+          <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
           {unlockedCount}/{STICKERS.length}
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 flex flex-col gap-6">
+      <main className="max-w-5xl mx-auto px-3 sm:px-6 flex flex-col gap-5">
         {THEMES.map((theme) => {
           const items = STICKERS.filter((s) => s.theme === theme);
           return (
             <section
               key={theme}
-              className="rounded-[32px] bg-white/90 border-2 border-amber-100 p-5 card-3d"
+              className="rounded-[28px] sm:rounded-[32px] bg-white/90 border-2 border-amber-100 p-4 sm:p-5 card-3d"
             >
-              <h2 className="font-display text-xl font-bold text-slate-700 mb-4">
+              <h2 className="font-display text-lg sm:text-xl font-bold text-slate-700 mb-3 sm:mb-4">
                 {theme}
               </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {items.map((sticker) => {
                   const unlocked = activeProfile.unlockedStickers.includes(sticker.id);
                   return (

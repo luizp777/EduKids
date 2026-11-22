@@ -7,7 +7,7 @@ import { useTimers } from '../../utils/useTimers';
 import type { MascotMood } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
-import { LumiMascot } from '../illustrations/LumiMascot';
+import { LumiPromptBanner } from '../ui/LumiPromptBanner';
 
 interface Props {
   onBack: () => void;
@@ -23,6 +23,7 @@ const CRAYON_COLORS = [
   { name: 'Laranja', hex: '#FF924C' },
 ];
 
+/** Atividade de Traçado Mágico: Caminhos motores, formas geométricas, letras e números guiados por checkpoints. */
 export const TracingActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [tab, setTab] = useState<TracingTab>('caminho-forma');
@@ -193,7 +194,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#FFF6E5] to-[#FFF9F0]">
+    <div className="activity-shell bg-gradient-to-b from-[#FFF6E5] to-[#FFF9F0]">
       <ActivityHeader
         title="Traçado Mágico"
         currentStep={doneCount}
@@ -205,7 +206,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
       />
 
       {/* Category Tabs */}
-      <div className="flex flex-wrap justify-center gap-2 px-4 pt-2">
+      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 overflow-x-auto no-scrollbar snap-x shrink-0">
         {[
           { id: 'caminho-forma' as TracingTab, label: 'Caminhos e Formas', icon: Shapes },
           { id: 'letra' as TracingTab, label: 'Letras', icon: Type },
@@ -214,31 +215,35 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
-            onClick={() => handleTabChange(id)}
-            className={`btn-3d flex items-center gap-1.5 rounded-2xl px-3.5 py-2 font-display text-sm sm:text-base font-bold cursor-pointer ${
+            onClick={(e) => {
+              e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+              handleTabChange(id);
+            }}
+            className={`btn-3d snap-start shrink-0 flex items-center gap-1.5 rounded-2xl px-3 py-1.5 sm:px-3.5 sm:py-2 font-display text-xs sm:text-base font-bold cursor-pointer ${
               tab === id
                 ? 'bg-[#FF9F43] text-white'
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             {label}
           </button>
         ))}
       </div>
 
-      {/* Quick Template Pills */}
-      <div className="flex flex-wrap justify-center gap-1.5 px-4 pt-2 max-w-2xl mx-auto">
+      {/* Quick Template Pills: horizontal scroll on mobile */}
+      <div className="activity-tabs-fade w-full max-w-3xl mx-auto flex items-center sm:justify-center gap-1.5 px-3 sm:px-4 pt-1.5 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
         {templates.map((t, idx) => (
           <button
             key={t.id}
             type="button"
-            onClick={() => {
+            onClick={(e) => {
               sfx('pop');
+              e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
               setTemplateIdx(idx);
               clearCanvas();
             }}
-            className={`rounded-xl px-3 py-1 font-display text-sm font-bold border-2 cursor-pointer transition-colors ${
+            className={`snap-start shrink-0 rounded-xl px-2.5 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
               idx === safeIdx
                 ? 'bg-[#FFF3BF] border-[#FF9F43] text-[#B85D00]'
                 : 'bg-white/80 border-amber-100 text-slate-600 hover:bg-white'
@@ -249,113 +254,133 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
         ))}
       </div>
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-3 flex flex-col items-center justify-center gap-4">
-        <div className="flex items-center gap-3 w-full bg-white rounded-3xl p-3.5 border-2 border-amber-100 card-3d">
-          <LumiMascot mood={mood} size={68} />
-          <div className="flex-1">
-            <p className="font-display text-lg sm:text-xl font-bold text-slate-800">
-              {completedOne
-                ? `Incrível! Você traçou ${current.spokenName}!`
-                : `Trace ${current.spokenName} seguindo as bolinhas!`}
-            </p>
+      <main className="activity-stage">
+        <LumiPromptBanner
+          mood={mood}
+          text={
+            completedOne
+              ? `Incrível! Você traçou ${current.spokenName}!`
+              : `Trace ${current.spokenName} seguindo as bolinhas!`
+          }
+          borderClass="border-amber-100"
+          badge={current.label}
+          onTap={() => say(`Use o dedinho para traçar ${current.spokenName}!`)}
+        />
+
+        <div className="activity-split">
+          {/* Drawing Board */}
+          <div className="board-fluid relative rounded-[32px] sm:rounded-[36px] bg-white border-4 border-amber-200 card-3d overflow-hidden shrink-0">
+            <svg
+              viewBox="0 0 100 100"
+              className="pointer-events-none absolute inset-0 h-full w-full"
+            >
+              <path
+                d={current.svgPath}
+                fill="none"
+                stroke="#E2E8F0"
+                strokeWidth="11"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d={current.svgPath}
+                fill="none"
+                stroke="#94A3B8"
+                strokeWidth="2.2"
+                strokeDasharray="3.5 3.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {(() => {
+                const nextTargetIdx = current.checkpoints.findIndex(
+                  (_, i) => !hitCheckpoints.includes(i)
+                );
+                return current.checkpoints.map((cp, idx) => {
+                  const hit = hitCheckpoints.includes(idx);
+                  const isNext = idx === nextTargetIdx && !completedOne;
+                  return (
+                    <g key={idx}>
+                      {isNext && (
+                        <circle
+                          cx={cp.x}
+                          cy={cp.y}
+                          r={6.8}
+                          fill="none"
+                          stroke="#FF6B6B"
+                          strokeWidth="1.5"
+                          opacity="0.7"
+                        />
+                      )}
+                      <circle
+                        cx={cp.x}
+                        cy={cp.y}
+                        r={hit ? 4.2 : isNext ? 4.5 : 3.4}
+                        fill={hit ? '#52B788' : isNext ? '#FF6B6B' : '#FFCA3A'}
+                        stroke="#FFFFFF"
+                        strokeWidth="1.2"
+                      />
+                    </g>
+                  );
+                });
+              })()}
+            </svg>
+
+            <canvas
+              ref={canvasRef}
+              width={400}
+              height={400}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
+              style={{ touchAction: 'none' }}
+              className="relative z-10 h-full w-full cursor-crosshair"
+            />
           </div>
-          <span className="rounded-2xl bg-amber-100 px-3.5 py-1.5 font-display text-xl sm:text-2xl font-bold text-amber-700">
-            {current.label}
-          </span>
-        </div>
 
-        {/* Drawing Board */}
-        <div className="relative w-full max-w-[350px] aspect-square rounded-[36px] bg-white border-4 border-amber-200 card-3d overflow-hidden">
-          <svg
-            viewBox="0 0 100 100"
-            className="pointer-events-none absolute inset-0 h-full w-full"
-          >
-            <path
-              d={current.svgPath}
-              fill="none"
-              stroke="#E2E8F0"
-              strokeWidth="11"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d={current.svgPath}
-              fill="none"
-              stroke="#94A3B8"
-              strokeWidth="2.2"
-              strokeDasharray="3.5 3.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {current.checkpoints.map((cp, idx) => {
-              const hit = hitCheckpoints.includes(idx);
-              return (
-                <circle
-                  key={idx}
-                  cx={cp.x}
-                  cy={cp.y}
-                  r={hit ? 4.2 : 3.4}
-                  fill={hit ? '#52B788' : '#FFCA3A'}
-                  stroke="#FFFFFF"
-                  strokeWidth="1.2"
+          {/* Crayon Palette + Actions */}
+          <div className="flex flex-wrap lg:flex-col items-center justify-center gap-2.5 sm:gap-3">
+            <div className="flex items-center gap-2 rounded-3xl bg-white p-2 sm:p-2.5 border-2 border-amber-100 shadow-sm">
+              {CRAYON_COLORS.map((c) => (
+                <button
+                  key={c.hex}
+                  type="button"
+                  onClick={() => {
+                    sfx('pop');
+                    setCrayonColor(c.hex);
+                  }}
+                  aria-label={`Cor ${c.name}`}
+                  className={`h-9 w-9 sm:h-11 sm:w-11 rounded-full border-4 transition-transform cursor-pointer ${
+                    crayonColor === c.hex ? 'scale-115 border-slate-800 shadow-md' : 'border-white'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
                 />
-              );
-            })}
-          </svg>
+              ))}
+            </div>
 
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={400}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            style={{ touchAction: 'none' }}
-            className="relative z-10 h-full w-full cursor-crosshair"
-          />
-        </div>
-
-        {/* Crayon Palette + Actions */}
-        <div className="flex flex-wrap items-center justify-center gap-3 w-full">
-          <div className="flex items-center gap-2 rounded-3xl bg-white p-2.5 border-2 border-amber-100 shadow-sm">
-            {CRAYON_COLORS.map((c) => (
+            <div className="flex items-center gap-2">
               <button
-                key={c.hex}
                 type="button"
                 onClick={() => {
                   sfx('pop');
-                  setCrayonColor(c.hex);
+                  clearCanvas();
                 }}
-                aria-label={`Cor ${c.name}`}
-                className={`h-11 w-11 rounded-full border-4 transition-transform cursor-pointer ${
-                  crayonColor === c.hex ? 'scale-115 border-slate-800 shadow-md' : 'border-white'
-                }`}
-                style={{ backgroundColor: c.hex }}
-              />
-            ))}
+                className="btn-3d flex items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 py-2.5 sm:px-4 sm:py-3 font-display text-sm sm:text-base font-bold text-slate-700 cursor-pointer"
+              >
+                <Eraser className="h-4 w-4 sm:h-5 sm:w-5" />
+                Limpar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNextTemplate}
+                className="btn-3d flex items-center gap-1 rounded-2xl bg-[#FF9F43] px-4 py-2.5 sm:px-5 sm:py-3 font-display text-sm sm:text-base font-bold text-white cursor-pointer"
+              >
+                Próximo
+                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+              </button>
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              sfx('pop');
-              clearCanvas();
-            }}
-            className="btn-3d flex items-center gap-2 rounded-2xl bg-white border-2 border-slate-200 px-4 py-3 font-display font-bold text-slate-700 cursor-pointer"
-          >
-            <Eraser className="h-5 w-5" />
-            Limpar
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNextTemplate}
-            className="btn-3d flex items-center gap-1.5 rounded-2xl bg-[#FF9F43] px-5 py-3 font-display font-bold text-white cursor-pointer"
-          >
-            Próximo
-            <ChevronRight className="h-5 w-5" />
-          </button>
         </div>
       </main>
 

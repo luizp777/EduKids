@@ -1,4 +1,4 @@
-const CACHE_NAME = 'edukids-cache-v2';
+const CACHE_NAME = 'edukids-cache-v3';
 const CORE_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
 
 async function precacheAudioInBatches(urls, batchSize = 6) {
@@ -51,8 +51,12 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML navigations so new deployments appear immediately
-  if (event.request.mode === 'navigate') {
+  // Network-first for HTML navigations and manifests so new deployments appear immediately
+  if (
+    event.request.mode === 'navigate' ||
+    url.pathname === '/manifest.webmanifest' ||
+    url.pathname === '/audio/pt-br/manifest.json'
+  ) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -62,7 +66,9 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/index.html'))
+        .catch(() =>
+          caches.match(event.request).then((hit) => hit || caches.match('/index.html'))
+        )
     );
     return;
   }
