@@ -1,5 +1,24 @@
-const CACHE_NAME = 'edukids-cache-v1';
+const CACHE_NAME = 'edukids-cache-v2';
 const CORE_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+
+async function precacheAudioInBatches(urls, batchSize = 6) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    for (let i = 0; i < urls.length; i += batchSize) {
+      const batch = urls.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (url) => {
+          const hit = await cache.match(url);
+          if (!hit) {
+            await cache.add(url);
+          }
+        })
+      );
+    }
+  } catch {
+    // Ignore offline/network errors during background pre-caching
+  }
+}
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -12,24 +31,19 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
       Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    ).then(() =>
-      // Pre-cache neural audio clips in background so offline mode works everywhere
-      fetch('/audio/pt-br/manifest.json')
-        .then((res) => (res.ok ? res.json() : []))
-        .then((urls) => {
-          if (!Array.isArray(urls) || urls.length === 0) return;
-          return caches.open(CACHE_NAME).then((cache) =>
-            Promise.all(
-              urls.map((url) =>
-                cache.match(url).then((hit) => (hit ? undefined : cache.add(url)))
-              )
-            )
-          );
-        })
-        .catch(() => {})
     )
   );
   self.clients.claim();
+
+  // Pre-cache neural audio clips in small batches without blocking activation
+  fetch('/audio/pt-br/manifest.json')
+    .then((res) => (res.ok ? res.json() : []))
+    .then((urls) => {
+      if (Array.isArray(urls) && urls.length > 0) {
+        precacheAudioInBatches(urls, 6);
+      }
+    })
+    .catch(() => {});
 });
 
 self.addEventListener('fetch', (event) => {

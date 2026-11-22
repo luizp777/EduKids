@@ -10,6 +10,9 @@ import {
   Shapes,
   Puzzle,
   Pencil,
+  Music,
+  Smile,
+  Trees,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { PILLARS, STICKERS } from '../data/catalog';
@@ -29,6 +32,9 @@ const PILLAR_ICONS: Record<PillarId, React.ComponentType<{ className?: string }>
   'shapes-colors': Shapes,
   'figures-logic': Puzzle,
   tracing: Pencil,
+  'music-sounds': Music,
+  'emotions-routine': Smile,
+  'nature-habitats': Trees,
 };
 
 export const HomePage: React.FC<HomePageProps> = ({

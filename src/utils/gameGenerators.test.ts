@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  generateAnimalSoundQuestions,
+  generateAssociationQuestions,
   generateCategoryRound,
   generateColorMixRounds,
   generateColorRound,
@@ -7,6 +9,7 @@ import {
   generateLiteracyQuestions,
   generateMathQuestions,
   generateOddOneOutQuestions,
+  generateOrderSizeQuestions,
   generatePatternQuestions,
   generateRhymeQuestions,
   generateSequenceQuestions,
@@ -14,6 +17,7 @@ import {
   generateShapeRound,
   generateSubtractionQuestions,
   generateSyllableQuestions,
+  generateWordBuilderQuestions,
 } from './gameGenerators';
 import { createProfile, pickNextSticker } from '../state/storage';
 import { STICKERS } from '../data/catalog';
@@ -158,5 +162,34 @@ describe('EduKids game generators', () => {
 
     const allIds = STICKERS.map((s) => s.id);
     expect(pickNextSticker(allIds)).toBeNull();
+  });
+
+  it('generates v2 word builder, order/size, association, and animal sound questions', () => {
+    const wb = generateWordBuilderQuestions('3-4', 4);
+    expect(wb).toHaveLength(4);
+    for (const q of wb) {
+      expect(q.letters.map((l) => l.char).sort()).toEqual(q.target.name.split('').sort());
+    }
+
+    const os34 = generateOrderSizeQuestions('3-4', 3);
+    expect(os34[0].mode).toBe('sizes');
+    expect(os34[0].expectedOrder).toEqual([1, 2, 3]);
+
+    const os56 = generateOrderSizeQuestions('5-6', 3);
+    expect(os56[0].mode).toBe('numbers');
+    expect(os56[0].expectedOrder).toHaveLength(4);
+
+    const assoc = generateAssociationQuestions('3-4', 4);
+    expect(assoc).toHaveLength(4);
+    for (const a of assoc) {
+      expect(a.options.some((o) => o.id === a.match.id)).toBe(true);
+    }
+
+    const sounds = generateAnimalSoundQuestions('5-6', 4);
+    expect(sounds).toHaveLength(4);
+    for (const s of sounds) {
+      expect(s.options).toHaveLength(4);
+      expect(s.options.some((o) => o.id === s.target.id)).toBe(true);
+    }
   });
 });

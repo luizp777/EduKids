@@ -65,6 +65,33 @@ export const PILLARS: PillarMeta[] = [
     borderColor: '#D67B1F',
     badgeColor: '#FFF3DC',
   },
+  {
+    id: 'music-sounds',
+    title: 'Música e Sons',
+    subtitle: 'Xilofone, melodia e sons dos bichos',
+    spokenIntro: 'Vamos fazer música e descobrir os sons!',
+    bgGradient: 'from-[#F15BB5] to-[#FF85A1]',
+    borderColor: '#C9368C',
+    badgeColor: '#FFE5F1',
+  },
+  {
+    id: 'emotions-routine',
+    title: 'Emoções e Rotina',
+    subtitle: 'Sentimentos, dia, noite e hábitos',
+    spokenIntro: 'Vamos aprender sobre emoções e nossa rotina!',
+    bgGradient: 'from-[#00BBF9] to-[#4CC9F0]',
+    borderColor: '#0091C2',
+    badgeColor: '#E0F7FF',
+  },
+  {
+    id: 'nature-habitats',
+    title: 'Natureza e Habitats',
+    subtitle: 'Onde os bichos moram e o clima',
+    spokenIntro: 'Vamos explorar a natureza, o clima e os animais!',
+    bgGradient: 'from-[#10B981] to-[#34D399]',
+    borderColor: '#059669',
+    badgeColor: '#DCFCE7',
+  },
 ];
 
 export const COLORS: ColorInfo[] = [

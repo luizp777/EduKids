@@ -95,6 +95,31 @@ export function playSfx(type: SfxType, enabled = true): void {
   }
 }
 
+const XYLOPHONE_FREQS = [261.63, 293.66, 329.63, 349.23, 392.0, 440.0, 493.88, 523.25];
+
+/**
+ * Toca uma nota musical suave (escala de Dó maior) para o Xilofone e Memória Musical.
+ */
+export function playMusicalNote(noteIndex: number, enabled = true): void {
+  if (!enabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  const freq = XYLOPHONE_FREQS[noteIndex % XYLOPHONE_FREQS.length];
+  const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(freq, now);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(0.24, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(now);
+  osc.stop(now + 0.45);
+}
+
 const VOWEL_PRONUNCIATION: Record<string, string> = {
   A: 'Á',
   E: 'É',
@@ -163,6 +188,39 @@ const EXACT_CLIPS: Record<string, string> = {
   'encontre os pares de figuras iguais!': 'p-memoria',
   'de qual figura é esta sombra?': 'p-sombra',
   'qual figura é diferente das outras?': 'p-diferente',
+  'toque nas figuras do menor para o maior!': 'p-ordem-tamanhos',
+  'toque nos números do menor para o maior!': 'p-ordem-numeros',
+  'escolha uma cor e toque no desenho para pintar!': 'p-pintura-magica',
+  'toque nas teclas coloridas para fazer música!': 'p-xilofone',
+  'ouça a melodia com atenção!': 'p-simon-ouca',
+  'agora é a sua vez! repita a melodia!': 'p-simon-sua-vez',
+  'quem faz miau, miau?': 'p-som-gato',
+  'quem faz quá, quá?': 'p-som-pato',
+  'quem faz croac, croac?': 'p-som-sapo',
+  'quem faz zum, zum?': 'p-som-abelha',
+  'quem faz méé, méé?': 'p-som-ovelha',
+  'qual rostinho combina com essa situação?': 'p-emocao',
+  'isso acontece de dia ou de noite?': 'p-dia-noite',
+  'o que usamos para cuidar da nossa saúde?': 'p-habitos',
+  'onde este bichinho mora?': 'p-habitat',
+  'o que devemos usar neste clima?': 'p-clima',
+  // Situations & items for pre-readers
+  'ganhou um abraço bem apertado!': 'sit-abraco',
+  'o sorvete caiu no chão!': 'sit-sorvete',
+  'abriu um presente surpresa!': 'sit-presente',
+  'hora de dormir na caminha!': 'sit-dormir',
+  'sol brilhando!': 'dn-sol',
+  'brincar com a bola!': 'dn-bola',
+  'lua no céu!': 'dn-lua',
+  'ver as estrelas!': 'dn-estrela',
+  'passear no jardim!': 'dn-flor',
+  'hora do lanchinho saudável!': 'hab-lanche',
+  'vamos comer uma fruta gostosa!': 'hab-fruta',
+  'lavar as mãos antes de comer!': 'hab-maos',
+  'brincar ao ar livre faz bem!': 'hab-ar-livre',
+  'dia de sol!': 'cli-sol',
+  'dia de chuva!': 'cli-chuva',
+  'passeio na ilha!': 'cli-ilha',
   // Sticker names
   'abelha zuzu': 'stk-abelha',
   'elefante dudu': 'stk-elefante',
@@ -278,6 +336,41 @@ export function resolveAudioClips(rawText: string): string[] | null {
     if (fig) return ['p-silabas', fig];
   }
 
+  m = trimmed.match(/^Toque nas letras na ordem certa para montar a palavra (.+?)!?$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig) return ['p-montar-palavra', fig];
+  }
+
+  m = trimmed.match(/^Quem combina com (.+?)\??$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig) return ['p-combinar', fig];
+  }
+
+  // Pre-reader situation + question composite prompts
+  const compositeEndings: [string, string][] = [
+    ['Qual rostinho combina com essa situação?', 'p-emocao'],
+    ['Isso acontece de dia ou de noite?', 'p-dia-noite'],
+    ['O que usamos para cuidar da nossa saúde?', 'p-habitos'],
+    ['O que devemos usar neste clima?', 'p-clima'],
+  ];
+  for (const [ending, endingClip] of compositeEndings) {
+    if (trimmed.endsWith(ending) && trimmed.length > ending.length) {
+      const lead = trimmed.slice(0, trimmed.length - ending.length).trim();
+      const leadClip = EXACT_CLIPS[lead.toLowerCase()] || EXACT_CLIPS[`${lead.toLowerCase()}!`];
+      if (leadClip && AUDIO_CLIP_IDS.has(leadClip)) {
+        return [leadClip, endingClip];
+      }
+    }
+  }
+
+  m = trimmed.match(/^Onde este bichinho mora\?\s*(.+?)!?$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    if (fig) return ['p-habitat', fig];
+  }
+
   // Math prompts
   m = trimmed.match(/^Vamos somar! Quanto é (\d+) mais (\d+)\??$/i);
   if (m) {
@@ -384,12 +477,38 @@ export function resolveAudioClips(rawText: string): string[] | null {
   m = trimmed.match(/^O número (\d+)!?$/i);
   if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) return ['o-numero', `num-${m[1]}`];
 
+  m = trimmed.match(/^(.+?) rima com (.+?)!?$/i);
+  if (m) {
+    const figA = resolveSingleToken(m[1]);
+    const figB = resolveSingleToken(m[2]);
+    if (figA && figB) return [figA, 'rima-com', figB];
+  }
+
+  m = trimmed.match(/^(.+?) tem (\d+) sílabas?!?$/i);
+  if (m) {
+    const fig = resolveSingleToken(m[1]);
+    const num = `num-${m[2]}`;
+    const unit = Number(m[2]) === 1 ? 'silaba' : 'silabas';
+    if (fig && AUDIO_CLIP_IDS.has(num)) return [fig, 'tem', num, unit];
+  }
+
+  m = trimmed.match(/^Esse grupo tem (\d+), que é (mais|menos)!?$/i);
+  if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) {
+    return ['esse-grupo-tem', `num-${m[1]}`, m[2].toLowerCase() === 'mais' ? 'que-e-mais' : 'que-e-menos'];
+  }
+
+  m = trimmed.match(/^Forma (.+?)!?$/i);
+  if (m) {
+    const col = `color-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(col)) return ['forma', col];
+  }
+
   return null;
 }
 
 const NATURAL_VOICE_RE = /google|natural|neural|luciana|francisca|thalita|maria|antonio/i;
 
-export function getAvailablePtVoices(): SpeechSynthesisVoice[] {
+function getAvailablePtVoices(): SpeechSynthesisVoice[] {
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
   const voices = window.speechSynthesis.getVoices();
   const ptVoices = voices.filter((v) => v.lang.toLowerCase().startsWith('pt'));

@@ -4,7 +4,7 @@ import { STICKERS } from '../data/catalog';
 /** Chave de versionamento usada no `localStorage` do navegador. */
 export const STORAGE_KEY = 'edukids_state_v1';
 
-/** Cria um mapa inicial zerado de estatísticas para todos os 5 pilares. */
+/** Cria um mapa inicial zerado de estatísticas para todos os 8 pilares. */
 export function createEmptyStats(): Record<PillarId, PillarStats> {
   return {
     literacy: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
@@ -12,6 +12,9 @@ export function createEmptyStats(): Record<PillarId, PillarStats> {
     'shapes-colors': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     'figures-logic': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     tracing: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    'music-sounds': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    'emotions-routine': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    'nature-habitats': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
   };
 }
 

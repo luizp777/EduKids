@@ -519,3 +519,159 @@ export function generateCategoryRound(ageLevel: AgeLevel): CategorySortRound {
     items: shuffle([...itemsA, ...itemsB]),
   };
 }
+
+// --- New v2 Generators ---
+
+export interface WordBuilderQuestion {
+  target: FigureItem;
+  letters: { uid: string; char: string }[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+const BUILDER_WORDS_3_4: FigureId[] = ['sol', 'lua', 'uva', 'pao', 'mao'];
+const BUILDER_WORDS_5_6: FigureId[] = ['bola', 'casa', 'dado', 'gato', 'pato', 'sapo', 'flor', 'urso', 'rato'];
+
+/** Gera rodadas de montagem de palavras com letras embaralhadas conforme a faixa etária. */
+export function generateWordBuilderQuestions(ageLevel: AgeLevel, count = 4): WordBuilderQuestion[] {
+  const allowedIds = ageLevel === '3-4' ? BUILDER_WORDS_3_4 : BUILDER_WORDS_5_6;
+  const pool = shuffle(FIGURES.filter((f) => allowedIds.includes(f.id))).slice(0, count);
+
+  return pool.map((target) => {
+    const chars = target.name.split('').map((char, idx) => ({
+      uid: `${target.id}-${idx}-${char}`,
+      char,
+    }));
+    let scrambled = shuffle(chars);
+    if (scrambled.every((c, i) => c.char === chars[i].char) && chars.length > 1) {
+      [scrambled[0], scrambled[1]] = [scrambled[1], scrambled[0]];
+    }
+    return {
+      target,
+      letters: scrambled,
+      promptText: `Monte a palavra: ${target.name}`,
+      spokenPrompt: `Toque nas letras na ordem certa para montar a palavra ${target.name.toLowerCase()}!`,
+    };
+  });
+}
+
+export interface OrderSizeItem {
+  id: string;
+  value: number;
+  figure?: FigureItem;
+}
+
+export interface OrderSizeQuestion {
+  mode: 'sizes' | 'numbers';
+  items: OrderSizeItem[];
+  expectedOrder: number[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera questões de ordenação crescente (tamanhos para 3–4 anos; números para 5–6 anos). */
+export function generateOrderSizeQuestions(ageLevel: AgeLevel, count = 4): OrderSizeQuestion[] {
+  return Array.from({ length: count }, () => {
+    if (ageLevel === '3-4') {
+      const fig = pickRandom(COUNTABLE_FIGURES);
+      const sizes = [1, 2, 3]; // 1 = pequeno, 2 = médio, 3 = grande
+      const items = shuffle(sizes).map((val) => ({
+        id: `size-${val}`,
+        value: val,
+        figure: fig,
+      }));
+      return {
+        mode: 'sizes',
+        items,
+        expectedOrder: [1, 2, 3],
+        promptText: 'Toque do MENOR para o MAIOR!',
+        spokenPrompt: 'Toque nas figuras do menor para o maior!',
+      };
+    }
+
+    const nums = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 4);
+    const expectedOrder = [...nums].sort((a, b) => a - b);
+    return {
+      mode: 'numbers',
+      items: nums.map((n) => ({ id: `num-${n}`, value: n })),
+      expectedOrder,
+      promptText: 'Toque nos números do MENOR para o MAIOR!',
+      spokenPrompt: 'Toque nos números do menor para o maior!',
+    };
+  });
+}
+
+export interface AssociationQuestion {
+  anchor: FigureItem;
+  match: FigureItem;
+  options: FigureItem[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+const ASSOCIATION_PAIRS: [FigureId, FigureId][] = [
+  ['abelha', 'flor'],
+  ['peixe', 'ilha'],
+  ['lua', 'estrela'],
+  ['sol', 'nuvem'],
+  ['gato', 'rato'],
+  ['pato', 'sapo'],
+];
+
+/** Gera pares de associação lógica entre figuras do catálogo. */
+export function generateAssociationQuestions(ageLevel: AgeLevel, count = 4): AssociationQuestion[] {
+  const byId = new Map<FigureId, FigureItem>(FIGURES.map((f) => [f.id, f]));
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const pairs = shuffle(ASSOCIATION_PAIRS).slice(0, count);
+
+  return pairs.map(([aId, bId]) => {
+    const anchor = byId.get(aId)!;
+    const match = byId.get(bId)!;
+    const distractors = shuffle(
+      FIGURES.filter((f) => f.id !== anchor.id && f.id !== match.id)
+    ).slice(0, optionCount - 1);
+    return {
+      anchor,
+      match,
+      options: shuffle([match, ...distractors]),
+      promptText: `Quem combina com ${anchor.name}?`,
+      spokenPrompt: `Quem combina com ${anchor.name.toLowerCase()}?`,
+    };
+  });
+}
+
+export interface AnimalSoundQuestion {
+  target: FigureItem;
+  onomatopoeia: string;
+  spokenPrompt: string;
+  options: FigureItem[];
+}
+
+const ANIMAL_SOUNDS: { id: FigureId; sound: string; prompt: string }[] = [
+  { id: 'gato', sound: 'Miau, Miau!', prompt: 'Quem faz Miau, Miau?' },
+  { id: 'pato', sound: 'Quá, Quá!', prompt: 'Quem faz Quá, Quá?' },
+  { id: 'sapo', sound: 'Croac, Croac!', prompt: 'Quem faz Croac, Croac?' },
+  { id: 'abelha', sound: 'Zum, Zum!', prompt: 'Quem faz Zum, Zum?' },
+  { id: 'ovelha', sound: 'Méé, Méé!', prompt: 'Quem faz Méé, Méé?' },
+];
+
+/** Gera rodadas de reconhecimento de sons de animais (onomatopeias faladas). */
+export function generateAnimalSoundQuestions(ageLevel: AgeLevel, count = 4): AnimalSoundQuestion[] {
+  const byId = new Map<FigureId, FigureItem>(FIGURES.map((f) => [f.id, f]));
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  return shuffle(ANIMAL_SOUNDS)
+    .slice(0, count)
+    .map((entry) => {
+      const target = byId.get(entry.id)!;
+      const distractors = shuffle(
+        FIGURES.filter((f) => f.category === 'animal' && f.id !== target.id)
+      ).slice(0, optionCount - 1);
+      return {
+        target,
+        onomatopoeia: entry.sound,
+        spokenPrompt: entry.prompt,
+        options: shuffle([target, ...distractors]),
+      };
+    });
+}
+

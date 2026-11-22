@@ -1,6 +1,6 @@
 # EduKids — Brincar e Aprender
 
-Aplicativo web educativo (PWA offline-first) para crianças da primeira infância (**3 a 6 anos**), com atividades interativas de **alfabetização**, **matemática**, **formas e cores**, **figuras e lógica** e **coordenação motora (traçado)**.
+Aplicativo web educativo (PWA offline-first) para crianças da primeira infância (**3 a 6 anos**), com atividades interativas de **alfabetização**, **matemática**, **formas e cores**, **figuras e lógica**, **coordenação motora**, **música e sons**, **emoções e rotina** e **natureza e habitats**.
 
 - **App publicado:** https://edu-kids-pink.vercel.app/
 - **Repositório:** https://github.com/luizp777/EduKids
@@ -10,39 +10,42 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 ## Principais Recursos
 
 - **Faixas Etárias Progressivas:**
-  - **Exploradores (3–4 anos):** menos opções por tela, foco em vogais, contagem 1–5, cores, formas básicas, caminhos motores e traçado amplo.
-  - **Descobridores (5–6 anos):** alfabeto ampliado, completar palavras, somas/subtrações visuais, sequências numéricas, quebra-cabeça 3×2 e traçado de consoantes e números até 9.
+  - **Exploradores (3–4 anos):** menos opções por tela, foco em vogais, contagem 1–5, tamanhos, cores, formas básicas, caminhos motores e traçado amplo.
+  - **Descobridores (5–6 anos):** alfabeto ampliado, completar e montar palavras, somas/subtrações visuais, sequências e ordem crescente, quebra-cabeça 3×2 e traçado de consoantes e números até 9.
 - **Voz Neural Offline em Português (`pt-BR`):**
-  - **198 clipes MP3** pré-gerados com `pt-BR-FranciscaNeural` em `public/audio/pt-br/`, montados dinamicamente para enunciados, letras, números, figuras, figurinhas e elogios — zero voz robótica e 100% offline.
-  - Efeitos sonoros gentis sintetizados via **Web Audio API**.
+  - **240 clipes MP3** pré-gerados com `pt-BR-FranciscaNeural` em `public/audio/pt-br/`, montados dinamicamente para enunciados, situações, letras, números, figuras, figurinhas e elogios — zero voz robótica e 100% offline.
+  - Efeitos sonoros gentis e notas musicais de xilofone sintetizados via **Web Audio API**.
 - **Gamificação Sem Punição:**
   - Erros não removem vidas; oferecem dica gentil e incentivo falado.
   - Acertos rendem **estrelas**, confete e desbloqueiam **22 figurinhas SVG** no **Álbum de Figurinhas**.
 - **Interação Motora Híbrida:**
-  - Atividades de encaixe aceitam tanto **arrastar e soltar** (Pointer Events) quanto **toque simples** (selecionar peça → tocar alvo).
+  - Atividades de encaixe aceitam tanto **arrastar e soltar** (Pointer Events) quanto **toque simples** (selecionar peça → tocar alvo) e navegação por teclado.
 - **Perfis Locais e Área dos Pais:**
   - Múltiplos perfis salvos no `localStorage` (`edukids_state_v1`), protegidos por **Parental Gate** (desafio matemático).
   - Painel dos pais com progresso por pilar, gestão de perfis, nível etário e controle de velocidade da leitura (`Devagar`, `Normal`, `Rápida`).
 
 ---
 
-## Os 5 Pilares de Atividades
+## Os 8 Pilares de Atividades
 
 | Pilar | Sub-modos |
 | --- | --- |
-| **Alfabetização** | Som Inicial, Completar Palavra, Rimas Divertidas, Contar Sílabas |
-| **Matemática** | Contar Figuras, Somas Visuais, Comparar (Mais/Menos), Subtração Visual, Sequência Numérica |
-| **Formas e Cores** | Encaixar Formas, Caça às Cores, Mistura de Cores, Sequência de Padrões |
-| **Figuras e Lógica** | Jogo da Memória, Sombras/Silhuetas, Encontre o Diferente, Separar por Grupo, Quebra-Cabeça (2×2 / 3×2) |
-| **Traçado Mágico** | Caminhos Motores (reta, ondinha, zigue-zague), Formas, Letras (`A–Z` principais/vogais) e Números (`0–9`) |
+| **Alfabetização** | Som Inicial, Completar Palavra, Rimas Divertidas, Contar Sílabas, Montar a Palavra |
+| **Matemática** | Contar Figuras, Somas Visuais, Comparar (Mais/Menos), Subtração Visual, Sequência Numérica, Ordem e Tamanhos |
+| **Formas e Cores** | Encaixar Formas, Caça às Cores, Mistura de Cores, Sequência de Padrões, Pintura Mágica por Toque |
+| **Figuras e Lógica** | Jogo da Memória, Sombras/Silhuetas, Encontre o Diferente, Separar por Grupo, Quebra-Cabeça (2×2 / 3×2), Combinar Pares Lógicos |
+| **Traçado Mágico** | Caminhos Motores (reta, ondinha, zigue-zague), Formas, Letras (vogais e consoantes) e Números (`0–9`) |
+| **Música e Sons** | Xilofone Mágico (livre + melodia guiada), Memória Musical (Simon), Sons dos Bichos |
+| **Emoções e Rotina** | Emoções/Sentimentos, Dia e Noite, Hábitos Saudáveis |
+| **Natureza e Habitats** | Onde o Bichinho Mora (Mar, Floresta, Céu), Clima e Roupas |
 
 ---
 
 ## Stack Tecnológica
 
 - **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS v4, Lucide React
-- **Áudio:** HTMLAudioElement (MP3s neurais pré-gerados) + Web Audio API + Web Speech API (fallback)
-- **PWA:** `public/manifest.webmanifest` + `public/sw.js` (network-first para navegação, pré-cache dos áudios MP3)
+- **Áudio:** HTMLAudioElement (MP3s neurais pré-gerados) + Web Audio API (SFX + Xilofone) + Web Speech API (fallback)
+- **PWA:** `public/manifest.webmanifest` + `public/sw.js` (network-first para navegação, pré-cache em lotes dos áudios MP3)
 - **Testes:** Vitest
 - **Deploy:** Vercel (`vercel.json`)
 
@@ -52,14 +55,14 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 
 ```text
 public/
-  audio/pt-br/       # 198 clipes MP3 neurais + manifest.json para pré-cache
+  audio/pt-br/       # 240 clipes MP3 neurais + manifest.json para pré-cache
   manifest.webmanifest
-  sw.js              # Service Worker offline
+  sw.js              # Service Worker offline (edukids-cache-v2)
 scripts/
   generate_audio.py  # Script Edge-TTS para gerar/atualizar os áudios pt-BR
 src/
   components/
-    activities/      # Os 5 módulos de atividades interativas
+    activities/      # Os 8 módulos de atividades interativas
     illustrations/   # Mascote Lumi, 28 figuras SVG, formas e avatares
     ui/              # Cabeçalho, celebração/confete e ParentalGateModal
   data/

@@ -80,5 +80,51 @@ describe('audio speech helpers', () => {
       'ficaram',
       'num-3',
     ]);
+    expect(resolveAudioClips('Arrasou! Que esperteza! gato rima com pato!')).toEqual([
+      'cel-3',
+      'fig-gato',
+      'rima-com',
+      'fig-pato',
+    ]);
+    expect(resolveAudioClips('Muito bem! Você acertou! bola tem 2 sílabas!')).toEqual([
+      'cel-0',
+      'fig-bola',
+      'tem',
+      'num-2',
+      'silabas',
+    ]);
+    expect(resolveAudioClips('Parabéns! Incrível! Esse grupo tem 5, que é mais!')).toEqual([
+      'cel-1',
+      'esse-grupo-tem',
+      'num-5',
+      'que-e-mais',
+    ]);
+    expect(resolveAudioClips('Muito bem! Você acertou! Forma laranja!')).toEqual([
+      'cel-0',
+      'forma',
+      'color-laranja',
+    ]);
+    expect(resolveAudioClips('Toque nas letras na ordem certa para montar a palavra sol!')).toEqual([
+      'p-montar-palavra',
+      'fig-sol',
+    ]);
+    expect(resolveAudioClips('Quem faz Miau, Miau?')).toEqual(['p-som-gato']);
+    expect(resolveAudioClips('Quem combina com abelha?')).toEqual(['p-combinar', 'fig-abelha']);
+    expect(resolveAudioClips('Ganhou um abraço bem apertado! Qual rostinho combina com essa situação?')).toEqual([
+      'sit-abraco',
+      'p-emocao',
+    ]);
+    expect(resolveAudioClips('Sol brilhando! Isso acontece de dia ou de noite?')).toEqual([
+      'dn-sol',
+      'p-dia-noite',
+    ]);
+    expect(resolveAudioClips('Onde este bichinho mora? PEIXE!')).toEqual([
+      'p-habitat',
+      'fig-peixe',
+    ]);
+    expect(resolveAudioClips('Dia de Chuva! O que devemos usar neste clima?')).toEqual([
+      'cli-chuva',
+      'p-clima',
+    ]);
   });
 });

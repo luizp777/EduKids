@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus } from 'lucide-react';
+import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus, Paintbrush } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
+import { CELEBRATE_PHRASES, COLORS, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
   generateColorMixRounds,
   generateColorRound,
@@ -25,7 +25,36 @@ interface Props {
   onBack: () => void;
 }
 
-type SubMode = 'shapes' | 'colors' | 'mix' | 'pattern';
+type SubMode = 'shapes' | 'colors' | 'mix' | 'pattern' | 'paint';
+
+interface PaintDrawing {
+  id: string;
+  label: string;
+  parts: { id: string; d: string; label: string }[];
+}
+
+const PAINT_DRAWINGS: PaintDrawing[] = [
+  {
+    id: 'casa',
+    label: 'Casa',
+    parts: [
+      { id: 'telhado', label: 'Telhado', d: 'M 12 50 L 50 16 L 88 50 Z' },
+      { id: 'parede', label: 'Parede', d: 'M 22 50 H 78 V 86 H 22 Z' },
+      { id: 'porta', label: 'Porta', d: 'M 42 60 H 58 V 86 H 42 Z' },
+      { id: 'janela', label: 'Janela', d: 'M 27 58 H 37 V 68 H 27 Z' },
+    ],
+  },
+  {
+    id: 'foguete',
+    label: 'Foguete',
+    parts: [
+      { id: 'corpo', label: 'Corpo', d: 'M 50 12 C 68 28 68 58 62 74 H 38 C 32 58 32 28 50 12 Z' },
+      { id: 'asa-e', label: 'Asa esquerda', d: 'M 36 72 L 20 84 L 28 58 Z' },
+      { id: 'asa-d', label: 'Asa direita', d: 'M 64 72 L 80 84 L 72 58 Z' },
+      { id: 'fogo', label: 'Fogo', d: 'M 42 74 L 50 94 L 58 74 Z' },
+    ],
+  },
+];
 
 export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
@@ -61,6 +90,13 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   );
   const [patternStep, setPatternStep] = useState(0);
 
+  // Paint state
+  const [paintIdx, setPaintIdx] = useState(0);
+  const [brushColor, setBrushColor] = useState(COLORS[0].hex);
+  const [paintedParts, setPaintedParts] = useState<Record<string, string>>({});
+
+  const currentPaint = PAINT_DRAWINGS[paintIdx % PAINT_DRAWINGS.length];
+
   const totalMatchesNeeded =
     subMode === 'shapes'
       ? shapes.length
@@ -68,7 +104,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         ? colorRound.items.filter((i) => i.isMatch).length
         : subMode === 'mix'
           ? mixRounds.length
-          : patternQs.length;
+          : subMode === 'paint'
+            ? currentPaint.parts.length
+            : patternQs.length;
 
   const currentMatches =
     subMode === 'shapes'
@@ -77,7 +115,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         ? foundColorIds.length
         : subMode === 'mix'
           ? mixStep
-          : patternStep;
+          : subMode === 'paint'
+            ? Object.keys(paintedParts).length
+            : patternStep;
 
   const getPrompt = () => {
     if (subMode === 'shapes') return 'Encaixe cada forma no seu lugar! Você pode arrastar ou tocar.';
@@ -86,6 +126,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       const m = mixRounds[mixStep];
       return m ? `Qual cor aparece quando misturamos ${m.colorA.name} com ${m.colorB.name}?` : '';
     }
+    if (subMode === 'paint') return 'Escolha uma cor e toque no desenho para pintar!';
     return patternQs[patternStep]?.spokenPrompt || 'Qual forma vem depois?';
   };
 
@@ -117,6 +158,11 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
     } else if (next === 'mix') {
       setMixRounds(generateColorMixRounds());
       setMixStep(0);
+    } else if (next === 'paint') {
+      setPaintedParts({});
+      if (subMode === 'paint') {
+        setPaintIdx((i) => (i + 1) % PAINT_DRAWINGS.length);
+      }
     } else {
       setPatternQs(generatePatternQuestions(activeProfile.ageLevel, 4));
       setPatternStep(0);
@@ -305,6 +351,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'colors' as SubMode, label: 'Cores', icon: Palette },
           { id: 'mix' as SubMode, label: 'Misturar', icon: FlaskConical },
           { id: 'pattern' as SubMode, label: 'Padrões', icon: Sparkles },
+          { id: 'paint' as SubMode, label: 'Pintar', icon: Paintbrush },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -388,9 +435,20 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                 return (
                   <div
                     key={s.id}
+                    role="button"
+                    tabIndex={isMatched ? -1 : 0}
+                    aria-label={s.name}
                     onPointerDown={(e) => handlePointerDown(s.id, e)}
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && !isMatched) {
+                        e.preventDefault();
+                        sfx('pop');
+                        setSelectedShape(s.id);
+                      }
+                    }}
                     style={{ touchAction: 'none' }}
                     className={`btn-3d flex flex-col items-center justify-center rounded-3xl p-4 border-4 select-none transition-all ${
                       isMatched
@@ -585,6 +643,66 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {subMode === 'paint' && (
+          <div className="w-full max-w-xl flex flex-col items-center gap-5">
+            <div className="rounded-[36px] bg-white border-4 border-emerald-100 p-6 card-3d w-full max-w-[320px] aspect-square flex items-center justify-center">
+              <svg viewBox="0 0 100 100" className="w-full h-full" aria-label={currentPaint.label}>
+                {currentPaint.parts.map((part) => {
+                  const fill = paintedParts[part.id] || '#F8FAFC';
+                  return (
+                    <path
+                      key={part.id}
+                      d={part.d}
+                      fill={fill}
+                      stroke="#334155"
+                      strokeWidth="2.5"
+                      strokeLinejoin="round"
+                      className="cursor-pointer transition-colors hover:opacity-90"
+                      onClick={() => {
+                        if (stepLocked) return;
+                        sfx('pop');
+                        const next = { ...paintedParts, [part.id]: brushColor };
+                        setPaintedParts(next);
+                        if (Object.keys(next).length >= currentPaint.parts.length) {
+                          setStepLocked(true);
+                          setMood('excited');
+                          sfx('success');
+                          recordCorrectAnswer('shapes-colors');
+                          const praise = pickRandom(CELEBRATE_PHRASES);
+                          setFeedback(praise);
+                          say(praise);
+                          schedule(() => {
+                            sfx('celebration');
+                            setReward(completeRound('shapes-colors', 3));
+                          }, 850);
+                        }
+                      }}
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2.5 rounded-3xl bg-white p-3 border-2 border-emerald-100 shadow-sm">
+              {COLORS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    sfx('pop');
+                    setBrushColor(c.hex);
+                  }}
+                  aria-label={`Cor ${c.name}`}
+                  className={`h-12 w-12 rounded-full border-4 transition-transform cursor-pointer ${
+                    brushColor === c.hex ? 'scale-115 border-slate-800 shadow-md' : 'border-white'
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                />
+              ))}
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppProvider } from './state/AppContext';
+import { AppProvider, useApp } from './state/AppContext';
 import type { PillarId } from './types';
 import { stopSpeaking } from './utils/audio';
 import { HomePage } from './pages/HomePage';
@@ -11,6 +11,9 @@ import { MathActivity } from './components/activities/MathActivity';
 import { ShapesColorsActivity } from './components/activities/ShapesColorsActivity';
 import { FiguresLogicActivity } from './components/activities/FiguresLogicActivity';
 import { TracingActivity } from './components/activities/TracingActivity';
+import { MusicSoundsActivity } from './components/activities/MusicSoundsActivity';
+import { EmotionsRoutineActivity } from './components/activities/EmotionsRoutineActivity';
+import { NatureHabitatsActivity } from './components/activities/NatureHabitatsActivity';
 
 type View =
   | { type: 'home' }
@@ -19,8 +22,10 @@ type View =
   | { type: 'activity'; pillar: PillarId };
 
 const AppContent: React.FC = () => {
+  const { activeProfile } = useApp();
   const [view, setView] = useState<View>({ type: 'home' });
   const [showParentalGate, setShowParentalGate] = useState(false);
+  const activityKey = `${activeProfile.id}-${activeProfile.ageLevel}`;
 
   const goHome = () => {
     stopSpeaking();
@@ -42,19 +47,28 @@ const AppContent: React.FC = () => {
       {view.type === 'parents' && <ParentsDashboardPage onBack={goHome} />}
 
       {view.type === 'activity' && view.pillar === 'literacy' && (
-        <LiteracyActivity onBack={goHome} />
+        <LiteracyActivity key={activityKey} onBack={goHome} />
       )}
       {view.type === 'activity' && view.pillar === 'math' && (
-        <MathActivity onBack={goHome} />
+        <MathActivity key={activityKey} onBack={goHome} />
       )}
       {view.type === 'activity' && view.pillar === 'shapes-colors' && (
-        <ShapesColorsActivity onBack={goHome} />
+        <ShapesColorsActivity key={activityKey} onBack={goHome} />
       )}
       {view.type === 'activity' && view.pillar === 'figures-logic' && (
-        <FiguresLogicActivity onBack={goHome} />
+        <FiguresLogicActivity key={activityKey} onBack={goHome} />
       )}
       {view.type === 'activity' && view.pillar === 'tracing' && (
-        <TracingActivity onBack={goHome} />
+        <TracingActivity key={activityKey} onBack={goHome} />
+      )}
+      {view.type === 'activity' && view.pillar === 'music-sounds' && (
+        <MusicSoundsActivity key={activityKey} onBack={goHome} />
+      )}
+      {view.type === 'activity' && view.pillar === 'emotions-routine' && (
+        <EmotionsRoutineActivity key={activityKey} onBack={goHome} />
+      )}
+      {view.type === 'activity' && view.pillar === 'nature-habitats' && (
+        <NatureHabitatsActivity key={activityKey} onBack={goHome} />
       )}
 
       {showParentalGate && (

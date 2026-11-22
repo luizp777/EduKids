@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Eye, Search, FolderKanban, Puzzle, Check } from 'lucide-react';
+import { Sparkles, Eye, Search, FolderKanban, Puzzle, Check, Link2 } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import {
+  generateAssociationQuestions,
   generateCategoryRound,
   generateOddOneOutQuestions,
   generateShadowQuestions,
   pickRandom,
   shuffle,
+  type AssociationQuestion,
   type CategorySortRound,
   type OddOneOutQuestion,
   type ShadowQuestion,
@@ -23,7 +25,7 @@ interface Props {
   onBack: () => void;
 }
 
-type LogicMode = 'memory' | 'shadow' | 'odd' | 'category' | 'puzzle';
+type LogicMode = 'memory' | 'shadow' | 'odd' | 'category' | 'puzzle' | 'match';
 
 interface MemoryCard {
   uid: string;
@@ -110,6 +112,12 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   );
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
+  // Association match state
+  const [assocQs, setAssocQs] = useState<AssociationQuestion[]>(() =>
+    generateAssociationQuestions(activeProfile.ageLevel, 4)
+  );
+  const [assocStep, setAssocStep] = useState(0);
+
   const getPrompt = () => {
     if (mode === 'memory') return 'Encontre os pares de figuras iguais!';
     if (mode === 'shadow') return 'De qual figura é esta sombra?';
@@ -120,13 +128,14 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
         ? `${item.name} pertence a qual grupo?`
         : 'Muito bem!';
     }
+    if (mode === 'match') return assocQs[assocStep]?.spokenPrompt || '';
     return `Toque em duas peças para trocar e montar: ${puzzle.figure.name}!`;
   };
 
   useEffect(() => {
     if (!reward) say(getPrompt());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, shadowStep, oddStep, catIndex, puzzle.figure.id]);
+  }, [mode, shadowStep, oddStep, catIndex, assocStep, puzzle.figure.id]);
 
   const resetMode = (nextMode: LogicMode) => {
     clearAll();
@@ -150,6 +159,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     } else if (nextMode === 'category') {
       setCatRound(generateCategoryRound(activeProfile.ageLevel));
       setCatIndex(0);
+    } else if (nextMode === 'match') {
+      setAssocQs(generateAssociationQuestions(activeProfile.ageLevel, 4));
+      setAssocStep(0);
     } else {
       setPuzzle(createPuzzleState(activeProfile.ageLevel));
       setSelectedSlot(null);
@@ -341,7 +353,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           ? oddStep
           : mode === 'category'
             ? catIndex
-            : puzzle.order.filter((piece, idx) => piece === idx).length;
+            : mode === 'match'
+              ? assocStep
+              : puzzle.order.filter((piece, idx) => piece === idx).length;
 
   const progressTotal =
     mode === 'memory'
@@ -352,7 +366,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           ? oddQs.length
           : mode === 'category'
             ? catRound.items.length
-            : puzzle.order.length;
+            : mode === 'match'
+              ? assocQs.length
+              : puzzle.order.length;
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#F5EEFF] to-[#FFF9F0]">
@@ -374,6 +390,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'odd' as LogicMode, label: 'Diferente', icon: Search },
           { id: 'category' as LogicMode, label: 'Grupos', icon: FolderKanban },
           { id: 'puzzle' as LogicMode, label: 'Quebra-Cabeça', icon: Puzzle },
+          { id: 'match' as LogicMode, label: 'Combinar', icon: Link2 },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -591,6 +608,77 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
               })}
             </div>
           </div>
+        )}
+
+        {mode === 'match' && assocQs[assocStep] && (
+          <>
+            <div className="flex flex-col items-center gap-2 rounded-[32px] bg-white border-4 border-purple-200 px-8 py-5 card-3d">
+              <FigureSvg figureId={assocQs[assocStep].anchor.id} size={102} />
+              <span className="font-display text-2xl font-bold text-purple-700">
+                {assocQs[assocStep].anchor.name}
+              </span>
+            </div>
+
+            <div
+              className={`grid gap-4 w-full max-w-2xl ${
+                assocQs[assocStep].options.length === 3
+                  ? 'grid-cols-3'
+                  : 'grid-cols-2 sm:grid-cols-4'
+              }`}
+            >
+              {assocQs[assocStep].options.map((fig) => {
+                const isShaking = wrongId === fig.id;
+                const isRight = stepLocked && fig.id === assocQs[assocStep].match.id;
+                return (
+                  <button
+                    key={fig.id}
+                    type="button"
+                    disabled={stepLocked}
+                    onClick={() => {
+                      if (fig.id === assocQs[assocStep].match.id) {
+                        setStepLocked(true);
+                        setMood('excited');
+                        sfx('success');
+                        recordCorrectAnswer('figures-logic');
+                        const praise = pickRandom(CELEBRATE_PHRASES);
+                        setFeedback(`${praise} ${fig.name}!`);
+                        say(praise);
+                        schedule(() => {
+                          if (assocStep + 1 >= assocQs.length) {
+                            sfx('celebration');
+                            setReward(completeRound('figures-logic', 3));
+                          } else {
+                            setAssocStep((s) => s + 1);
+                            setMood('happy');
+                            setFeedback('');
+                            setStepLocked(false);
+                          }
+                        }, 1150);
+                      } else {
+                        sfx('encourage');
+                        setMood('encouraging');
+                        setWrongId(fig.id);
+                        const phrase = pickRandom(ENCOURAGE_PHRASES);
+                        setFeedback(phrase);
+                        say(phrase);
+                        schedule(() => setWrongId(null), 480);
+                      }
+                    }}
+                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-3xl p-4 border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
+                        : 'bg-white border-purple-100 hover:border-purple-300'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    <FigureSvg figureId={fig.id} size={82} />
+                    <span className="font-display text-base font-bold text-slate-700">
+                      {fig.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </main>
 

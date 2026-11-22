@@ -1,13 +1,16 @@
 /** Faixas etárias suportadas pelo EduKids (3–4: Exploradores, 5–6: Descobridores). */
 export type AgeLevel = '3-4' | '5-6';
 
-/** Identificadores dos 5 pilares pedagógicos do aplicativo. */
+/** Identificadores dos 8 pilares pedagógicos do aplicativo. */
 export type PillarId =
   | 'literacy'
   | 'math'
   | 'shapes-colors'
   | 'figures-logic'
-  | 'tracing';
+  | 'tracing'
+  | 'music-sounds'
+  | 'emotions-routine'
+  | 'nature-habitats';
 
 /** Avatares SVG disponíveis para o perfil da criança. */
 export type AvatarId =

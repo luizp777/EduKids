@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, PenLine, Music, Hand } from 'lucide-react';
+import { BookOpen, PenLine, Music, Hand, Blocks } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
   generateLiteracyQuestions,
   generateRhymeQuestions,
   generateSyllableQuestions,
+  generateWordBuilderQuestions,
   pickRandom,
   type LiteracyQuestion,
   type RhymeQuestion,
   type SyllableQuestion,
+  type WordBuilderQuestion,
 } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
 import type { MascotMood } from '../../types';
@@ -22,7 +24,7 @@ interface Props {
   onBack: () => void;
 }
 
-type LiteracyMode = 'initial' | 'complete' | 'rhyme' | 'syllable';
+type LiteracyMode = 'initial' | 'complete' | 'rhyme' | 'syllable' | 'build';
 
 export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
@@ -36,6 +38,10 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const [syllableQs, setSyllableQs] = useState<SyllableQuestion[]>(() =>
     generateSyllableQuestions(activeProfile.ageLevel, 4)
   );
+  const [builderQs, setBuilderQs] = useState<WordBuilderQuestion[]>(() =>
+    generateWordBuilderQuestions(activeProfile.ageLevel, 4)
+  );
+  const [usedLetterUids, setUsedLetterUids] = useState<string[]>([]);
 
   const [step, setStep] = useState(0);
   const [mood, setMood] = useState<MascotMood>('happy');
@@ -46,17 +52,25 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const { schedule, clearAll } = useTimers();
 
   const totalSteps =
-    mode === 'rhyme' ? rhymeQs.length : mode === 'syllable' ? syllableQs.length : questions.length;
+    mode === 'rhyme'
+      ? rhymeQs.length
+      : mode === 'syllable'
+        ? syllableQs.length
+        : mode === 'build'
+          ? builderQs.length
+          : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'rhyme') return rhymeQs[step]?.spokenPrompt || '';
     if (mode === 'syllable') return syllableQs[step]?.spokenPrompt || '';
+    if (mode === 'build') return builderQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
 
   const getPromptText = () => {
     if (mode === 'rhyme') return rhymeQs[step]?.promptText || '';
     if (mode === 'syllable') return syllableQs[step]?.promptText || '';
+    if (mode === 'build') return 'Toque nas letras na ordem certa!';
     return questions[step]?.promptText || '';
   };
 
@@ -66,7 +80,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, rhymeQs, syllableQs]);
+  }, [mode, step, questions, rhymeQs, syllableQs, builderQs]);
 
   const resetMode = (nextMode: LiteracyMode) => {
     clearAll();
@@ -77,14 +91,17 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     setWrongId(null);
     setLocked(false);
     setReward(null);
+    setUsedLetterUids([]);
     if (nextMode === 'initial') {
       setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'initial-letter'));
     } else if (nextMode === 'complete') {
       setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'complete-word'));
     } else if (nextMode === 'rhyme') {
       setRhymeQs(generateRhymeQuestions(activeProfile.ageLevel, 4));
-    } else {
+    } else if (nextMode === 'syllable') {
       setSyllableQs(generateSyllableQuestions(activeProfile.ageLevel, 4));
+    } else {
+      setBuilderQs(generateWordBuilderQuestions(activeProfile.ageLevel, 4));
     }
   };
 
@@ -106,6 +123,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setLocked(false);
+        setUsedLetterUids([]);
       }
     }, 1350);
   };
@@ -123,6 +141,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const currentLit = questions[step];
   const currentRhyme = rhymeQs[step];
   const currentSyllable = syllableQs[step];
+  const currentBuilder = builderQs[step];
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#FFF3F0] to-[#FFF9F0]">
@@ -143,6 +162,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'complete' as LiteracyMode, label: 'Completar', icon: PenLine },
           { id: 'rhyme' as LiteracyMode, label: 'Rimas', icon: Music },
           { id: 'syllable' as LiteracyMode, label: 'Sílabas', icon: Hand },
+          { id: 'build' as LiteracyMode, label: 'Montar', icon: Blocks },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -384,6 +404,65 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                         />
                       ))}
                     </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {mode === 'build' && currentBuilder && (
+          <>
+            <div className="flex flex-col items-center gap-4 bg-white rounded-[32px] p-6 border-4 border-rose-100 card-3d w-full max-w-md">
+              <FigureSvg figureId={currentBuilder.target.id} size={112} />
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {currentBuilder.target.name.split('').map((ch, idx) => {
+                  const filled = idx < usedLetterUids.length;
+                  return (
+                    <div
+                      key={idx}
+                      className={`flex h-14 w-12 items-center justify-center rounded-2xl font-display text-3xl font-bold border-3 ${
+                        filled
+                          ? 'bg-[#D3F9D8] border-[#52B788] text-[#1B4332]'
+                          : 'bg-[#FFF3BF] border-[#FFCA3A] text-[#A67800]'
+                      }`}
+                    >
+                      {filled ? ch : '?'}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3 w-full max-w-md">
+              {currentBuilder.letters.map((item) => {
+                const isUsed = usedLetterUids.includes(item.uid);
+                const isShaking = wrongId === item.uid;
+                return (
+                  <button
+                    key={item.uid}
+                    type="button"
+                    disabled={locked || isUsed}
+                    onClick={() => {
+                      const expectedChar = currentBuilder.target.name[usedLetterUids.length];
+                      if (item.char === expectedChar) {
+                        sfx('pop');
+                        const nextUsed = [...usedLetterUids, item.uid];
+                        setUsedLetterUids(nextUsed);
+                        if (nextUsed.length >= currentBuilder.target.name.length) {
+                          handleCorrect(currentBuilder.target.name.toLowerCase());
+                        }
+                      } else {
+                        handleWrong(item.uid);
+                      }
+                    }}
+                    className={`btn-3d flex h-18 w-16 items-center justify-center rounded-3xl font-display text-3xl font-bold border-4 cursor-pointer ${
+                      isUsed
+                        ? 'opacity-25 bg-slate-100 border-slate-200 text-slate-400'
+                        : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    {item.char}
                   </button>
                 );
               })}

@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Hash, Scale, Minus, ListOrdered } from 'lucide-react';
+import { Plus, Hash, Scale, Minus, ListOrdered, ArrowUpNarrowWide } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
   generateCompareQuestions,
   generateMathQuestions,
+  generateOrderSizeQuestions,
   generateSequenceQuestions,
   generateSubtractionQuestions,
   pickRandom,
   type CompareQuestion,
   type MathQuestion,
+  type OrderSizeQuestion,
   type SequenceQuestion,
   type SubtractionQuestion,
 } from '../../utils/gameGenerators';
@@ -24,7 +26,7 @@ interface Props {
   onBack: () => void;
 }
 
-type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence';
+type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence' | 'order';
 
 export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
@@ -41,6 +43,10 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const [seqQs, setSeqQs] = useState<SequenceQuestion[]>(() =>
     generateSequenceQuestions(activeProfile.ageLevel, 4)
   );
+  const [orderQs, setOrderQs] = useState<OrderSizeQuestion[]>(() =>
+    generateOrderSizeQuestions(activeProfile.ageLevel, 4)
+  );
+  const [pickedOrderIds, setPickedOrderIds] = useState<string[]>([]);
 
   const [step, setStep] = useState(0);
   const [mood, setMood] = useState<MascotMood>('happy');
@@ -57,12 +63,15 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
         ? subQs.length
         : mode === 'sequence'
           ? seqQs.length
-          : questions.length;
+          : mode === 'order'
+            ? orderQs.length
+            : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'compare') return compareQs[step]?.spokenPrompt || '';
     if (mode === 'subtract') return subQs[step]?.spokenPrompt || '';
     if (mode === 'sequence') return seqQs[step]?.spokenPrompt || '';
+    if (mode === 'order') return orderQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
 
@@ -70,6 +79,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'compare') return compareQs[step]?.promptText || '';
     if (mode === 'subtract') return subQs[step]?.promptText || '';
     if (mode === 'sequence') return seqQs[step]?.promptText || '';
+    if (mode === 'order') return orderQs[step]?.promptText || '';
     return questions[step]?.promptText || '';
   };
 
@@ -79,7 +89,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, compareQs, subQs, seqQs]);
+  }, [mode, step, questions, compareQs, subQs, seqQs, orderQs]);
 
   const resetMode = (nextMode: MathMode) => {
     clearAll();
@@ -90,14 +100,17 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     setWrongOpt(null);
     setLocked(false);
     setReward(null);
+    setPickedOrderIds([]);
     if (nextMode === 'count' || nextMode === 'addition') {
       setQuestions(generateMathQuestions(activeProfile.ageLevel, 5, nextMode));
     } else if (nextMode === 'compare') {
       setCompareQs(generateCompareQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'subtract') {
       setSubQs(generateSubtractionQuestions(activeProfile.ageLevel, 4));
-    } else {
+    } else if (nextMode === 'sequence') {
       setSeqQs(generateSequenceQuestions(activeProfile.ageLevel, 4));
+    } else {
+      setOrderQs(generateOrderSizeQuestions(activeProfile.ageLevel, 4));
     }
   };
 
@@ -119,6 +132,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setLocked(false);
+        setPickedOrderIds([]);
       }
     }, 1350);
   };
@@ -137,6 +151,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const currentCompare = compareQs[step];
   const currentSub = subQs[step];
   const currentSeq = seqQs[step];
+  const currentOrder = orderQs[step];
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#EDF6FF] to-[#FFF9F0]">
@@ -158,6 +173,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'compare' as MathMode, label: 'Comparar', icon: Scale },
           { id: 'subtract' as MathMode, label: 'Subtrair', icon: Minus },
           { id: 'sequence' as MathMode, label: 'Sequência', icon: ListOrdered },
+          { id: 'order' as MathMode, label: 'Ordem', icon: ArrowUpNarrowWide },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -422,6 +438,53 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               })}
             </div>
           </>
+        )}
+
+        {mode === 'order' && currentOrder && (
+          <div
+            className={`grid w-full max-w-2xl gap-4 ${
+              currentOrder.items.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+            }`}
+          >
+            {currentOrder.items.map((item) => {
+              const isPicked = pickedOrderIds.includes(item.id);
+              const isShaking = wrongOpt === item.id;
+              const figSize = item.value === 1 ? 52 : item.value === 2 ? 78 : 108;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={locked || isPicked}
+                  onClick={() => {
+                    const expectedVal = currentOrder.expectedOrder[pickedOrderIds.length];
+                    if (item.value === expectedVal) {
+                      sfx('pop');
+                      const next = [...pickedOrderIds, item.id];
+                      setPickedOrderIds(next);
+                      if (next.length >= currentOrder.expectedOrder.length) {
+                        triggerSuccess('');
+                      }
+                    } else {
+                      triggerWrong(item.id);
+                    }
+                  }}
+                  className={`btn-3d flex flex-col items-center justify-center rounded-3xl p-4 min-h-[140px] border-4 cursor-pointer ${
+                    isPicked
+                      ? 'bg-[#D3F9D8] border-[#52B788] scale-95 opacity-75'
+                      : 'bg-white border-blue-200 hover:border-blue-400'
+                  } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                >
+                  {currentOrder.mode === 'sizes' && item.figure ? (
+                    <FigureSvg figureId={item.figure.id} size={figSize} />
+                  ) : (
+                    <span className="font-display text-5xl font-bold text-[#2B6FD9]">
+                      {item.value}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         )}
       </main>
 
