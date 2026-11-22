@@ -260,7 +260,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
       recordCorrectAnswer('music-sounds');
       const praise = pickRandom(CELEBRATE_PHRASES);
       setFeedback(`${praise} É ${name.toLowerCase()}!`);
-      say(praise);
+      say(`${praise} ${name.toLowerCase()}!`);
       schedule(() => {
         if (animalStep + 1 >= animalQs.length) {
           sfx('celebration');
@@ -338,6 +338,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
+            aria-pressed={mode === id}
             onClick={(e) => {
               sfx('pop');
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -371,6 +372,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                   <button
                     key={s.id}
                     type="button"
+                    aria-pressed={idx === songIdx}
                     onClick={() => {
                       sfx('pop');
                       setSongIdx(idx);

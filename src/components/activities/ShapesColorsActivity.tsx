@@ -416,6 +416,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
+            aria-pressed={subMode === id}
             onClick={(e) => {
               sfx('pop');
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });

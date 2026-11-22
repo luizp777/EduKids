@@ -413,6 +413,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
+            aria-pressed={mode === id}
             onClick={(e) => {
               sfx('pop');
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -665,7 +666,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                         recordCorrectAnswer('figures-logic');
                         const praise = pickRandom(CELEBRATE_PHRASES);
                         setFeedback(`${praise} ${fig.name}!`);
-                        say(praise);
+                        say(`${praise} ${fig.name.toLowerCase()}!`);
                         schedule(() => {
                           if (assocStep + 1 >= assocQs.length) {
                             sfx('celebration');
@@ -754,7 +755,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                         recordCorrectAnswer('figures-logic');
                         const praise = pickRandom(CELEBRATE_PHRASES);
                         setFeedback(`${praise} ${fig.name}!`);
-                        say(praise);
+                        say(`${praise} ${fig.name.toLowerCase()}!`);
                         schedule(() => {
                           if (matrixStep + 1 >= matrixQs.length) {
                             sfx('celebration');

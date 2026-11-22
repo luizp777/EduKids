@@ -52,7 +52,6 @@ export function createDefaultState(): AppState {
       voiceEnabled: true,
       sfxEnabled: true,
       voiceSpeed: 'normal',
-      voiceURI: '',
       volume: 0.85,
     },
   };
@@ -80,7 +79,6 @@ export function loadAppState(): AppState {
         voiceEnabled: parsed.audio?.voiceEnabled ?? true,
         sfxEnabled: parsed.audio?.sfxEnabled ?? true,
         voiceSpeed: parsed.audio?.voiceSpeed ?? 'normal',
-        voiceURI: parsed.audio?.voiceURI ?? '',
         volume: typeof parsed.audio?.volume === 'number' ? parsed.audio.volume : 0.85,
       },
     };

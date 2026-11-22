@@ -1,5 +1,13 @@
-const CACHE_NAME = 'edukids-cache-v3';
+const CACHE_NAME = 'edukids-cache-v4';
 const CORE_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
+const ESSENTIAL_AUDIO_PREFIXES = [
+  '/audio/pt-br/lumi-',
+  '/audio/pt-br/som-ligado.mp3',
+  '/audio/pt-br/sticker-locked.mp3',
+  '/audio/pt-br/cel-',
+  '/audio/pt-br/enc-',
+  '/audio/pt-br/p-',
+];
 
 async function precacheAudioInBatches(urls, batchSize = 6) {
   try {
@@ -35,12 +43,15 @@ self.addEventListener('activate', (event) => {
   );
   self.clients.claim();
 
-  // Pre-cache neural audio clips in small batches without blocking activation
+  // Pre-cache only essential UI/praise/fixed prompt clips; question clips are cached on-demand via fetch
   fetch('/audio/pt-br/manifest.json')
     .then((res) => (res.ok ? res.json() : []))
     .then((urls) => {
       if (Array.isArray(urls) && urls.length > 0) {
-        precacheAudioInBatches(urls, 6);
+        const essential = urls.filter((u) =>
+          ESSENTIAL_AUDIO_PREFIXES.some((prefix) => u.startsWith(prefix))
+        );
+        precacheAudioInBatches(essential, 6);
       }
     })
     .catch(() => {});

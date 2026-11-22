@@ -1,68 +1,53 @@
 import { describe, expect, it } from 'vitest';
 import {
-  formatSpeechText,
+  getAudioPlaybackRate,
   getMasterVolume,
   getNormalizedVoiceVolume,
-  getSpeechRate,
   resolveAudioClips,
   setMasterVolume,
 } from './audio';
+import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
+import {
+  generateAnimalSoundQuestions,
+  generateAssociationQuestions,
+  generateInitialSyllableQuestions,
+  generateLiteracyQuestions,
+  generateMathQuestions,
+  generateNumberQuantityQuestions,
+  generateRhymeQuestions,
+  generateShapeObjectQuestions,
+  generateSubtractionQuestions,
+  generateSyllableQuestions,
+  generateWordBuilderQuestions,
+} from './gameGenerators';
 
 describe('audio speech helpers', () => {
-  it('formats isolated vowels and math operators for clearer pt-BR pronunciation', () => {
-    expect(formatSpeechText('Qual figura começa com a letra A?')).toBe(
-      'Qual figura começa com a letra, Á?'
-    );
-    expect(formatSpeechText('Qual figura começa com a letra O?')).toBe(
-      'Qual figura começa com a letra, Ó?'
-    );
-    expect(formatSpeechText('Quanto é 2 + 3 = 5?')).toBe(
-      'Quanto é 2 mais 3 é igual a 5?'
-    );
-    expect(formatSpeechText('Quanto é 5 - 2 e 5-2?')).toBe(
-      'Quanto é 5 menos 2 e 5 menos 2?'
-    );
-    expect(formatSpeechText('Use o dedinho para traçar o zigue-zague!')).toBe(
-      'Use o dedinho para traçar o zigue-zague!'
-    );
+  it('computes neural MP3 playback rates for slow, normal, and fast speeds', () => {
+    expect(getAudioPlaybackRate('slow', '3-4')).toBeLessThan(1);
+    expect(getAudioPlaybackRate('normal', '3-4')).toBe(1);
+    expect(getAudioPlaybackRate('normal', '5-6')).toBe(1);
+    expect(getAudioPlaybackRate('fast', '5-6')).toBeGreaterThan(1);
   });
 
-  it('computes age-aware speech rates', () => {
-    expect(getSpeechRate('slow', '3-4')).toBeLessThan(getSpeechRate('normal', '3-4'));
-    expect(getSpeechRate('normal', '3-4')).toBeLessThan(getSpeechRate('normal', '5-6'));
-    expect(getSpeechRate('fast', '5-6')).toBeGreaterThan(1);
-  });
-
-  it('resolves exercise prompts to pre-generated neural MP3 clips', () => {
+  it('resolves exercise prompts to complete natural neural MP3 clips', () => {
     expect(resolveAudioClips('Qual figura começa com a letra A?')).toEqual([
-      'p-letra-inicial',
-      'letter-a',
+      'q-letra-inicial-a',
     ]);
     expect(resolveAudioClips('Qual letra falta na palavra abelha?')).toEqual([
-      'p-letra-falta',
-      'fig-abelha',
+      'q-letra-falta-abelha',
     ]);
     expect(resolveAudioClips('Vamos somar! Quanto é 2 mais 3?')).toEqual([
-      'p-somar',
-      'num-2',
-      'mais',
-      'num-3',
+      'q-somar-2-3',
     ]);
     expect(resolveAudioClips('Tinha 5, saíram 2. Quantos ficaram?')).toEqual([
-      'p-tinha',
-      'num-5',
-      'sairam',
-      'num-2',
-      'quantos-ficaram',
+      'q-sub-5-2',
     ]);
     expect(resolveAudioClips('Use o dedinho para traçar o zigue-zague!')).toEqual([
-      'p-tracar',
-      'tr-zigue-zague',
+      'q-tracar-zigue-zague',
     ]);
     expect(resolveAudioClips('Parabéns! Incrível! Você desenhou a letra A!')).toEqual([
       'cel-1',
-      'voce-desenhou',
-      'tr-letra-a',
+      'ans-desenhou-letra-a',
     ]);
     expect(resolveAudioClips('Olá Explorador! Eu sou a Lumi! Escolha uma atividade divertida para brincar!')).toEqual([
       'lumi-home',
@@ -70,69 +55,85 @@ describe('audio speech helpers', () => {
     expect(resolveAudioClips('Abelha Zuzu')).toEqual(['stk-abelha']);
     expect(resolveAudioClips('Muito bem! Você acertou! A de abelha!')).toEqual([
       'cel-0',
-      'letter-a',
-      'de',
-      'fig-abelha',
+      'ans-letra-de-abelha',
     ]);
     expect(resolveAudioClips('Parabéns! Incrível! 2 mais 3 é igual a 5!')).toEqual([
       'cel-1',
-      'num-2',
-      'mais',
-      'num-3',
-      'igual-a',
-      'num-5',
+      'ans-somar-2-3',
     ]);
     expect(resolveAudioClips('Isso mesmo! Você brilhou! Ficaram 3!')).toEqual([
       'cel-2',
-      'ficaram',
-      'num-3',
+      'ans-ficaram-3',
     ]);
     expect(resolveAudioClips('Arrasou! Que esperteza! gato rima com pato!')).toEqual([
       'cel-3',
-      'fig-gato',
-      'rima-com',
-      'fig-pato',
+      'ans-rima-gato-pato',
     ]);
     expect(resolveAudioClips('Muito bem! Você acertou! bola tem 2 sílabas!')).toEqual([
       'cel-0',
-      'fig-bola',
-      'tem',
-      'num-2',
-      'silabas',
+      'ans-silabas-bola',
     ]);
     expect(resolveAudioClips('Parabéns! Incrível! Esse grupo tem 5, que é mais!')).toEqual([
       'cel-1',
-      'esse-grupo-tem',
-      'num-5',
-      'que-e-mais',
+      'ans-grupo-mais-5',
     ]);
     expect(resolveAudioClips('Muito bem! Você acertou! Forma laranja!')).toEqual([
       'cel-0',
-      'forma',
-      'color-laranja',
+      'ans-forma-cor-laranja',
     ]);
     expect(resolveAudioClips('Toque nas letras na ordem certa para montar a palavra sol!')).toEqual([
-      'p-montar-palavra',
-      'fig-sol',
+      'q-montar-sol',
     ]);
     expect(resolveAudioClips('Quem faz Miau, Miau?')).toEqual(['p-som-gato']);
-    expect(resolveAudioClips('Quem combina com abelha?')).toEqual(['p-combinar', 'fig-abelha']);
+    expect(resolveAudioClips('Quem combina com abelha?')).toEqual(['q-combinar-abelha']);
     expect(resolveAudioClips('Ganhou um abraço bem apertado! Qual rostinho combina com essa situação?')).toEqual([
-      'sit-abraco',
-      'p-emocao',
+      'emo-abraco',
     ]);
     expect(resolveAudioClips('Sol brilhando! Isso acontece de dia ou de noite?')).toEqual([
-      'dn-sol',
-      'p-dia-noite',
+      'dn-full-sol',
     ]);
     expect(resolveAudioClips('Onde este bichinho mora? PEIXE!')).toEqual([
-      'p-habitat',
-      'fig-peixe',
+      'q-habitat-peixe',
     ]);
     expect(resolveAudioClips('Dia de Chuva! O que devemos usar neste clima?')).toEqual([
-      'cli-chuva',
-      'p-clima',
+      'cli-full-chuva',
     ]);
+  });
+
+  it('covers 100% of figures, stickers, tracing templates, rhymes, and generators without robotic fallback', () => {
+    for (const fig of FIGURES) {
+      expect(resolveAudioClips(fig.name)).toBeTruthy();
+      expect(resolveAudioClips(`Onde encontramos ${fig.name.toLowerCase()}?`)).toBeTruthy();
+      expect(resolveAudioClips(`Com qual pedacinho começa a palavra ${fig.name.toLowerCase()}?`)).toBeTruthy();
+    }
+    for (const stk of STICKERS) {
+      expect(resolveAudioClips(stk.name)).toBeTruthy();
+    }
+    for (const tr of TRACING_TEMPLATES) {
+      expect(resolveAudioClips(`Use o dedinho para traçar ${tr.spokenName}!`)).toBeTruthy();
+      expect(resolveAudioClips(`Você desenhou ${tr.spokenName}!`)).toBeTruthy();
+    }
+    for (const [a, b] of RHYME_PAIRS) {
+      expect(resolveAudioClips(`${a} rima com ${b}!`)).toBeTruthy();
+    }
+
+    const allPrompts = [
+      ...generateLiteracyQuestions('5-6', 10).map((q) => q.spokenPrompt),
+      ...generateRhymeQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateSyllableQuestions('5-6', 10).map((q) => q.spokenPrompt),
+      ...generateInitialSyllableQuestions('5-6', 10).map((q) => q.spokenPrompt),
+      ...generateWordBuilderQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateMathQuestions('5-6', 10).map((q) => q.spokenPrompt),
+      ...generateSubtractionQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateNumberQuantityQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateShapeObjectQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateAssociationQuestions('5-6', 10).map((q) => q.spokenPrompt),
+      ...generateAnimalSoundQuestions('5-6', 9).map((q) => q.spokenPrompt),
+    ];
+
+    for (const prompt of allPrompts) {
+      expect(resolveAudioClips(prompt), `Missing clip for prompt: "${prompt}"`).not.toBeNull();
+    }
   });
 
   it('normalizes master volume and clamps bounds consistently', () => {

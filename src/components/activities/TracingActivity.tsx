@@ -148,7 +148,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
       ctx.beginPath();
-      ctx.arc(pt.xPx, pt.yPx, 11, 0, Math.PI * 2);
+      ctx.arc(pt.xPx, pt.yPx, 16.5, 0, Math.PI * 2);
       ctx.fillStyle = crayonColor;
       ctx.fill();
     }
@@ -164,7 +164,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
       ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
       ctx.lineTo(pt.xPx, pt.yPx);
       ctx.strokeStyle = crayonColor;
-      ctx.lineWidth = 22;
+      ctx.lineWidth = 33;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.stroke();
@@ -215,6 +215,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
+            aria-pressed={tab === id}
             onClick={(e) => {
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
               handleTabChange(id);
@@ -237,6 +238,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={t.id}
             type="button"
+            aria-pressed={idx === safeIdx}
             onClick={(e) => {
               sfx('pop');
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
@@ -327,8 +329,8 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
 
             <canvas
               ref={canvasRef}
-              width={400}
-              height={400}
+              width={600}
+              height={600}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}

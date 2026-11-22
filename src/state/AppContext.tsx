@@ -191,7 +191,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       enabled: state.audio.voiceEnabled,
       speed: state.audio.voiceSpeed,
       ageLevel: activeProfile.ageLevel,
-      voiceURI: state.audio.voiceURI,
       queue: opts?.queue,
       onEnd: opts?.onEnd,
     });

@@ -368,6 +368,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
           <button
             key={id}
             type="button"
+            aria-pressed={mode === id}
             onClick={(e) => {
               sfx('pop');
               e.currentTarget.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });

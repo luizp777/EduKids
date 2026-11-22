@@ -64,8 +64,6 @@ export interface AudioSettings {
   sfxEnabled: boolean;
   /** Velocidade da leitura em voz alta. */
   voiceSpeed?: VoiceSpeed;
-  /** URI opcional da voz preferida no Web Speech API (fallback). */
-  voiceURI?: string;
   /** Volume global normalizado (0.0 a 1.0) aplicado a voz, melodia e efeitos. */
   volume?: number;
 }

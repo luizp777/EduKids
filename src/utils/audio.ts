@@ -75,9 +75,6 @@ if (typeof window !== 'undefined') {
     if (ctx && ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.getVoices();
-    }
   };
   window.addEventListener('pointerdown', unlockAudio, { once: true, passive: true });
 }
@@ -214,53 +211,21 @@ export function playPitchSound(kind: 'low' | 'high', enabled = true): void {
   });
 }
 
-const VOWEL_PRONUNCIATION: Record<string, string> = {
-  A: 'Á',
-  E: 'É',
-  I: 'Í',
-  O: 'Ó',
-  U: 'Ú',
-};
-
-/** Normaliza operadores matemáticos e letras isoladas para pronúncia clara em `pt-BR`. */
-export function formatSpeechText(raw: string): string {
-  return raw
-    .replace(/\bletra\s+([AEIOU])\b/gi, (_, ch: string) => {
-      const upper = ch.toUpperCase();
-      return `letra, ${VOWEL_PRONUNCIATION[upper] || upper}`;
-    })
-    .replace(/\bletra\s+([BCDFGHJKLMNPQRSTVWXYZ])\b/gi, (_, ch: string) => {
-      return `letra, ${ch.toUpperCase()}`;
-    })
-    .replace(/\s*\+\s*/g, ' mais ')
-    .replace(/(\d)\s*-\s*(\d)/g, '$1 menos $2')
-    .replace(/\s+-\s+/g, ' menos ')
-    .replace(/\s*=\s*/g, ' é igual a ')
-    .replace(/\s{2,}/g, ' ')
-    .trim();
-}
-
-/** Calcula a taxa de velocidade da síntese de voz (`SpeechSynthesis`) por idade e preferência. */
-export function getSpeechRate(speed: VoiceSpeed = 'normal', ageLevel: AgeLevel = '3-4'): number {
-  if (speed === 'slow') return ageLevel === '3-4' ? 0.76 : 0.82;
-  if (speed === 'fast') return 1.05;
-  return ageLevel === '3-4' ? 0.86 : 0.94;
-}
-
 /** Calcula o `playbackRate` dos clipes MP3 neurais por idade e velocidade selecionada. */
-export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', ageLevel: AgeLevel = '3-4'): number {
-  if (speed === 'slow') return ageLevel === '3-4' ? 0.86 : 0.9;
+export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', _ageLevel: AgeLevel = '3-4'): number {
+  if (speed === 'slow') return 0.9;
   if (speed === 'fast') return 1.12;
-  return ageLevel === '3-4' ? 0.95 : 1.0;
+  return 1.0;
 }
 
 function slug(text: string): string {
-  return text
+  const s = text
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
+  return s === 'arco-iris' ? 'arcoiris' : s;
 }
 
 const EXACT_CLIPS: Record<string, string> = {
@@ -297,37 +262,59 @@ const EXACT_CLIPS: Record<string, string> = {
   'quem faz zum, zum?': 'p-som-abelha',
   'quem faz méé, méé?': 'p-som-ovelha',
   'quem faz au, au?': 'p-som-cachorro',
+  'quem faz au, au!': 'p-som-cachorro',
   'quem ruge forte: roar!': 'p-som-leao',
   'quem faz piu, piu?': 'p-som-passaro',
+  'quem faz piu, piu!': 'p-som-passaro',
   'quem faz grrr, grrr?': 'p-som-urso',
-  'ouça o som! ele é grave como o elefante ou agudo como o passarinho?': 'p-grave-agudo',
+  'quem faz grrr, grrr!': 'p-som-urso',
+  'ouça o som! ele é grave como o elefante ou agudo como o passarinho?': 'p-grave-agudo-1',
+  'ouça com atenção! esse som é grave ou agudo?': 'p-grave-agudo-2',
   'observe o quadro! qual figura está faltando?': 'p-matriz',
   'a florzinha está com sede! o que ajuda ela a crescer?': 'p-cuidar-agua',
   'a árvore precisa de luz e calor! quem ajuda?': 'p-cuidar-sol',
   'quem ajuda a levar o pólen de flor em flor?': 'p-cuidar-polen',
   'qual bichinho também mora e cuida do jardim?': 'p-cuidar-jardim',
-  'qual rostinho combina com essa situação?': 'p-emocao',
-  'isso acontece de dia ou de noite?': 'p-dia-noite',
-  'o que usamos para cuidar da nossa saúde?': 'p-habitos',
-  'onde este bichinho mora?': 'p-habitat',
-  'o que devemos usar neste clima?': 'p-clima',
-  // Situations & items for pre-readers
-  'ganhou um abraço bem apertado!': 'sit-abraco',
-  'o sorvete caiu no chão!': 'sit-sorvete',
-  'abriu um presente surpresa!': 'sit-presente',
-  'hora de dormir na caminha!': 'sit-dormir',
-  'sol brilhando!': 'dn-sol',
-  'brincar com a bola!': 'dn-bola',
-  'lua no céu!': 'dn-lua',
-  'ver as estrelas!': 'dn-estrela',
-  'passear no jardim!': 'dn-flor',
-  'hora do lanchinho saudável!': 'hab-lanche',
-  'vamos comer uma fruta gostosa!': 'hab-fruta',
-  'lavar as mãos antes de comer!': 'hab-maos',
-  'brincar ao ar livre faz bem!': 'hab-ar-livre',
-  'dia de sol!': 'cli-sol',
-  'dia de chuva!': 'cli-chuva',
-  'passeio na ilha!': 'cli-ilha',
+  // Complete composite sentences for Emotions, Day/Night, Habits, Routine, Weather
+  'ganhou um abraço bem apertado! qual rostinho combina com essa situação?': 'emo-abraco',
+  'o sorvete caiu no chão! qual rostinho combina com essa situação?': 'emo-sorvete',
+  'abriu um presente surpresa! qual rostinho combina com essa situação?': 'emo-presente',
+  'hora de dormir na caminha! qual rostinho combina com essa situação?': 'emo-dormir',
+  'respirar fundo olhando o jardim! qual rostinho combina com essa situação?': 'emo-jardim',
+  'o brinquedo quebrou sem querer! qual rostinho combina com essa situação?': 'emo-quebrou',
+  'brincar no parque com os amigos! qual rostinho combina com essa situação?': 'emo-parque',
+  'o amigo foi embora mais cedo! qual rostinho combina com essa situação?': 'emo-amigo',
+  'viu um arco-íris gigante no céu! qual rostinho combina com essa situação?': 'emo-arcoiris',
+  'ouvir uma historinha calminha antes de dormir! qual rostinho combina com essa situação?': 'emo-historia',
+  'sol brilhando! isso acontece de dia ou de noite?': 'dn-full-sol',
+  'brincar com a bola! isso acontece de dia ou de noite?': 'dn-full-bola',
+  'lua no céu! isso acontece de dia ou de noite?': 'dn-full-lua',
+  'ver as estrelas! isso acontece de dia ou de noite?': 'dn-full-estrela',
+  'passear no jardim! isso acontece de dia ou de noite?': 'dn-full-flor',
+  'ver o arco-íris! isso acontece de dia ou de noite?': 'dn-full-arcoiris',
+  'ouvir os passarinhos! isso acontece de dia ou de noite?': 'dn-full-passaro',
+  'andar de carro ao passeio! isso acontece de dia ou de noite?': 'dn-full-carro',
+  'ler historinha na cama! isso acontece de dia ou de noite?': 'dn-full-livro',
+  'dormir com o ursinho! isso acontece de dia ou de noite?': 'dn-full-urso',
+  'hora do lanchinho saudável! o que usamos para cuidar da nossa saúde?': 'hab-full-lanche',
+  'vamos comer uma fruta gostosa! o que usamos para cuidar da nossa saúde?': 'hab-full-fruta',
+  'lavar as mãos antes de comer! o que usamos para cuidar da nossa saúde?': 'hab-full-maos',
+  'brincar ao ar livre faz bem! o que usamos para cuidar da nossa saúde?': 'hab-full-ar-livre',
+  'comer frutas refrescantes no calor! o que usamos para cuidar da nossa saúde?': 'hab-full-melancia',
+  'aprender e descansar com uma história! o que usamos para cuidar da nossa saúde?': 'hab-full-livro',
+  'comer uvas docinhas no lanche! o que usamos para cuidar da nossa saúde?': 'hab-full-uva',
+  'tomar café da manhã saudável! o que usamos para cuidar da nossa saúde?': 'hab-full-pao',
+  'rotina da manhã: do começo ao fim! toque do primeiro ao último passo!': 'rt-manha',
+  'rotina da noite: antes de dormir! toque do primeiro ao último passo!': 'rt-noite',
+  'ciclo da florzinha no jardim! toque do primeiro ao último passo!': 'rt-flor',
+  'dia de passeio feliz! toque do primeiro ao último passo!': 'rt-passeio',
+  'dia de sol! o que devemos usar neste clima?': 'cli-full-sol',
+  'dia de chuva! o que devemos usar neste clima?': 'cli-full-chuva',
+  'passeio na ilha! o que devemos usar neste clima?': 'cli-full-ilha',
+  'dia de arco-íris! o que devemos usar neste clima?': 'cli-full-arcoiris',
+  'noite fresca! o que devemos usar neste clima?': 'cli-full-noite-fresca',
+  'dia nublado! o que devemos usar neste clima?': 'cli-full-nublado',
+  'noite estrelada! o que devemos usar neste clima?': 'cli-full-estrelada',
   // Sticker names
   'abelha zuzu': 'stk-abelha',
   'elefante dudu': 'stk-elefante',
@@ -378,20 +365,20 @@ function resolveSingleToken(token: string): string | null {
   return null;
 }
 
-function resolveTracingName(spokenName: string): string | null {
+function resolveTracingClip(prefix: 'q-tracar' | 'ans-desenhou', spokenName: string): string | null {
   const s = slug(spokenName);
   let m = s.match(/^a-letra-([a-z])$/);
-  if (m && AUDIO_CLIP_IDS.has(`tr-letra-${m[1]}`)) return `tr-letra-${m[1]}`;
+  if (m && AUDIO_CLIP_IDS.has(`${prefix}-letra-${m[1]}`)) return `${prefix}-letra-${m[1]}`;
   m = s.match(/^o-numero-(\d)$/);
-  if (m && AUDIO_CLIP_IDS.has(`tr-num-${m[1]}`)) return `tr-num-${m[1]}`;
+  if (m && AUDIO_CLIP_IDS.has(`${prefix}-num-${m[1]}`)) return `${prefix}-num-${m[1]}`;
   const clean = s.replace(/^(a|o)-/, '');
-  if (AUDIO_CLIP_IDS.has(`tr-${clean}`)) return `tr-${clean}`;
+  if (AUDIO_CLIP_IDS.has(`${prefix}-${clean}`)) return `${prefix}-${clean}`;
   return null;
 }
 
 /**
- * Maps exercise text to pre-generated neural MP3 clip IDs in public/audio/pt-br/.
- * Returns null if no pre-generated mapping exists (triggers speechSynthesis fallback).
+ * Mapeia textos de exercícios para os IDs de clipes MP3 neurais completos em `public/audio/pt-br/`.
+ * Prioriza frases inteiras pré-geradas para manter entonação e prosódia naturais.
  */
 export function resolveAudioClips(rawText: string): string[] | null {
   const trimmed = rawText.trim();
@@ -406,7 +393,7 @@ export function resolveAudioClips(rawText: string): string[] | null {
     return AUDIO_CLIP_IDS.has('lumi-home') ? ['lumi-home'] : null;
   }
 
-  // Split praise prefix + detail (e.g. "Parabéns! Incrível! 3 mais 2 é igual a 5!")
+  // Split praise prefix + detail (e.g. "Parabéns! Incrível!" + "C de cachorro!")
   for (const prefix of PRAISE_PREFIXES) {
     if (trimmed.startsWith(prefix) && trimmed.length > prefix.length) {
       const rest = trimmed.slice(prefix.length).trim();
@@ -425,252 +412,209 @@ export function resolveAudioClips(rawText: string): string[] | null {
   const single = resolveSingleToken(trimmed);
   if (single) return [single];
 
-  // Literacy prompts
+  // Literacy full-sentence prompts
   let m = trimmed.match(/^Qual figura começa com a letra ([A-Z])\??$/i);
   if (m) {
-    const l = `letter-${m[1].toLowerCase()}`;
-    if (AUDIO_CLIP_IDS.has(l)) return ['p-letra-inicial', l];
+    const id = `q-letra-inicial-${m[1].toLowerCase()}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Qual letra falta na palavra (.+?)\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-letra-falta', fig];
+    const id = `q-letra-falta-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Qual figura rima com (.+?)\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-rima', fig];
+    const id = `q-rima-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Vamos bater palmas! Quantos pedacinhos tem a palavra (.+?)\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-silabas', fig];
-  }
-
-  m = trimmed.match(/^Toque nas letras na ordem certa para montar a palavra (.+?)!?$/i);
-  if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-montar-palavra', fig];
-  }
-
-  m = trimmed.match(/^Quem combina com (.+?)\??$/i);
-  if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-combinar', fig];
+    const id = `q-silabas-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Com qual pedacinho começa a palavra (.+?)\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig && AUDIO_CLIP_IDS.has('p-silaba-inicial')) return ['p-silaba-inicial', fig];
+    const id = `q-silaba-inicial-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Toque nas letras na ordem certa para montar a palavra (.+?)!?$/i);
+  if (m) {
+    const id = `q-montar-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Quem combina com (.+?)\??$/i);
+  if (m) {
+    const id = `q-combinar-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^(.+?) parece com qual forma\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig && AUDIO_CLIP_IDS.has('p-parece-forma')) return [fig, 'p-parece-forma'];
+    const id = `q-parece-forma-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Onde encontramos (.+?)\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig && AUDIO_CLIP_IDS.has('p-onde-encontramos')) return ['p-onde-encontramos', fig];
-  }
-
-  // Pre-reader situation + question composite prompts
-  const compositeEndings: [string, string][] = [
-    ['Qual rostinho combina com essa situação?', 'p-emocao'],
-    ['Isso acontece de dia ou de noite?', 'p-dia-noite'],
-    ['O que usamos para cuidar da nossa saúde?', 'p-habitos'],
-    ['O que devemos usar neste clima?', 'p-clima'],
-  ];
-  for (const [ending, endingClip] of compositeEndings) {
-    if (trimmed.endsWith(ending) && trimmed.length > ending.length) {
-      const lead = trimmed.slice(0, trimmed.length - ending.length).trim();
-      const leadClip = EXACT_CLIPS[lead.toLowerCase()] || EXACT_CLIPS[`${lead.toLowerCase()}!`];
-      if (leadClip && AUDIO_CLIP_IDS.has(leadClip)) {
-        return [leadClip, endingClip];
-      }
-    }
+    const id = `q-onde-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Onde este bichinho mora\?\s*(.+?)!?$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-habitat', fig];
+    const id = `q-habitat-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
-  // Math prompts
+  // Math full-sentence prompts
   m = trimmed.match(/^Vamos somar! Quanto é (\d+) mais (\d+)\??$/i);
   if (m) {
-    const a = `num-${m[1]}`;
-    const b = `num-${m[2]}`;
-    if (AUDIO_CLIP_IDS.has(a) && AUDIO_CLIP_IDS.has(b)) {
-      return ['p-somar', a, 'mais', b];
-    }
+    const id = `q-somar-${m[1]}-${m[2]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Tinha (\d+), saíram (\d+)\. Quantos ficaram\??$/i);
   if (m) {
-    const a = `num-${m[1]}`;
-    const b = `num-${m[2]}`;
-    if (AUDIO_CLIP_IDS.has(a) && AUDIO_CLIP_IDS.has(b)) {
-      return ['p-tinha', a, 'sairam', b, 'quantos-ficaram'];
-    }
+    const id = `q-sub-${m[1]}-${m[2]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
-  // Shapes & Colors prompts
+  m = trimmed.match(/^Toque no grupo que tem (\d+) figuras?\!?$/i);
+  if (m) {
+    const id = `q-grupo-tem-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  // Shapes & Colors full-sentence prompts
   m = trimmed.match(/^Toque nas figuras da cor (.+?)!?$/i);
   if (m) {
-    const col = `color-${slug(m[1])}`;
-    if (AUDIO_CLIP_IDS.has(col)) return ['p-toque-cor', col];
+    const id = `q-toque-cor-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Qual cor aparece quando misturamos (.+?) com (.+?)\??$/i);
   if (m) {
-    const cA = `color-${slug(m[1])}`;
-    const cB = `color-${slug(m[2])}`;
-    if (AUDIO_CLIP_IDS.has(cA) && AUDIO_CLIP_IDS.has(cB)) {
-      return ['p-mistura-cores', cA, 'com', cB];
-    }
+    const id = `q-mistura-${slug(m[1])}-${slug(m[2])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Isso!\s*(.+?)!?$/i);
   if (m) {
-    const tok = resolveSingleToken(m[1]);
-    if (tok) return ['isso', tok];
+    const id = `ans-isso-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
-  // Figures & Logic prompts
+  // Figures & Logic full-sentence prompts
   m = trimmed.match(/^Par de (.+?)!?$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['par-de', fig];
+    const id = `ans-par-de-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^(.+?) pertence a qual grupo\??$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return [fig, 'pertence-grupo'];
+    const id = `q-pertence-grupo-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Toque em duas peças para trocar e montar:\s*(.+?)!?$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['p-puzzle', fig];
+    const id = `q-puzzle-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Você montou (.+?)!?$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    if (fig) return ['voce-montou', fig];
+    const id = `ans-montou-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
-  // Tracing prompts
+  // Tracing full-sentence prompts
   m = trimmed.match(/^Use o dedinho para traçar (.+?)!?$/i);
   if (m) {
-    const tr = resolveTracingName(m[1]);
-    if (tr) return ['p-tracar', tr];
+    const id = resolveTracingClip('q-tracar', m[1]);
+    if (id) return [id];
   }
 
   m = trimmed.match(/^Você desenhou (.+?)!?$/i);
   if (m) {
-    const tr = resolveTracingName(m[1]);
-    if (tr) return ['voce-desenhou', tr];
+    const id = resolveTracingClip('ans-desenhou', m[1]);
+    if (id) return [id];
   }
 
-  // Post-praise details
+  // Post-praise details (full continuous sentences)
   m = trimmed.match(/^([A-Z]) de (.+?)!?$/i);
   if (m) {
-    const l = `letter-${m[1].toLowerCase()}`;
-    const fig = resolveSingleToken(m[2]);
-    if (AUDIO_CLIP_IDS.has(l) && fig) return [l, 'de', fig];
+    const id = `ans-letra-de-${slug(m[2])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^(\d+) mais (\d+) é igual a (\d+)!?$/i);
   if (m) {
-    const a = `num-${m[1]}`;
-    const b = `num-${m[2]}`;
-    const c = `num-${m[3]}`;
-    if (AUDIO_CLIP_IDS.has(a) && AUDIO_CLIP_IDS.has(b) && AUDIO_CLIP_IDS.has(c)) {
-      return [a, 'mais', b, 'igual-a', c];
-    }
+    const id = `ans-somar-${m[1]}-${m[2]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^São (\d+)!?$/i);
-  if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) return ['sao', `num-${m[1]}`];
+  if (m) {
+    const id = `ans-sao-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
 
   m = trimmed.match(/^Ficaram (\d+)!?$/i);
-  if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) return ['ficaram', `num-${m[1]}`];
+  if (m) {
+    const id = `ans-ficaram-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
 
   m = trimmed.match(/^O número (\d+)!?$/i);
-  if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) return ['o-numero', `num-${m[1]}`];
+  if (m) {
+    const id = `ans-o-numero-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
 
   m = trimmed.match(/^(.+?) rima com (.+?)!?$/i);
   if (m) {
-    const figA = resolveSingleToken(m[1]);
-    const figB = resolveSingleToken(m[2]);
-    if (figA && figB) return [figA, 'rima-com', figB];
+    const id = `ans-rima-${slug(m[1])}-${slug(m[2])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^(.+?) tem (\d+) sílabas?!?$/i);
   if (m) {
-    const fig = resolveSingleToken(m[1]);
-    const num = `num-${m[2]}`;
-    const unit = Number(m[2]) === 1 ? 'silaba' : 'silabas';
-    if (fig && AUDIO_CLIP_IDS.has(num)) return [fig, 'tem', num, unit];
+    const id = `ans-silabas-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Esse grupo tem (\d+), que é (mais|menos)!?$/i);
-  if (m && AUDIO_CLIP_IDS.has(`num-${m[1]}`)) {
-    return ['esse-grupo-tem', `num-${m[1]}`, m[2].toLowerCase() === 'mais' ? 'que-e-mais' : 'que-e-menos'];
+  if (m) {
+    const id = `ans-grupo-${m[2].toLowerCase()}-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   m = trimmed.match(/^Forma (.+?)!?$/i);
   if (m) {
-    const col = `color-${slug(m[1])}`;
-    if (AUDIO_CLIP_IDS.has(col)) return ['forma', col];
+    const id = `ans-forma-cor-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
   return null;
 }
 
-const NATURAL_VOICE_RE = /google|natural|neural|luciana|francisca|thalita|maria|antonio/i;
-
-function getAvailablePtVoices(): SpeechSynthesisVoice[] {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return [];
-  const voices = window.speechSynthesis.getVoices();
-  const ptVoices = voices.filter((v) => v.lang.toLowerCase().startsWith('pt'));
-  return [...ptVoices].sort((a, b) => {
-    const aBr = a.lang.toLowerCase() === 'pt-br' ? 1 : 0;
-    const bBr = b.lang.toLowerCase() === 'pt-br' ? 1 : 0;
-    if (aBr !== bBr) return bBr - aBr;
-    const aNat = NATURAL_VOICE_RE.test(a.name) ? 1 : 0;
-    const bNat = NATURAL_VOICE_RE.test(b.name) ? 1 : 0;
-    return bNat - aNat;
-  });
-}
-
-function resolveVoice(preferredURI?: string): SpeechSynthesisVoice | null {
-  const voices = getAvailablePtVoices();
-  if (voices.length === 0) return null;
-  if (preferredURI) {
-    const match = voices.find((v) => v.voiceURI === preferredURI);
-    if (match) return match;
-  }
-  return voices[0];
-}
-
 type SpeakingListener = (speaking: boolean) => void;
 const listeners = new Set<SpeakingListener>();
-let speakTimerId: number | null = null;
 let currentAudio: HTMLAudioElement | null = null;
+let preloadedAudio: HTMLAudioElement | null = null;
 let clipQueue: string[] = [];
 let playbackSession = 0;
 let onPlaybackEnd: (() => void) | null = null;
+let queueTimerId: number | null = null;
 
 function flushPlaybackEnd() {
   const cb = onPlaybackEnd;
@@ -698,25 +642,36 @@ export interface SpeakOptions {
   speed?: VoiceSpeed;
   /** Faixa etária da criança para ajuste automático de ritmo. */
   ageLevel?: AgeLevel;
-  /** URI opcional de voz para o fallback `speechSynthesis`. */
-  voiceURI?: string;
   /** Se `true`, enfileira após a fala atual em vez de interrompê-la. */
   queue?: boolean;
   /** Callback executado ao término da reprodução. */
   onEnd?: () => void;
 }
 
-function playNextClip(session: number, rate: number, fallbackText: string, opts: SpeakOptions): void {
+function playNextClip(session: number, rate: number): void {
   if (session !== playbackSession) return;
   const nextId = clipQueue.shift();
   if (!nextId) {
     currentAudio = null;
+    preloadedAudio = null;
     notifySpeaking(false);
     flushPlaybackEnd();
     return;
   }
 
-  const audio = new Audio(`/audio/pt-br/${nextId}.mp3`);
+  const audio =
+    preloadedAudio && preloadedAudio.src.endsWith(`/${nextId}.mp3`)
+      ? preloadedAudio
+      : new Audio(`/audio/pt-br/${nextId}.mp3`);
+  preloadedAudio = null;
+
+  // Preload the next clip in parallel for gapless natural transitions
+  if (clipQueue.length > 0) {
+    const upcoming = new Audio(`/audio/pt-br/${clipQueue[0]}.mp3`);
+    upcoming.preload = 'auto';
+    preloadedAudio = upcoming;
+  }
+
   audio.playbackRate = rate;
   audio.volume = getNormalizedVoiceVolume();
   currentAudio = audio;
@@ -724,91 +679,38 @@ function playNextClip(session: number, rate: number, fallbackText: string, opts:
 
   audio.onended = () => {
     if (session !== playbackSession) return;
-    playNextClip(session, rate, fallbackText, opts);
+    if (clipQueue.length > 0) {
+      queueTimerId = window.setTimeout(() => {
+        queueTimerId = null;
+        playNextClip(session, rate);
+      }, 85);
+    } else {
+      playNextClip(session, rate);
+    }
   };
 
   audio.onerror = () => {
     if (session !== playbackSession) return;
     currentAudio = null;
+    preloadedAudio = null;
     clipQueue = [];
-    speakWithWebSpeech(fallbackText, opts);
+    notifySpeaking(false);
+    flushPlaybackEnd();
   };
 
   audio.play().catch(() => {
     if (session !== playbackSession) return;
     currentAudio = null;
+    preloadedAudio = null;
     clipQueue = [];
     notifySpeaking(false);
     flushPlaybackEnd();
   });
 }
 
-function speakWithWebSpeech(text: string, opts: SpeakOptions): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    flushPlaybackEnd();
-    return;
-  }
-  const cleanText = formatSpeechText(text);
-  if (!cleanText) {
-    flushPlaybackEnd();
-    return;
-  }
-
-  const runSpeak = () => {
-    try {
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = 'pt-BR';
-      utterance.rate = getSpeechRate(opts.speed, opts.ageLevel);
-      utterance.pitch = 1.06;
-      utterance.volume = getNormalizedVoiceVolume();
-      const voice = resolveVoice(opts.voiceURI);
-      if (voice) utterance.voice = voice;
-
-      utterance.onstart = () => notifySpeaking(true);
-      utterance.onend = () => {
-        notifySpeaking(false);
-        flushPlaybackEnd();
-      };
-      utterance.onerror = () => {
-        notifySpeaking(false);
-        flushPlaybackEnd();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      notifySpeaking(false);
-      flushPlaybackEnd();
-    }
-  };
-
-  if (opts.queue) {
-    if (speakTimerId !== null) {
-      window.setTimeout(runSpeak, 60);
-    } else {
-      runSpeak();
-    }
-    return;
-  }
-
-  if (speakTimerId !== null) {
-    window.clearTimeout(speakTimerId);
-    speakTimerId = null;
-  }
-
-  try {
-    window.speechSynthesis.cancel();
-    speakTimerId = window.setTimeout(() => {
-      speakTimerId = null;
-      runSpeak();
-    }, 50);
-  } catch {
-    notifySpeaking(false);
-  }
-}
-
 /**
- * Reproduz a narração de um texto em português usando os clipes MP3 neurais
- * pré-gerados e fazendo fallback para `speechSynthesis` apenas quando necessário.
+ * Reproduz a narração de um texto em português usando exclusivamente os clipes
+ * MP3 neurais pré-gerados (`pt-BR-FranciscaNeural`), sem vozes robóticas.
  */
 export function speak(text: string, options: SpeakOptions | boolean = true): void {
   const opts: SpeakOptions =
@@ -832,35 +734,30 @@ export function speak(text: string, options: SpeakOptions | boolean = true): voi
     onPlaybackEnd = opts.onEnd ?? null;
     const session = ++playbackSession;
     clipQueue = [...clips];
-    playNextClip(session, rate, text, opts);
+    playNextClip(session, rate);
     return;
   }
 
-  onPlaybackEnd = opts.onEnd ?? null;
-  speakWithWebSpeech(text, opts);
+  // No robotic speechSynthesis fallback: finish cleanly without speaking robotic voices
+  notifySpeaking(false);
+  opts.onEnd?.();
 }
 
-/** Interrompe imediatamente qualquer clipe MP3 ou síntese de voz em andamento. */
+/** Interrompe imediatamente qualquer clipe MP3 em andamento. */
 export function stopSpeaking(): void {
   playbackSession += 1;
   onPlaybackEnd = null;
   clipQueue = [];
+  preloadedAudio = null;
+  if (queueTimerId !== null) {
+    window.clearTimeout(queueTimerId);
+    queueTimerId = null;
+  }
   if (currentAudio) {
     currentAudio.onended = null;
     currentAudio.onerror = null;
     currentAudio.pause();
     currentAudio = null;
   }
-  if (speakTimerId !== null) {
-    window.clearTimeout(speakTimerId);
-    speakTimerId = null;
-  }
   notifySpeaking(false);
-  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {
-      // Ignore
-    }
-  }
 }
