@@ -6,6 +6,7 @@ import { HomePage } from './pages/HomePage';
 import { StickerAlbumPage } from './pages/StickerAlbumPage';
 import { ParentsDashboardPage } from './pages/ParentsDashboardPage';
 import { ParentalGateModal } from './components/ui/ParentalGateModal';
+import { ScreenTimeBreakModal } from './components/ui/ScreenTimeBreakModal';
 import { LiteracyActivity } from './components/activities/LiteracyActivity';
 import { MathActivity } from './components/activities/MathActivity';
 import { ShapesColorsActivity } from './components/activities/ShapesColorsActivity';
@@ -22,10 +23,21 @@ type View =
   | { type: 'activity'; pillar: PillarId };
 
 const AppContent: React.FC = () => {
-  const { activeProfile } = useApp();
+  const { activeProfile, calmMode, screenTimeReached, addPlaySeconds, extendScreenTime } = useApp();
   const [view, setView] = useState<View>({ type: 'home' });
-  const [showParentalGate, setShowParentalGate] = useState(false);
+  const [gateReason, setGateReason] = useState<'parents' | 'screen-time' | null>(null);
   const activityKey = `${activeProfile.id}-${activeProfile.ageLevel}`;
+
+  // Track active play time when in an activity
+  useEffect(() => {
+    if (view.type !== 'activity' || screenTimeReached) return;
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        addPlaySeconds(5);
+      }
+    }, 5000);
+    return () => window.clearInterval(interval);
+  }, [view.type, screenTimeReached, addPlaySeconds]);
 
   const navigateTo = useCallback((nextView: View) => {
     stopSpeaking();
@@ -51,7 +63,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       stopSpeaking();
-      setShowParentalGate(false);
+      setGateReason(null);
       const next = e.state?.edukidsView as View | undefined;
       setView(next ?? { type: 'home' });
     };
@@ -60,12 +72,12 @@ const AppContent: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <div className={calmMode ? 'calm-mode' : undefined}>
       {view.type === 'home' && (
         <HomePage
           onSelectPillar={(pillar) => navigateTo({ type: 'activity', pillar })}
           onOpenAlbum={() => navigateTo({ type: 'album' })}
-          onRequestParents={() => setShowParentalGate(true)}
+          onRequestParents={() => setGateReason('parents')}
         />
       )}
 
@@ -98,16 +110,25 @@ const AppContent: React.FC = () => {
         <NatureHabitatsActivity key={activityKey} onBack={goHome} />
       )}
 
-      {showParentalGate && (
+      {screenTimeReached && view.type !== 'parents' && !gateReason && (
+        <ScreenTimeBreakModal onRequestParentUnlock={() => setGateReason('screen-time')} />
+      )}
+
+      {gateReason && (
         <ParentalGateModal
           onSuccess={() => {
-            setShowParentalGate(false);
-            navigateTo({ type: 'parents' });
+            const reason = gateReason;
+            setGateReason(null);
+            if (reason === 'screen-time') {
+              extendScreenTime(15);
+            } else {
+              navigateTo({ type: 'parents' });
+            }
           }}
-          onCancel={() => setShowParentalGate(false)}
+          onCancel={() => setGateReason(null)}
         />
       )}
-    </>
+    </div>
   );
 };
 

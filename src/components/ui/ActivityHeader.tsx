@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, Volume2, Star } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Volume2, Star, Lightbulb } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 
 /** Propriedades do componente `ActivityHeader`. */
@@ -16,11 +16,15 @@ interface ActivityHeaderProps {
   onBack: () => void;
   /** Callback para repetir a instrução por voz. */
   onRepeatVoice: () => void;
+  /** Callback opcional para acionar a Dica Gentil manualmente. */
+  onRequestHint?: () => void;
+  /** Indica se a dica visual já está ativa no momento. */
+  hintActive?: boolean;
   /** Cor de destaque da barra de progresso. */
   accentColor?: string;
 }
 
-/** Cabeçalho padronizado das atividades com botão de voltar, estrelas, repetir áudio e barra de progresso. */
+/** Cabeçalho padronizado das atividades com botão de voltar, estrelas animadas, dica gentil, repetir áudio e progresso. */
 export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   title,
   currentStep,
@@ -28,9 +32,24 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   stars,
   onBack,
   onRepeatVoice,
+  onRequestHint,
+  hintActive = false,
   accentColor = '#6C5CE7',
 }) => {
   const { isSpeaking } = useApp();
+  const prevStarsRef = useRef(stars);
+  const [starPop, setStarPop] = useState(false);
+
+  useEffect(() => {
+    if (stars > prevStarsRef.current) {
+      setStarPop(true);
+      const id = window.setTimeout(() => setStarPop(false), 550);
+      prevStarsRef.current = stars;
+      return () => window.clearTimeout(id);
+    }
+    prevStarsRef.current = stars;
+  }, [stars]);
+
   const progressPct = Math.min(100, Math.round((currentStep / Math.max(1, totalSteps)) * 100));
 
   return (
@@ -52,10 +71,30 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          <div className="flex items-center gap-1 rounded-2xl bg-[#FFF3BF] border-2 border-[#FFCA3A] px-2.5 py-1 sm:px-3 sm:py-1.5 font-display text-sm sm:text-base font-bold text-[#A67800]">
+          <div
+            className={`flex items-center gap-1 rounded-2xl bg-[#FFF3BF] border-2 border-[#FFCA3A] px-2.5 py-1 sm:px-3 sm:py-1.5 font-display text-sm sm:text-base font-bold text-[#A67800] transition-transform ${
+              starPop ? 'animate-star-pop' : ''
+            }`}
+          >
             <Star className="h-4 w-4 sm:h-5 sm:w-5 fill-[#FFCA3A] text-[#E0A800]" />
             <span>{stars}</span>
           </div>
+
+          {onRequestHint && (
+            <button
+              type="button"
+              onClick={onRequestHint}
+              className={`btn-3d flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl border-2 cursor-pointer transition-colors ${
+                hintActive
+                  ? 'bg-[#FFCA3A] border-[#E0A800] text-[#5C4100] ring-3 ring-amber-200'
+                  : 'bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100'
+              }`}
+              aria-label="Pedir dica gentil"
+              title="Dica gentil"
+            >
+              <Lightbulb className="h-5 w-5 sm:h-6 sm:w-6" />
+            </button>
+          )}
 
           <button
             type="button"

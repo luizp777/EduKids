@@ -1,6 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Trees, CloudSun, Waves, Cloud, Sprout, Compass, Sun, Umbrella, Glasses, Shirt, Moon } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import {
+  Trees,
+  CloudSun,
+  Waves,
+  Cloud,
+  Sprout,
+  Compass,
+  Sun,
+  Umbrella,
+  Glasses,
+  Shirt,
+  Moon,
+  Recycle,
+  Package,
+} from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -14,7 +28,7 @@ interface Props {
   onBack: () => void;
 }
 
-type NatureMode = 'habitat' | 'weather' | 'plant-care' | 'nature-elements';
+type NatureMode = 'habitat' | 'weather' | 'plant-care' | 'nature-elements' | 'park-care';
 type HabitatId = 'agua' | 'floresta' | 'ceu';
 
 const HABITATS: { id: HabitatId; label: string; color: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -204,6 +218,18 @@ const NATURE_ELEMENT_QUESTIONS: { figureId: FigureId; name: string; place: Habit
   { figureId: 'tartaruga', name: 'TARTARUGA', place: 'agua' },
 ];
 
+const PARK_CARE_ITEMS: { figureId: FigureId; name: string; dest: 'nature' | 'store' }[] = [
+  { figureId: 'flor', name: 'FLOR', dest: 'nature' },
+  { figureId: 'arvore', name: 'ÁRVORE', dest: 'nature' },
+  { figureId: 'borboleta', name: 'BORBOLETA', dest: 'nature' },
+  { figureId: 'passaro', name: 'PÁSSARO', dest: 'nature' },
+  { figureId: 'abelha', name: 'ABELHA', dest: 'nature' },
+  { figureId: 'bola', name: 'BOLA', dest: 'store' },
+  { figureId: 'livro', name: 'LIVRO', dest: 'store' },
+  { figureId: 'dado', name: 'DADO', dest: 'store' },
+  { figureId: 'carro', name: 'CARRO', dest: 'store' },
+];
+
 interface WeatherOption {
   id: string;
   label: string;
@@ -241,7 +267,7 @@ function createWeatherQuestions(): WeatherQuestion[] {
   }));
 }
 
-/** Atividade de Natureza e Habitats: moradia dos animais e vestuário por clima. */
+/** Atividade de Natureza e Habitats: moradia dos animais, clima, cuidar da natureza, elementos e cuidar do parque. */
 export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<NatureMode>('habitat');
@@ -250,15 +276,17 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
-  const showHint = wrongAttempts >= 2 && !locked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
 
   const [habitatQs, setHabitatQs] = useState(() => shuffle(HABITAT_QUESTIONS).slice(0, 5));
   const [weatherQs, setWeatherQs] = useState(() => createWeatherQuestions().slice(0, 4));
   const [plantQs, setPlantQs] = useState(() => createPlantCareQuestions());
   const [elementQs, setElementQs] = useState(() => shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, 5));
+  const [parkQs, setParkQs] = useState(() => shuffle(PARK_CARE_ITEMS).slice(0, 5));
 
   const totalSteps =
     mode === 'habitat'
@@ -267,12 +295,15 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         ? weatherQs.length
         : mode === 'plant-care'
           ? plantQs.length
-          : elementQs.length;
+          : mode === 'park-care'
+            ? parkQs.length
+            : elementQs.length;
 
   const getPromptText = () => {
     if (mode === 'habitat') return 'Onde este bichinho mora?';
     if (mode === 'weather') return 'O que devemos usar neste clima?';
     if (mode === 'plant-care') return plantQs[step]?.prompt || 'Como cuidar da natureza?';
+    if (mode === 'park-care') return 'Isso fica na Natureza ou devemos Guardar?';
     return 'Onde encontramos isso: Água, Terra ou Céu?';
   };
 
@@ -285,6 +316,9 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
     }
     if (mode === 'plant-care' && plantQs[step]) {
       return plantQs[step].prompt;
+    }
+    if (mode === 'park-care' && parkQs[step]) {
+      return `${parkQs[step].name.toLowerCase()} fica na natureza ou devemos guardar?`;
     }
     if (mode === 'nature-elements' && elementQs[step]) {
       return `Onde encontramos ${elementQs[step].name.toLowerCase()}?`;
@@ -305,12 +339,14 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
     setFeedback('');
     setWrongId(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setLocked(false);
     setReward(null);
     setHabitatQs(shuffle(HABITAT_QUESTIONS).slice(0, 5));
     setWeatherQs(createWeatherQuestions().slice(0, 4));
     setPlantQs(createPlantCareQuestions());
     setElementQs(shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, 5));
+    setParkQs(shuffle(PARK_CARE_ITEMS).slice(0, 5));
   };
 
   const handleSuccess = (spokenFigureId?: FigureId) => {
@@ -333,6 +369,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setWrongAttempts(0);
+        setManualHint(false);
         setLocked(false);
       }
     }, 1150);
@@ -353,6 +390,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
   const currentWeather = weatherQs[step];
   const currentPlant = plantQs[step];
   const currentElement = elementQs[step];
+  const currentPark = parkQs[step];
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#E6FFF5] to-[#FFF9F0]">
@@ -363,15 +401,21 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
+        onRequestHint={() => {
+          sfx('pop');
+          setManualHint(true);
+        }}
+        hintActive={showHint}
         accentColor="#10B981"
       />
 
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'habitat' as NatureMode, label: 'Habitats', icon: Trees },
           { id: 'weather' as NatureMode, label: 'Clima', icon: CloudSun },
           { id: 'plant-care' as NatureMode, label: 'Cuidar da Natureza', icon: Sprout },
           { id: 'nature-elements' as NatureMode, label: 'Terra, Água ou Céu', icon: Compass },
+          { id: 'park-care' as NatureMode, label: 'Cuidar do Parque', icon: Recycle },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -388,7 +432,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -571,12 +615,59 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
         )}
+        {mode === 'park-care' && currentPark && (
+          <div className="activity-split">
+            <div className="flex flex-col items-center gap-1.5 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-emerald-200 px-6 py-3.5 sm:px-8 sm:py-5 card-3d shrink-0">
+              <FigureSvg figureId={currentPark.figureId} size={84} className="sm:w-[108px] sm:h-[108px]" />
+              <span className="font-display text-xl sm:text-2xl font-bold text-slate-800">
+                {currentPark.name}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
+              {[
+                { id: 'nature' as const, label: 'Fica na Natureza', color: '#059669', icon: Trees },
+                { id: 'store' as const, label: 'Guardar / Organizar', color: '#2563EB', icon: Package },
+              ].map(({ id, label, color, icon: Icon }) => {
+                const isShaking = wrongId === id;
+                const isRight = locked && id === currentPark.dest;
+                const isHinted = showHint && id === currentPark.dest;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() =>
+                      id === currentPark.dest
+                        ? handleSuccess(currentPark.figureId)
+                        : handleWrong(id)
+                    }
+                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[28px] py-5 sm:py-6 px-3 sm:px-4 text-white border-4 border-white cursor-pointer ${
+                      isRight
+                        ? 'ring-4 ring-[#FFCA3A] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
+                    } ${isShaking ? 'animate-gentle-shake' : ''}`}
+                    style={{ backgroundColor: color }}
+                  >
+                    <Icon className="h-9 w-9 sm:h-11 sm:w-11" />
+                    <span className="font-display text-base sm:text-xl font-bold text-center leading-tight">
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {reward && (
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

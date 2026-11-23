@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   generateAnimalSoundQuestions,
   generateAssociationQuestions,
+  generateCategoryIntruderQuestions,
   generateCategoryRound,
   generateColorMixRounds,
   generateColorRound,
   generateCompareQuestions,
+  generateFinalLetterQuestions,
   generateInitialSyllableQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
@@ -19,19 +21,23 @@ import {
   generateShadowQuestions,
   generateShapeObjectQuestions,
   generateShapeRound,
+  generateShareQuestions,
   generateSubtractionQuestions,
   generateSyllableQuestions,
   generateWordBuilderQuestions,
 } from './gameGenerators';
 import {
+  computeNextStreak,
   createDefaultState,
   createProfile,
   getPillarTier,
   getRecommendedPillar,
+  getUnlockedAccessories,
+  pickNextGoldenSticker,
   pickNextSticker,
   validateAndNormalizeState,
 } from '../state/storage';
-import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
+import { FIGURES, LUMI_ACCESSORIES, PAINT_DRAWINGS, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
 
 describe('EduKids game generators', () => {
   it('generates age-appropriate literacy questions for 3-4 (vowels only, 3 options)', () => {
@@ -285,5 +291,47 @@ describe('EduKids game generators', () => {
     profile.stats['nature-habitats'].completedRounds = 0;
 
     expect(getRecommendedPillar(profile)).toBe('nature-habitats');
+  });
+
+  it('supports v4 album (36 stickers + golden evolution), Lumi accessories, streaks, and new generators', () => {
+    expect(STICKERS).toHaveLength(36);
+    expect(PAINT_DRAWINGS.length).toBeGreaterThanOrEqual(10);
+    expect(LUMI_ACCESSORIES.length).toBeGreaterThanOrEqual(6);
+    expect(TRACING_TEMPLATES.filter((t) => t.category === 'letra')).toHaveLength(26);
+
+    const allIds = STICKERS.map((s) => s.id);
+    const firstGolden = pickNextGoldenSticker(allIds, []);
+    expect(firstGolden).not.toBeNull();
+    expect(pickNextGoldenSticker(allIds, allIds)).toBeNull();
+
+    expect(getUnlockedAccessories(0)).toEqual(['none']);
+    expect(getUnlockedAccessories(100)).toHaveLength(LUMI_ACCESSORIES.length);
+
+    expect(computeNextStreak(undefined, 0, '2026-11-23')).toBe(1);
+    expect(computeNextStreak('2026-11-22', 2, '2026-11-23')).toBe(3);
+    expect(computeNextStreak('2026-11-23', 3, '2026-11-23')).toBe(3);
+    expect(computeNextStreak('2026-11-20', 5, '2026-11-23')).toBe(1);
+
+    const finalQs = generateFinalLetterQuestions('5-6', 4);
+    expect(finalQs).toHaveLength(4);
+    for (const q of finalQs) {
+      expect(q.options).toContain(q.correctLetter);
+      expect(q.target.name.endsWith(q.correctLetter)).toBe(true);
+    }
+
+    const shareQs = generateShareQuestions('5-6', 4);
+    expect(shareQs).toHaveLength(4);
+    for (const q of shareQs) {
+      expect(q.total).toBe(q.answer * 2);
+      expect(q.options).toContain(q.answer);
+    }
+
+    const intruderQs = generateCategoryIntruderQuestions('5-6', 4);
+    expect(intruderQs).toHaveLength(4);
+    for (const q of intruderQs) {
+      expect(q.items).toHaveLength(4);
+      expect(q.items.filter((i) => i.isIntruder)).toHaveLength(1);
+      expect(q.intruder.category).not.toBe(q.majorityCategory.id);
+    }
   });
 });

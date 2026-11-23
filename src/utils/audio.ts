@@ -5,7 +5,14 @@ let audioCtx: AudioContext | null = null;
 let masterGainNode: GainNode | null = null;
 let masterCompressorNode: DynamicsCompressorNode | null = null;
 let masterVolume = 0.85;
+let calmAudioMode = false;
 let audioUnlocked = false;
+
+/** Ativa ou desativa a suavização sonora do Modo Calmo / Sensorial. */
+export function setCalmAudioMode(enabled: boolean): void {
+  calmAudioMode = enabled;
+  setMasterVolume(masterVolume);
+}
 
 /**
  * Define o volume mestre global (0.0 a 1.0) para voz, melodia e efeitos sonoros.
@@ -13,8 +20,9 @@ let audioUnlocked = false;
 export function setMasterVolume(volume: number): void {
   const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0.85));
   masterVolume = clamped;
+  const effectiveGain = calmAudioMode ? clamped * 0.72 : clamped;
   if (masterGainNode && audioCtx) {
-    masterGainNode.gain.setTargetAtTime(clamped, audioCtx.currentTime, 0.015);
+    masterGainNode.gain.setTargetAtTime(effectiveGain, audioCtx.currentTime, 0.015);
   }
   if (currentAudio) {
     currentAudio.volume = getNormalizedVoiceVolume();
@@ -31,7 +39,8 @@ export function getMasterVolume(): number {
  * perceptivo com as notas musicais sintetizadas.
  */
 export function getNormalizedVoiceVolume(): number {
-  return Math.max(0, Math.min(1, masterVolume * 0.85));
+  const mult = calmAudioMode ? 0.72 : 0.85;
+  return Math.max(0, Math.min(1, masterVolume * mult));
 }
 
 function getAudioContext(): AudioContext | null {
@@ -211,6 +220,102 @@ export function playPitchSound(kind: 'low' | 'high', enabled = true): void {
   });
 }
 
+/**
+ * Toca uma batida rítmica de tamborzinho/palma via Web Audio API para o modo Ritmo.
+ */
+export function playRhythmBeat(enabled = true): void {
+  if (!enabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const output = getMasterOutput(ctx);
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(240, now);
+  osc.frequency.exponentialRampToValueAtTime(95, now + 0.14);
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.exponentialRampToValueAtTime(0.75, now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+  osc.connect(gain);
+  gain.connect(output);
+  osc.start(now);
+  osc.stop(now + 0.21);
+}
+
+/**
+ * Sintetiza timbres lúdicos característicos dos animais via Web Audio API.
+ */
+export function playAnimalSynthSound(animalId: string, enabled = true): void {
+  if (!enabled) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const output = getMasterOutput(ctx);
+  const now = ctx.currentTime;
+
+  const glide = (
+    startFreq: number,
+    endFreq: number,
+    startOffset: number,
+    duration: number,
+    wave: OscillatorType = 'sine',
+    vol = 0.55
+  ) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = wave;
+    osc.frequency.setValueAtTime(startFreq, now + startOffset);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(40, endFreq), now + startOffset + duration);
+    gain.gain.setValueAtTime(0.001, now + startOffset);
+    gain.gain.exponentialRampToValueAtTime(vol, now + startOffset + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + startOffset + duration);
+    osc.connect(gain);
+    gain.connect(output);
+    osc.start(now + startOffset);
+    osc.stop(now + startOffset + duration + 0.03);
+  };
+
+  switch (animalId) {
+    case 'gato':
+      glide(580, 920, 0, 0.18, 'triangle', 0.5);
+      glide(920, 520, 0.16, 0.24, 'triangle', 0.45);
+      break;
+    case 'cachorro':
+      glide(320, 170, 0, 0.13, 'sawtooth', 0.45);
+      glide(340, 165, 0.18, 0.15, 'sawtooth', 0.45);
+      break;
+    case 'pato':
+      glide(420, 290, 0, 0.14, 'square', 0.35);
+      glide(420, 290, 0.2, 0.14, 'square', 0.35);
+      break;
+    case 'sapo':
+      glide(180, 390, 0, 0.12, 'sawtooth', 0.45);
+      glide(190, 410, 0.18, 0.12, 'sawtooth', 0.45);
+      break;
+    case 'abelha':
+      glide(240, 260, 0, 0.42, 'sawtooth', 0.32);
+      break;
+    case 'ovelha':
+      glide(330, 310, 0, 0.12, 'triangle', 0.48);
+      glide(350, 320, 0.12, 0.12, 'triangle', 0.48);
+      glide(330, 290, 0.24, 0.16, 'triangle', 0.45);
+      break;
+    case 'leao':
+      glide(175, 85, 0, 0.45, 'sawtooth', 0.55);
+      break;
+    case 'passaro':
+      glide(1150, 1750, 0, 0.1, 'sine', 0.52);
+      glide(1250, 1850, 0.15, 0.11, 'sine', 0.52);
+      break;
+    case 'urso':
+      glide(130, 90, 0, 0.38, 'sawtooth', 0.52);
+      break;
+    default:
+      playSfx('pop', enabled);
+  }
+}
+
 /** Calcula o `playbackRate` dos clipes MP3 neurais por idade e velocidade selecionada. */
 export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', _ageLevel: AgeLevel = '3-4'): number {
   if (speed === 'slow') return 0.9;
@@ -275,6 +380,15 @@ const EXACT_CLIPS: Record<string, string> = {
   'a árvore precisa de luz e calor! quem ajuda?': 'p-cuidar-sol',
   'quem ajuda a levar o pólen de flor em flor?': 'p-cuidar-polen',
   'qual bichinho também mora e cuida do jardim?': 'p-cuidar-jardim',
+  'qual figura não pertence ao grupo das outras?': 'p-intruso-cat',
+  'ouça as batidas do tambor! quantas batidas você ouviu?': 'p-ritmo',
+  'hora da pausa! você brincou muito bem hoje! vamos descansar um pouquinho?': 'p-hora-pausa',
+  'o amigo caiu e ficou triste! como podemos ajudar?': 'emp-triste',
+  'o cachorrinho está com sede! como podemos ajudar?': 'emp-sede',
+  'começou a chover no parque! como podemos ajudar?': 'emp-chuva',
+  'o amigo está com fome na hora do lanche! como podemos ajudar?': 'emp-fome',
+  'está na hora de descansar! como podemos ajudar?': 'emp-sono',
+  'o jardim precisa de carinho! isso fica na natureza ou devemos guardar?': 'p-parque',
   // Complete composite sentences for Emotions, Day/Night, Habits, Routine, Weather
   'ganhou um abraço bem apertado! qual rostinho combina com essa situação?': 'emo-abraco',
   'o sorvete caiu no chão! qual rostinho combina com essa situação?': 'emo-sorvete',
@@ -345,6 +459,13 @@ const EXACT_CLIPS: Record<string, string> = {
   'avião veloz': 'stk-aviao',
   'arco-íris vivo': 'stk-arcoiris',
   'melancia doce': 'stk-melancia',
+  'ovelha nuvem': 'stk-ovelha',
+  'bola pula-pula': 'stk-bola',
+  'casinha feliz': 'stk-casa',
+  'dado mágico': 'stk-dado',
+  'pãozinho quente': 'stk-pao',
+  'mãozinha amiga': 'stk-mao',
+  'livro de histórias': 'stk-livro',
 };
 
 const PRAISE_PREFIXES = [
@@ -416,6 +537,30 @@ export function resolveAudioClips(rawText: string): string[] | null {
   let m = trimmed.match(/^Qual figura começa com a letra ([A-Z])\??$/i);
   if (m) {
     const id = `q-letra-inicial-${m[1].toLowerCase()}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Com qual letra termina a palavra (.+?)\??$/i);
+  if (m) {
+    const id = `q-letra-final-${slug(m[1])}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Vamos dividir (\d+) figuras entre dois amigos! Quantas cada um ganha\??$/i);
+  if (m) {
+    const id = `q-dividir-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Cada amigo ganha (\d+)!?$/i);
+  if (m) {
+    const id = `ans-dividir-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^(.+?) fica na natureza ou devemos guardar\??$/i);
+  if (m) {
+    const id = `q-parque-${slug(m[1])}`;
     if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 

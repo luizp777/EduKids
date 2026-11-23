@@ -73,6 +73,42 @@
   animation: confetti-fall linear forwards;
 }
 
+@keyframes star-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+.animate-star-pop {
+  animation: star-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes golden-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 202, 58, 0.45), 0 6px 0 0 rgba(217, 154, 8, 0.25); }
+  50% { box-shadow: 0 0 18px 4px rgba(255, 202, 58, 0.7), 0 6px 0 0 rgba(217, 154, 8, 0.25); }
+}
+
+.golden-shimmer {
+  animation: golden-glow 2.4s ease-in-out infinite;
+}
+
+/* Calm / Sensory Mode: soften colors & disable high-stimulation animations */
+.calm-mode {
+  filter: saturate(0.76) contrast(0.96);
+}
+
+.calm-mode .animate-float,
+.calm-mode .animate-bounce,
+.calm-mode .animate-confetti,
+.calm-mode .animate-gentle-shake,
+.calm-mode .golden-shimmer {
+  animation: none !important;
+}
+
+.calm-mode .btn-3d {
+  transition: opacity 0.2s ease;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-float,
   .animate-bounce,
@@ -99,6 +135,32 @@
   .activity-tabs-fade {
     -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
     mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 18px), transparent 100%);
+  }
+}
+
+/* Standardized responsive sub-mode tab strip: scrollable on mobile, centered multi-row wrap on sm+ */
+.activity-tabs {
+  width: 100%;
+  max-width: 64rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+  .activity-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+    overflow-x: visible;
+    gap: 0.5rem;
+    padding: 0.25rem 1rem;
   }
 }
 

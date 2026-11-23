@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Hash, Scale, Minus, ListOrdered, ArrowUpNarrowWide, Shapes } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { Plus, Hash, Scale, Minus, ListOrdered, ArrowUpNarrowWide, Shapes, Divide } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
   generateCompareQuestions,
@@ -8,6 +8,7 @@ import {
   generateNumberQuantityQuestions,
   generateOrderSizeQuestions,
   generateSequenceQuestions,
+  generateShareQuestions,
   generateSubtractionQuestions,
   pickRandom,
   type CompareQuestion,
@@ -15,6 +16,7 @@ import {
   type NumberQuantityQuestion,
   type OrderSizeQuestion,
   type SequenceQuestion,
+  type ShareQuestion,
   type SubtractionQuestion,
 } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -28,9 +30,9 @@ interface Props {
   onBack: () => void;
 }
 
-type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence' | 'order' | 'quantity';
+type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence' | 'order' | 'quantity' | 'share';
 
-/** Atividade de Matemática: Contar, Somar, Comparar, Subtrair, Sequência, Ordem e Quantidades. */
+/** Atividade de Matemática: Contar, Somar, Comparar, Subtrair, Sequência, Ordem, Quantidades e Dividir. */
 export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<MathMode>('count');
@@ -52,6 +54,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const [quantityQs, setQuantityQs] = useState<NumberQuantityQuestion[]>(() =>
     generateNumberQuantityQuestions(activeProfile.ageLevel, 4)
   );
+  const [shareQs, setShareQs] = useState<ShareQuestion[]>(() =>
+    generateShareQuestions(activeProfile.ageLevel, 4)
+  );
   const [pickedOrderIds, setPickedOrderIds] = useState<string[]>([]);
 
   const [step, setStep] = useState(0);
@@ -59,10 +64,11 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const [feedback, setFeedback] = useState('');
   const [wrongOpt, setWrongOpt] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
-  const showHint = wrongAttempts >= 2 && !locked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
 
   const totalSteps =
     mode === 'compare'
@@ -75,7 +81,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
             ? orderQs.length
             : mode === 'quantity'
               ? quantityQs.length
-              : questions.length;
+              : mode === 'share'
+                ? shareQs.length
+                : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'compare') return compareQs[step]?.spokenPrompt || '';
@@ -83,6 +91,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'sequence') return seqQs[step]?.spokenPrompt || '';
     if (mode === 'order') return orderQs[step]?.spokenPrompt || '';
     if (mode === 'quantity') return quantityQs[step]?.spokenPrompt || '';
+    if (mode === 'share') return shareQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
 
@@ -92,6 +101,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'sequence') return seqQs[step]?.promptText || '';
     if (mode === 'order') return orderQs[step]?.promptText || '';
     if (mode === 'quantity') return quantityQs[step]?.promptText || '';
+    if (mode === 'share') return shareQs[step]?.promptText || '';
     return questions[step]?.promptText || '';
   };
 
@@ -101,7 +111,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, compareQs, subQs, seqQs, orderQs, quantityQs]);
+  }, [mode, step, questions, compareQs, subQs, seqQs, orderQs, quantityQs, shareQs]);
 
   const resetMode = (nextMode: MathMode) => {
     clearAll();
@@ -111,6 +121,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     setFeedback('');
     setWrongOpt(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setLocked(false);
     setReward(null);
     setPickedOrderIds([]);
@@ -124,6 +135,8 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
       setSeqQs(generateSequenceQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'quantity') {
       setQuantityQs(generateNumberQuantityQuestions(activeProfile.ageLevel, 4));
+    } else if (nextMode === 'share') {
+      setShareQs(generateShareQuestions(activeProfile.ageLevel, 4));
     } else {
       setOrderQs(generateOrderSizeQuestions(activeProfile.ageLevel, 4));
     }
@@ -147,6 +160,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setWrongAttempts(0);
+        setManualHint(false);
         setLocked(false);
         setPickedOrderIds([]);
       }
@@ -170,6 +184,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const currentSeq = seqQs[step];
   const currentOrder = orderQs[step];
   const currentQty = quantityQs[step];
+  const currentShare = shareQs[step];
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#EDF6FF] to-[#FFF9F0]">
@@ -180,11 +195,16 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
+        onRequestHint={() => {
+          sfx('pop');
+          setManualHint(true);
+        }}
+        hintActive={showHint}
         accentColor="#4D96FF"
       />
 
-      {/* Sub-mode tabs: horizontal scroll on phones, centered on tablet/laptop */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      {/* Sub-mode tabs: horizontal scroll on phones, centered wrap on tablet/laptop */}
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'count' as MathMode, label: 'Contar', icon: Hash },
           { id: 'addition' as MathMode, label: 'Somar', icon: Plus },
@@ -193,6 +213,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'sequence' as MathMode, label: 'Sequência', icon: ListOrdered },
           { id: 'order' as MathMode, label: 'Ordem', icon: ArrowUpNarrowWide },
           { id: 'quantity' as MathMode, label: 'Quantidades', icon: Shapes },
+          { id: 'share' as MathMode, label: 'Dividir', icon: Divide },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -209,7 +230,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -533,6 +554,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     if (item.value === expectedVal) {
                       sfx('pop');
                       setWrongAttempts(0);
+                      setManualHint(false);
                       const next = [...pickedOrderIds, item.id];
                       setPickedOrderIds(next);
                       if (next.length >= currentOrder.expectedOrder.length) {
@@ -608,12 +630,83 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
         )}
+        {mode === 'share' && currentShare && (
+          <div className="activity-split">
+            <div className="w-full max-w-xl rounded-[28px] sm:rounded-[32px] bg-white border-4 border-blue-100 p-4 sm:p-5 card-3d flex flex-col items-center gap-3">
+              <div className="grid grid-cols-2 gap-3 w-full">
+                {[0, 1].map((basketIdx) => (
+                  <div
+                    key={basketIdx}
+                    className={`rounded-2xl p-2.5 sm:p-3 border-2 flex flex-col items-center gap-2 ${
+                      basketIdx === 0
+                        ? 'bg-purple-50 border-purple-200'
+                        : 'bg-sky-50 border-sky-200'
+                    }`}
+                  >
+                    <span className="font-display text-xs sm:text-sm font-bold text-slate-600">
+                      {basketIdx === 0 ? 'Cesta da Lumi' : 'Cesta do Amigo'}
+                    </span>
+                    <div className="flex flex-wrap items-center justify-center gap-1">
+                      {Array.from({ length: currentShare.answer }).map((_, i) => (
+                        <FigureSvg
+                          key={i}
+                          figureId={currentShare.figure.id}
+                          size={currentShare.answer > 3 ? 38 : 48}
+                          className="sm:w-[52px] sm:h-[52px]"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <span className="text-xs sm:text-sm font-extrabold text-blue-600">
+                Total: {currentShare.total} figuras divididas igualmente
+              </span>
+            </div>
+
+            <div
+              className={`grid w-full max-w-lg gap-2.5 sm:gap-4 ${
+                currentShare.options.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-2'
+              }`}
+            >
+              {currentShare.options.map((num) => {
+                const isShaking = wrongOpt === String(num);
+                const isRight = locked && num === currentShare.answer;
+                const isHinted = showHint && num === currentShare.answer;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (num === currentShare.answer) {
+                        triggerSuccess(`Cada amigo ganha ${currentShare.answer}!`);
+                      } else {
+                        triggerWrong(String(num));
+                      }
+                    }}
+                    className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-4xl sm:text-5xl font-bold border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {reward && (
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Sparkles, Eye, Search, FolderKanban, Puzzle, Check, Link2, Grid2x2 } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { Sparkles, Eye, Search, FolderKanban, Puzzle, Check, Link2, Grid2x2, Filter } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import {
   generateAssociationQuestions,
+  generateCategoryIntruderQuestions,
   generateCategoryRound,
   generateMatrixLogicQuestions,
   generateOddOneOutQuestions,
@@ -11,6 +12,7 @@ import {
   pickRandom,
   shuffle,
   type AssociationQuestion,
+  type CategoryIntruderQuestion,
   type CategorySortRound,
   type MatrixLogicQuestion,
   type OddOneOutQuestion,
@@ -27,7 +29,15 @@ interface Props {
   onBack: () => void;
 }
 
-type LogicMode = 'memory' | 'shadow' | 'odd' | 'category' | 'puzzle' | 'match' | 'matrix';
+type LogicMode =
+  | 'memory'
+  | 'shadow'
+  | 'odd'
+  | 'category'
+  | 'category-intruder'
+  | 'puzzle'
+  | 'match'
+  | 'matrix';
 
 interface MemoryCard {
   uid: string;
@@ -73,13 +83,13 @@ function getPuzzleViewBox(pieceIdx: number, cols: number, rows: number): string 
   return `${(col * w).toFixed(2)} ${(row * h).toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`;
 }
 
-/** Atividade de Figuras e Lógica: Memória, Sombras, Diferente, Grupos, Quebra-Cabeça, Combinar e Matriz. */
+/** Atividade de Figuras e Lógica: Memória, Sombras, Diferente, Grupos, Intruso, Quebra-Cabeça, Combinar e Matriz. */
 export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<LogicMode>('memory');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
 
   // Memory state
@@ -96,8 +106,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   const [shadowStep, setShadowStep] = useState(0);
   const [wrongId, setWrongId] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [stepLocked, setStepLocked] = useState(false);
-  const showHint = wrongAttempts >= 2 && !stepLocked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !stepLocked;
 
   // Odd one out state
   const [oddQs, setOddQs] = useState<OddOneOutQuestion[]>(() =>
@@ -110,6 +121,12 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     generateCategoryRound(activeProfile.ageLevel)
   );
   const [catIndex, setCatIndex] = useState(0);
+
+  // Semantic category intruder state
+  const [intruderQs, setIntruderQs] = useState<CategoryIntruderQuestion[]>(() =>
+    generateCategoryIntruderQuestions(activeProfile.ageLevel, 4)
+  );
+  const [intruderStep, setIntruderStep] = useState(0);
 
   // Jigsaw puzzle state
   const [puzzle, setPuzzle] = useState<PuzzleState>(() =>
@@ -133,6 +150,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'memory') return 'Encontre os pares de figuras iguais!';
     if (mode === 'shadow') return 'De qual figura é esta sombra?';
     if (mode === 'odd') return 'Qual figura é diferente das outras?';
+    if (mode === 'category-intruder') return intruderQs[intruderStep]?.spokenPrompt || '';
     if (mode === 'category') {
       const item = catRound.items[catIndex];
       return item
@@ -147,7 +165,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   useEffect(() => {
     if (!reward) say(getPrompt());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, shadowStep, oddStep, catIndex, assocStep, matrixStep, puzzle.figure.id]);
+  }, [mode, shadowStep, oddStep, catIndex, intruderStep, assocStep, matrixStep, puzzle.figure.id]);
 
   const resetMode = (nextMode: LogicMode) => {
     clearAll();
@@ -157,6 +175,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     setReward(null);
     setWrongId(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setStepLocked(false);
     if (nextMode === 'memory') {
       setDeck(createMemoryDeck(pairCount));
@@ -172,6 +191,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     } else if (nextMode === 'category') {
       setCatRound(generateCategoryRound(activeProfile.ageLevel));
       setCatIndex(0);
+    } else if (nextMode === 'category-intruder') {
+      setIntruderQs(generateCategoryIntruderQuestions(activeProfile.ageLevel, 4));
+      setIntruderStep(0);
     } else if (nextMode === 'match') {
       setAssocQs(generateAssociationQuestions(activeProfile.ageLevel, 4));
       setAssocStep(0);
@@ -245,6 +267,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setStepLocked(false);
         }
       }, 1200);
@@ -279,6 +302,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setStepLocked(false);
         }
       }, 1200);
@@ -315,6 +339,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setStepLocked(false);
         }
       }, 950);
@@ -375,11 +400,13 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           ? oddStep
           : mode === 'category'
             ? catIndex
-            : mode === 'match'
-              ? assocStep
-              : mode === 'matrix'
-                ? matrixStep
-                : puzzle.order.filter((piece, idx) => piece === idx).length;
+            : mode === 'category-intruder'
+              ? intruderStep
+              : mode === 'match'
+                ? assocStep
+                : mode === 'matrix'
+                  ? matrixStep
+                  : puzzle.order.filter((piece, idx) => piece === idx).length;
 
   const progressTotal =
     mode === 'memory'
@@ -390,11 +417,13 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           ? oddQs.length
           : mode === 'category'
             ? catRound.items.length
-            : mode === 'match'
-              ? assocQs.length
-              : mode === 'matrix'
-                ? matrixQs.length
-                : puzzle.order.length;
+            : mode === 'category-intruder'
+              ? intruderQs.length
+              : mode === 'match'
+                ? assocQs.length
+                : mode === 'matrix'
+                  ? matrixQs.length
+                  : puzzle.order.length;
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#F5EEFF] to-[#FFF9F0]">
@@ -405,16 +434,26 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getPrompt())}
+        onRequestHint={
+          mode !== 'memory' && mode !== 'puzzle'
+            ? () => {
+                sfx('pop');
+                setManualHint(true);
+              }
+            : undefined
+        }
+        hintActive={showHint}
         accentColor="#9B5DE5"
       />
 
-      {/* Sub-mode tabs: horizontal scroll on phones, centered on tablet/laptop */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      {/* Sub-mode tabs: horizontal scroll on phones, centered wrap on tablet/laptop */}
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'memory' as LogicMode, label: 'Memória', icon: Sparkles },
           { id: 'shadow' as LogicMode, label: 'Sombras', icon: Eye },
           { id: 'odd' as LogicMode, label: 'Diferente', icon: Search },
           { id: 'category' as LogicMode, label: 'Grupos', icon: FolderKanban },
+          { id: 'category-intruder' as LogicMode, label: 'Intruso', icon: Filter },
           { id: 'puzzle' as LogicMode, label: 'Quebra-Cabeça', icon: Puzzle },
           { id: 'match' as LogicMode, label: 'Combinar', icon: Link2 },
           { id: 'matrix' as LogicMode, label: 'Matriz', icon: Grid2x2 },
@@ -434,7 +473,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -698,6 +737,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                             setMood('happy');
                             setFeedback('');
                             setWrongAttempts(0);
+                            setManualHint(false);
                             setStepLocked(false);
                           }
                         }, 1150);
@@ -792,6 +832,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                             setMood('happy');
                             setFeedback('');
                             setWrongAttempts(0);
+                            setManualHint(false);
                             setStepLocked(false);
                           }
                         }, 1150);
@@ -824,12 +865,82 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
         )}
+        {mode === 'category-intruder' && intruderQs[intruderStep] && (
+          <div className="w-full max-w-2xl flex flex-col items-center gap-3 sm:gap-4">
+            <span
+              className="rounded-full px-4 py-1 font-display text-xs sm:text-sm font-bold text-white shadow-xs"
+              style={{ backgroundColor: intruderQs[intruderStep].majorityCategory.colorHex }}
+            >
+              Grupo: {intruderQs[intruderStep].majorityCategory.label}
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full">
+              {intruderQs[intruderStep].items.map(({ figure, isIntruder }) => {
+                const isShaking = wrongId === figure.id;
+                const isRight = stepLocked && isIntruder;
+                const isHinted = showHint && isIntruder;
+                return (
+                  <button
+                    key={figure.id}
+                    type="button"
+                    disabled={stepLocked}
+                    onClick={() => {
+                      if (isIntruder) {
+                        setStepLocked(true);
+                        setMood('excited');
+                        sfx('success');
+                        recordCorrectAnswer('figures-logic');
+                        const praise = pickRandom(CELEBRATE_PHRASES);
+                        setFeedback(`${praise} ${figure.name} não é do grupo!`);
+                        say(`${praise} ${figure.name.toLowerCase()}!`);
+                        schedule(() => {
+                          if (intruderStep + 1 >= intruderQs.length) {
+                            sfx('celebration');
+                            setReward(completeRound('figures-logic', 3));
+                          } else {
+                            setIntruderStep((s) => s + 1);
+                            setMood('happy');
+                            setFeedback('');
+                            setWrongAttempts(0);
+                            setManualHint(false);
+                            setStepLocked(false);
+                          }
+                        }, 1200);
+                      } else {
+                        sfx('encourage');
+                        setMood('encouraging');
+                        setWrongId(figure.id);
+                        setWrongAttempts((c) => c + 1);
+                        const phrase = pickRandom(ENCOURAGE_PHRASES);
+                        setFeedback(phrase);
+                        say(phrase);
+                        schedule(() => setWrongId(null), 480);
+                      }
+                    }}
+                    className={`btn-3d flex flex-col items-center justify-center gap-1.5 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-purple-100 hover:border-purple-300'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    <FigureSvg figureId={figure.id} size={68} className="sm:w-[84px] sm:h-[84px]" />
+                    <span className="font-display text-xs sm:text-base font-bold text-slate-700 truncate max-w-full">
+                      {figure.name}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {reward && (
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

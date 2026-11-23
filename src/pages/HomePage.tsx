@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Star,
   Sparkles,
@@ -16,10 +16,13 @@ import {
   Award,
   CheckCircle2,
   ChevronRight,
+  Flame,
+  Crown,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { getPillarTier } from '../state/storage';
-import { PILLARS, STICKERS } from '../data/catalog';
+import { LUMI_ACCESSORIES, PILLARS, STICKERS } from '../data/catalog';
 import type { PillarId } from '../types';
 import { LumiMascot } from '../components/illustrations/LumiMascot';
 import { AvatarSvg } from '../components/illustrations/AvatarSvg';
@@ -58,10 +61,12 @@ export const HomePage: React.FC<HomePageProps> = ({
     dailyBonusClaimed,
     setActiveProfile,
     updateProfile,
+    setLumiAccessory,
     updateAudio,
     say,
     sfx,
   } = useApp();
+  const [showLumiWardrobe, setShowLumiWardrobe] = useState(false);
 
   const dailyPillarMeta = PILLARS.find((p) => p.id === recommendedPillar) || PILLARS[0];
   const DailyIcon = PILLAR_ICONS[dailyPillarMeta.id];
@@ -91,36 +96,36 @@ export const HomePage: React.FC<HomePageProps> = ({
   return (
     <div className="min-h-dvh bg-gradient-to-b from-[#EDE9FE] via-[#FFF9F0] to-[#FFF9F0] pb-10">
       {/* Top Bar */}
-      <header className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-5 pb-2 flex items-center justify-between gap-2 flex-wrap">
+      <header className="max-w-6xl mx-auto px-2.5 sm:px-6 pt-3 sm:pt-5 pb-2 flex items-center justify-between gap-1.5 sm:gap-2">
         {/* Active Child Pill */}
-        <div className="flex items-center gap-2 rounded-full bg-white border-2 border-purple-200 pl-1.5 pr-3 py-1 shadow-sm">
+        <div className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-white border-2 border-purple-200 pl-1 pr-2 sm:pl-1.5 sm:pr-3 py-1 shadow-sm min-w-0">
           <button
             type="button"
             onClick={handleSwitchProfile}
-            className={`flex items-center gap-2 text-left ${
+            className={`flex items-center gap-1.5 sm:gap-2 text-left min-w-0 ${
               state.profiles.length > 1 ? 'cursor-pointer hover:opacity-85' : 'cursor-default'
             }`}
             title={state.profiles.length > 1 ? 'Trocar perfil' : activeProfile.name}
             aria-label={state.profiles.length > 1 ? 'Trocar perfil da criança' : activeProfile.name}
           >
-            <AvatarSvg avatar={activeProfile.avatar} size={40} />
-            <div className="font-display text-sm sm:text-lg font-bold text-slate-800 leading-tight">
+            <AvatarSvg avatar={activeProfile.avatar} size={36} className="sm:w-10 sm:h-10 shrink-0" />
+            <div className="font-display text-sm sm:text-lg font-bold text-slate-800 leading-tight truncate max-w-[78px] sm:max-w-none">
               {activeProfile.name}
             </div>
           </button>
           <button
             type="button"
             onClick={handleToggleAgeLevel}
-            className="rounded-full bg-purple-100 hover:bg-purple-200 px-2.5 py-0.5 text-[11px] sm:text-xs font-extrabold text-[#6C5CE7] cursor-pointer transition-colors"
+            className="shrink-0 rounded-full bg-purple-100 hover:bg-purple-200 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-extrabold text-[#6C5CE7] cursor-pointer transition-colors"
             title="Alternar faixa etária (3–4 ou 5–6 anos)"
           >
-            {activeProfile.ageLevel === '3-4' ? '3–4 anos' : '5–6 anos'}
+            {activeProfile.ageLevel === '3-4' ? '3–4a' : '5–6a'}
           </button>
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <div className="flex items-center gap-1 rounded-2xl bg-[#FFF3BF] border-2 border-[#FFCA3A] px-2.5 sm:px-3.5 py-1.5 sm:py-2 font-display text-base sm:text-lg font-bold text-[#A67800]">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 rounded-2xl bg-[#FFF3BF] border-2 border-[#FFCA3A] px-2 sm:px-3.5 py-1.5 sm:py-2 font-display text-sm sm:text-lg font-bold text-[#A67800]">
             <Star className="h-4 w-4 sm:h-5 sm:w-5 fill-[#FFCA3A] text-[#E0A800]" />
             <span>{activeProfile.stars}</span>
           </div>
@@ -131,12 +136,12 @@ export const HomePage: React.FC<HomePageProps> = ({
               sfx('pop');
               onOpenAlbum();
             }}
-            className="btn-3d flex items-center gap-1.5 rounded-2xl bg-[#FFCA3A] px-2.5 sm:px-3.5 py-1.5 sm:py-2 font-display text-sm sm:text-base font-bold text-[#5C4100] cursor-pointer"
+            className="btn-3d flex items-center gap-1 sm:gap-1.5 rounded-2xl bg-[#FFCA3A] px-2 sm:px-3.5 py-1.5 sm:py-2 font-display text-xs sm:text-base font-bold text-[#5C4100] cursor-pointer"
             aria-label="Álbum de Figurinhas"
           >
             <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" />
             <span className="hidden sm:inline">Álbum</span>
-            <span className="text-xs bg-white/60 rounded-full px-2 py-0.5">
+            <span className="text-[11px] sm:text-xs bg-white/60 rounded-full px-1.5 sm:px-2 py-0.5">
               {activeProfile.unlockedStickers.length}/{STICKERS.length}
             </span>
           </button>
@@ -148,21 +153,21 @@ export const HomePage: React.FC<HomePageProps> = ({
               updateAudio({ voiceEnabled: next });
               if (next) say('Som ligado!');
             }}
-            className="btn-3d flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-white border-2 border-slate-200 text-slate-600 cursor-pointer"
+            className="btn-3d flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-white border-2 border-slate-200 text-slate-600 cursor-pointer"
             aria-label={state.audio.voiceEnabled ? 'Silenciar voz' : 'Ativar voz'}
             title={state.audio.voiceEnabled ? 'Voz ativa' : 'Voz desligada'}
           >
             {state.audio.voiceEnabled ? (
-              <Volume2 className="h-5 w-5 text-[#6C5CE7]" />
+              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5 text-[#6C5CE7]" />
             ) : (
-              <VolumeX className="h-5 w-5 text-slate-400" />
+              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
             )}
           </button>
 
           <button
             type="button"
             onClick={onRequestParents}
-            className="flex items-center gap-1.5 rounded-2xl bg-white/80 border border-slate-300 px-2.5 sm:px-3 py-2 text-xs font-extrabold text-slate-500 hover:bg-white hover:text-slate-700 cursor-pointer"
+            className="flex h-9 sm:h-auto items-center gap-1.5 rounded-2xl bg-white/80 border border-slate-300 px-2 sm:px-3 py-2 text-xs font-extrabold text-slate-500 hover:bg-white hover:text-slate-700 cursor-pointer"
             aria-label="Área dos Pais"
           >
             <Settings className="h-4 w-4" />
@@ -173,29 +178,90 @@ export const HomePage: React.FC<HomePageProps> = ({
 
       {/* Hero Greeting with Lumi + Aventura do Dia */}
       <section className="max-w-6xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-6 flex flex-col lg:flex-row gap-3 sm:gap-4">
-        <button
-          type="button"
-          onClick={handleMascotTap}
-          className="flex-1 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-purple-100 p-4 sm:p-6 card-3d flex items-center gap-3 sm:gap-5 text-left hover:border-purple-200 transition-colors cursor-pointer"
-        >
-          <div className="shrink-0 sm:hidden">
-            <LumiMascot mood="happy" size={72} />
+        <div className="flex-1 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-purple-100 p-4 sm:p-6 card-3d flex flex-col gap-3">
+          <div className="flex items-center gap-3 sm:gap-5">
+            <button
+              type="button"
+              onClick={handleMascotTap}
+              className="shrink-0 cursor-pointer"
+              aria-label="Ouvir a Lumi"
+            >
+              <div className="sm:hidden">
+                <LumiMascot mood="happy" accessory={activeProfile.lumiAccessory} size={72} />
+              </div>
+              <div className="hidden sm:block">
+                <LumiMascot mood="happy" accessory={activeProfile.lumiAccessory} size={92} />
+              </div>
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="inline-block rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
+                  EduKids • Brincar e Aprender
+                </span>
+                {(activeProfile.streakDays || 0) > 0 && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-[11px] font-extrabold text-orange-700"
+                    title={`${activeProfile.streakDays} ${activeProfile.streakDays === 1 ? 'dia seguido' : 'dias seguidos'} brincando!`}
+                  >
+                    <Flame className="h-3 w-3 fill-orange-500 text-orange-600" />
+                    {activeProfile.streakDays}d
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx('pop');
+                    setShowLumiWardrobe((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 hover:bg-amber-200 px-2.5 py-0.5 text-[11px] font-extrabold text-amber-800 cursor-pointer transition-colors"
+                >
+                  <Crown className="h-3 w-3" />
+                  Vestir Lumi
+                </button>
+              </div>
+              <h1
+                onClick={handleMascotTap}
+                className="mt-1 font-display text-xl sm:text-3xl font-bold text-slate-800 leading-tight cursor-pointer"
+              >
+                Oi, {activeProfile.name}! O que vamos aprender hoje?
+              </h1>
+              <p className="mt-1 text-xs sm:text-base font-bold text-slate-500">
+                Toque em uma aventura abaixo ou toque na Lumi para ouvir!
+              </p>
+            </div>
           </div>
-          <div className="hidden sm:block shrink-0">
-            <LumiMascot mood="happy" size={92} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <span className="inline-block rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
-              EduKids • Brincar e Aprender
-            </span>
-            <h1 className="mt-1 font-display text-xl sm:text-3xl font-bold text-slate-800 leading-tight">
-              Oi, {activeProfile.name}! O que vamos aprender hoje?
-            </h1>
-            <p className="mt-1 text-xs sm:text-base font-bold text-slate-500">
-              Toque em uma aventura abaixo ou toque na Lumi para ouvir!
-            </p>
-          </div>
-        </button>
+
+          {showLumiWardrobe && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 border-t border-purple-100">
+              {LUMI_ACCESSORIES.map((acc) => {
+                const unlocked = activeProfile.stars >= acc.minStars;
+                const equipped = (activeProfile.lumiAccessory || 'none') === acc.id;
+                return (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    disabled={!unlocked}
+                    onClick={() => {
+                      sfx('success');
+                      setLumiAccessory(acc.id);
+                    }}
+                    className={`shrink-0 flex items-center gap-1.5 rounded-2xl px-3 py-1.5 text-xs font-extrabold border-2 transition-colors ${
+                      equipped
+                        ? 'bg-[#6C5CE7] text-white border-[#6C5CE7]'
+                        : unlocked
+                          ? 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 cursor-pointer'
+                          : 'bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed'
+                    }`}
+                  >
+                    {!unlocked && <Lock className="h-3 w-3" />}
+                    <span>{acc.name}</span>
+                    {!unlocked && <span className="text-[10px]">({acc.minStars}★)</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <button
           type="button"

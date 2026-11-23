@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Music, Sparkles, Volume2, AudioWaveform, Play } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { Music, Sparkles, Volume2, AudioWaveform, Play, Drum } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
-import { playMusicalNote, playPitchSound } from '../../utils/audio';
+import {
+  playAnimalSynthSound,
+  playMusicalNote,
+  playPitchSound,
+  playRhythmBeat,
+} from '../../utils/audio';
 import { generateAnimalSoundQuestions, pickRandom, shuffle, type AnimalSoundQuestion } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
 import type { MascotMood } from '../../types';
@@ -15,7 +20,7 @@ interface Props {
   onBack: () => void;
 }
 
-type MusicMode = 'xylophone' | 'simon' | 'animals' | 'pitch';
+type MusicMode = 'xylophone' | 'simon' | 'animals' | 'pitch' | 'rhythm';
 
 const XYLOPHONE_KEYS = [
   { note: 'Dó', color: '#FF595E', heightClass: 'h-48 sm:h-56' },
@@ -76,14 +81,19 @@ function createSimonSequence(length: number): number[] {
   return Array.from({ length }, () => Math.floor(Math.random() * 5));
 }
 
-/** Atividade de Música e Sons: Xilofone Mágico, Memória Musical e Sons dos Bichos. */
+function createRhythmRounds(ageLevel: '3-4' | '5-6', count = 4): number[] {
+  const pool = ageLevel === '3-4' ? [2, 3, 4, 2] : [2, 3, 4, 5];
+  return shuffle(pool).slice(0, count);
+}
+
+/** Atividade de Música e Sons: Xilofone Mágico, Memória Musical, Sons dos Bichos, Grave/Agudo e Ritmo. */
 export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   const { state, activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<MusicMode>('xylophone');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
   const [activeKey, setActiveKey] = useState<number | null>(null);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
 
   // Xylophone guided melody progress
@@ -109,10 +119,35 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   const [pitchQs, setPitchQs] = useState<PitchQuestion[]>(() => createPitchQuestions(4));
   const [pitchStep, setPitchStep] = useState(0);
 
+  // Rhythm (batidas do tambor) state
+  const [rhythmQs, setRhythmQs] = useState<number[]>(() =>
+    createRhythmRounds(activeProfile.ageLevel, 4)
+  );
+  const [rhythmStep, setRhythmStep] = useState(0);
+  const [rhythmPlaying, setRhythmPlaying] = useState(false);
+  const [rhythmPulse, setRhythmPulse] = useState(false);
+
   const [wrongId, setWrongId] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [locked, setLocked] = useState(false);
-  const showHint = wrongAttempts >= 2 && !locked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
+
+  const playRhythmPattern = (beats: number) => {
+    clearAll();
+    setRhythmPlaying(true);
+    const stepMs = 460;
+    for (let i = 0; i < beats; i++) {
+      schedule(() => {
+        setRhythmPulse(true);
+        playRhythmBeat(state.audio.sfxEnabled);
+        schedule(() => setRhythmPulse(false), 200);
+      }, 200 + i * stepMs);
+    }
+    schedule(() => {
+      setRhythmPlaying(false);
+    }, 200 + beats * stepMs + 220);
+  };
 
   const playSongDemo = () => {
     clearAll();
@@ -172,11 +207,22 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
           schedule(() => playPitchSound(pitchQs[pitchStep].kind, state.audio.sfxEnabled), 250);
         },
       });
+    } else if (mode === 'rhythm' && rhythmQs[rhythmStep]) {
+      say('Ouça as batidas do tambor! Quantas batidas você ouviu?', {
+        onEnd: () => {
+          schedule(() => playRhythmPattern(rhythmQs[rhythmStep]), 200);
+        },
+      });
     } else if (animalQs[animalStep]) {
-      say(animalQs[animalStep].spokenPrompt);
+      const targetId = animalQs[animalStep].target.id;
+      say(animalQs[animalStep].spokenPrompt, {
+        onEnd: () => {
+          schedule(() => playAnimalSynthSound(targetId, state.audio.sfxEnabled), 180);
+        },
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, animalStep, pitchStep]);
+  }, [mode, animalStep, pitchStep, rhythmStep]);
 
   const resetMode = (nextMode: MusicMode) => {
     clearAll();
@@ -188,6 +234,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     setReward(null);
     setWrongId(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setLocked(false);
 
     if (nextMode === 'xylophone') {
@@ -200,6 +247,9 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     } else if (nextMode === 'pitch') {
       setPitchQs(createPitchQuestions(4));
       setPitchStep(0);
+    } else if (nextMode === 'rhythm') {
+      setRhythmQs(createRhythmRounds(activeProfile.ageLevel, 4));
+      setRhythmStep(0);
     } else {
       setAnimalQs(generateAnimalSoundQuestions(activeProfile.ageLevel, 4));
       setAnimalStep(0);
@@ -294,6 +344,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setLocked(false);
         }
       }, 1250);
@@ -313,12 +364,14 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'xylophone') return 'Toque nas teclas ou siga a estrelinha!';
     if (mode === 'simon') return 'Ouça e repita a melodia nas teclas!';
     if (mode === 'pitch') return 'Esse som é grave (elefante) ou agudo (pássaro)?';
+    if (mode === 'rhythm') return 'Quantas batidas do tambor você ouviu?';
     return animalQs[animalStep]?.spokenPrompt || '';
   };
 
   const getSpokenPrompt = () => {
     if (mode === 'xylophone') return 'Toque nas teclas coloridas para fazer música!';
     if (mode === 'pitch') return pitchQs[pitchStep]?.spokenPrompt || '';
+    if (mode === 'rhythm') return 'Ouça as batidas do tambor! Quantas batidas você ouviu?';
     return getPromptText();
   };
 
@@ -329,7 +382,9 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
         ? simonRound
         : mode === 'pitch'
           ? pitchStep
-          : animalStep;
+          : mode === 'rhythm'
+            ? rhythmStep
+            : animalStep;
   const progressTotal =
     mode === 'xylophone'
       ? currentSong.notes.length
@@ -337,7 +392,9 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
         ? 3
         : mode === 'pitch'
           ? pitchQs.length
-          : animalQs.length;
+          : mode === 'rhythm'
+            ? rhythmQs.length
+            : animalQs.length;
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#FFEAF4] to-[#FFF9F0]">
@@ -348,18 +405,32 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() =>
-          mode === 'simon' ? playSimonSequence(simonSeq) : say(getSpokenPrompt())
+          mode === 'simon'
+            ? playSimonSequence(simonSeq)
+            : mode === 'rhythm'
+              ? playRhythmPattern(rhythmQs[rhythmStep])
+              : say(getSpokenPrompt())
         }
+        onRequestHint={
+          mode === 'animals' || mode === 'pitch' || mode === 'rhythm'
+            ? () => {
+                sfx('pop');
+                setManualHint(true);
+              }
+            : undefined
+        }
+        hintActive={showHint}
         accentColor="#F15BB5"
       />
 
-      {/* Sub-mode tabs: horizontal scroll on phones, centered on tablet/laptop */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      {/* Sub-mode tabs: horizontal scroll on phones, centered wrap on tablet/laptop */}
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'xylophone' as MusicMode, label: 'Xilofone', icon: Music },
           { id: 'simon' as MusicMode, label: 'Melodia', icon: Sparkles },
           { id: 'animals' as MusicMode, label: 'Sons dos Bichos', icon: Volume2 },
           { id: 'pitch' as MusicMode, label: 'Grave ou Agudo', icon: AudioWaveform },
+          { id: 'rhythm' as MusicMode, label: 'Ritmo', icon: Drum },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -376,7 +447,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -469,7 +540,10 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
           <div className="activity-split">
             <button
               type="button"
-              onClick={() => say(animalQs[animalStep].spokenPrompt)}
+              onClick={() => {
+                playAnimalSynthSound(animalQs[animalStep].target.id, state.audio.sfxEnabled);
+                schedule(() => say(animalQs[animalStep].spokenPrompt), 380);
+              }}
               className="btn-3d flex items-center gap-3 rounded-[24px] sm:rounded-[28px] bg-[#F15BB5] px-6 py-3.5 sm:px-8 sm:py-4 text-white border-4 border-white cursor-pointer shrink-0"
             >
               <Volume2 className="h-7 w-7 sm:h-8 sm:w-8" />
@@ -557,6 +631,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                             setMood('happy');
                             setFeedback('');
                             setWrongAttempts(0);
+                            setManualHint(false);
                             setLocked(false);
                           }
                         }, 1150);
@@ -590,12 +665,95 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
             </div>
           </div>
         )}
+        {mode === 'rhythm' && rhythmQs[rhythmStep] && (
+          <div className="activity-split">
+            <button
+              type="button"
+              disabled={rhythmPlaying}
+              onClick={() => playRhythmPattern(rhythmQs[rhythmStep])}
+              className={`btn-3d flex flex-col items-center gap-2 rounded-[28px] bg-[#F15BB5] px-7 py-5 text-white border-4 border-white cursor-pointer shrink-0 transition-transform ${
+                rhythmPulse ? 'scale-110 ring-4 ring-amber-300' : ''
+              }`}
+            >
+              <Drum className="h-12 w-12 sm:h-14 sm:w-14" />
+              <span className="font-display text-lg sm:text-2xl font-bold">
+                {rhythmPlaying ? 'Ouvindo...' : 'Tocar Ritmo'}
+              </span>
+            </button>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-4 w-full max-w-md">
+              {(activeProfile.ageLevel === '3-4' ? [1, 2, 3, 4] : [2, 3, 4, 5]).map((count) => {
+                const isShaking = wrongId === String(count);
+                const isRight = locked && count === rhythmQs[rhythmStep];
+                const isHinted = showHint && count === rhythmQs[rhythmStep];
+                return (
+                  <button
+                    key={count}
+                    type="button"
+                    disabled={locked || rhythmPlaying}
+                    onClick={() => {
+                      if (count === rhythmQs[rhythmStep]) {
+                        setLocked(true);
+                        setMood('excited');
+                        sfx('success');
+                        recordCorrectAnswer('music-sounds');
+                        const praise = pickRandom(CELEBRATE_PHRASES);
+                        setFeedback(`${praise} São ${count} batidas!`);
+                        say(`${praise} São ${count}!`);
+                        schedule(() => {
+                          if (rhythmStep + 1 >= rhythmQs.length) {
+                            sfx('celebration');
+                            setReward(completeRound('music-sounds', 3));
+                          } else {
+                            setRhythmStep((s) => s + 1);
+                            setMood('happy');
+                            setFeedback('');
+                            setWrongAttempts(0);
+                            setManualHint(false);
+                            setLocked(false);
+                          }
+                        }, 1200);
+                      } else {
+                        sfx('encourage');
+                        setMood('encouraging');
+                        setWrongId(String(count));
+                        setWrongAttempts((c) => c + 1);
+                        const phrase = pickRandom(ENCOURAGE_PHRASES);
+                        setFeedback(phrase);
+                        say(phrase);
+                        schedule(() => setWrongId(null), 480);
+                      }
+                    }}
+                    className={`btn-3d flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl py-3.5 sm:py-5 border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-pink-200 text-[#C9368C] hover:bg-pink-50'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    <span className="font-display text-3xl sm:text-4xl font-bold">{count}</span>
+                    <div className="flex gap-1">
+                      {Array.from({ length: count }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`h-2 w-2 rounded-full ${isRight ? 'bg-white' : 'bg-[#F15BB5]'}`}
+                        />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {reward && (
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

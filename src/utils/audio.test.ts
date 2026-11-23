@@ -10,12 +10,15 @@ import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catal
 import {
   generateAnimalSoundQuestions,
   generateAssociationQuestions,
+  generateCategoryIntruderQuestions,
+  generateFinalLetterQuestions,
   generateInitialSyllableQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
   generateNumberQuantityQuestions,
   generateRhymeQuestions,
   generateShapeObjectQuestions,
+  generateShareQuestions,
   generateSubtractionQuestions,
   generateSyllableQuestions,
   generateWordBuilderQuestions,
@@ -137,6 +140,14 @@ describe('audio speech helpers', () => {
       ...generateShapeObjectQuestions('5-6', 8).map((q) => q.spokenPrompt),
       ...generateAssociationQuestions('5-6', 10).map((q) => q.spokenPrompt),
       ...generateAnimalSoundQuestions('5-6', 9).map((q) => q.spokenPrompt),
+      ...generateFinalLetterQuestions('5-6', 8).map((q) => q.spokenPrompt),
+      ...generateShareQuestions('5-6', 6).map((q) => q.spokenPrompt),
+      ...generateCategoryIntruderQuestions('5-6', 4).map((q) => q.spokenPrompt),
+      'Ouça as batidas do tambor! Quantas batidas você ouviu?',
+      'Hora da pausa! Você brincou muito bem hoje! Vamos descansar um pouquinho?',
+      'O amigo caiu e ficou triste! Como podemos ajudar?',
+      'Cada amigo ganha 3!',
+      'bola fica na natureza ou devemos guardar?',
     ];
 
     for (const prompt of allPrompts) {

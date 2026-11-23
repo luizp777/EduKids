@@ -33,6 +33,45 @@ export interface PillarStats {
   lastPlayedAt?: string;
 }
 
+/** Acessórios visuais da mascote Lumi desbloqueados por marcos de estrelas. */
+export type LumiAccessoryId = 'none' | 'bow' | 'crown' | 'glasses' | 'wizard' | 'cape';
+
+/** Desenho pintado pela criança e salvo na galeria do álbum. */
+export interface SavedPainting {
+  /** Identificador único da pintura salva. */
+  id: string;
+  /** Identificador do desenho base em `PAINT_DRAWINGS`. */
+  drawingId: string;
+  /** Nome amigável do desenho (ex.: `"Casa"`, `"Foguete"`). */
+  label: string;
+  /** Mapa de cor hexadecimal por ID de parte do SVG. */
+  parts: Record<string, string>;
+  /** Data/hora ISO em que a pintura foi salva. */
+  createdAt: string;
+}
+
+/** Registro recente de rodada concluída para o histórico da Área dos Pais. */
+export interface ActivityHistoryEntry {
+  /** Pilar pedagógico da rodada concluída. */
+  pillar: PillarId;
+  /** Data/hora ISO da conclusão. */
+  completedAt: string;
+  /** Estrelas concedidas na rodada (incluindo bônus diário, se houver). */
+  starsEarned: number;
+}
+
+/** Configuração e controle diário do temporizador gentil de tempo de tela. */
+export interface ScreenTimeSettings {
+  /** Limite diário em minutos (`0` = sem limite). */
+  limitMinutes: number;
+  /** Segundos acumulados em atividades na data atual (`usageDate`). */
+  usedSecondsToday: number;
+  /** Data local (`YYYY-MM-DD`) da contabilização atual. */
+  usageDate: string;
+  /** Minutos extras liberados pelos pais hoje via Parental Gate. */
+  extraMinutesToday: number;
+}
+
 /** Perfil local de uma criança armazenado no navegador. */
 export interface ChildProfile {
   /** Identificador único do perfil. */
@@ -47,6 +86,18 @@ export interface ChildProfile {
   stars: number;
   /** Lista de IDs das figurinhas já desbloqueadas no álbum. */
   unlockedStickers: string[];
+  /** Lista de IDs das figurinhas evoluídas para Dourada Brilhante. */
+  goldenStickers: string[];
+  /** Acessório visual equipado na mascote Lumi. */
+  lumiAccessory: LumiAccessoryId;
+  /** Galeria de pinturas mágicas salvas pela criança (máx. 12). */
+  savedPaintings: SavedPainting[];
+  /** Quantidade de dias seguidos brincando (ofensiva). */
+  streakDays: number;
+  /** Última data (`YYYY-MM-DD`) em que a criança completou uma rodada. */
+  lastActiveDate?: string;
+  /** Últimas rodadas concluídas (máx. 10) para exibição na Área dos Pais. */
+  recentHistory: ActivityHistoryEntry[];
   /** Métricas acumuladas indexadas por pilar pedagógico. */
   stats: Record<PillarId, PillarStats>;
   /** Data (YYYY-MM-DD) do último bônus diário de Aventura do Dia resgatado. */
@@ -60,7 +111,7 @@ export interface ChildProfile {
 /** Velocidade de reprodução da narração dos exercícios. */
 export type VoiceSpeed = 'slow' | 'normal' | 'fast';
 
-/** Preferências globais de áudio do aplicativo. */
+/** Preferências globais de áudio e bem-estar sensorial do aplicativo. */
 export interface AudioSettings {
   /** Indica se a narração em voz está ativa. */
   voiceEnabled: boolean;
@@ -70,6 +121,8 @@ export interface AudioSettings {
   voiceSpeed?: VoiceSpeed;
   /** Volume global normalizado (0.0 a 1.0) aplicado a voz, melodia e efeitos. */
   volume?: number;
+  /** Modo Calmo / Sensorial: reduz estímulos visuais (confetes/trepidação) e suaviza sons. */
+  calmMode?: boolean;
 }
 
 /** Estado raiz persistido em `localStorage`. */
@@ -82,6 +135,8 @@ export interface AppState {
   profiles: ChildProfile[];
   /** Preferências globais de áudio compartilhadas entre os perfis. */
   audio: AudioSettings;
+  /** Configuração e controle diário do temporizador gentil de tempo de tela. */
+  screenTime?: ScreenTimeSettings;
 }
 
 export type FigureId =
@@ -188,6 +243,9 @@ export interface ShapeInfo {
   accentHex: string;
 }
 
+/** Tema de organização das figurinhas no álbum. */
+export type StickerTheme = 'Animais' | 'Espaço' | 'Natureza' | 'Frutas' | 'Objetos e Amigos';
+
 /** Item colecionável do Álbum de Figurinhas. */
 export interface StickerItem {
   /** Identificador único da figurinha. */
@@ -195,11 +253,33 @@ export interface StickerItem {
   /** Nome carinhoso da figurinha. */
   name: string;
   /** Tema da coleção no álbum. */
-  theme: 'Animais' | 'Espaço' | 'Natureza' | 'Frutas';
+  theme: StickerTheme;
   /** Figura SVG associada à figurinha. */
   figureId: FigureId;
   /** Cor de fundo do cartão desbloqueado. */
   bgHex: string;
+}
+
+/** Desenho interativo disponível na Pintura Mágica e na Galeria do Álbum. */
+export interface PaintDrawing {
+  /** Identificador único do desenho. */
+  id: string;
+  /** Nome exibido no seletor e na galeria. */
+  label: string;
+  /** Partes SVG pintáveis que compõem o desenho. */
+  parts: { id: string; d: string; label: string }[];
+}
+
+/** Metadados de um acessório visual da mascote Lumi. */
+export interface LumiAccessoryInfo {
+  /** Identificador único do acessório. */
+  id: LumiAccessoryId;
+  /** Nome exibido nos seletores da Home e do Álbum. */
+  name: string;
+  /** Quantidade mínima de estrelas acumuladas para desbloquear. */
+  minStars: number;
+  /** Descrição curta do requisito de desbloqueio. */
+  description: string;
 }
 
 /** Coordenada normalizada (`0..100`) de um checkpoint no Traçado Mágico. */
@@ -228,4 +308,5 @@ export interface TracingTemplate {
   checkpoints: TracingPoint[];
 }
 
-export type MascotMood = 'happy' | 'excited' | 'encouraging' | 'thinking';
+/** Expressão facial e estado de animação da mascote Lumi. */
+export type MascotMood = 'happy' | 'excited' | 'encouraging' | 'thinking' | 'sleepy';

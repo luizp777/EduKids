@@ -1,5 +1,6 @@
 import React from 'react';
 import type { MascotMood } from '../../types';
+import { useApp } from '../../state/AppContext';
 import { LumiMascot } from '../illustrations/LumiMascot';
 
 /** Propriedades do banner de instrução `LumiPromptBanner`. */
@@ -27,6 +28,7 @@ export const LumiPromptBanner: React.FC<LumiPromptBannerProps> = ({
   badgeClass = 'bg-amber-100 text-amber-700',
   onTap,
 }) => {
+  const { activeProfile } = useApp();
   return (
     <button
       type="button"
@@ -34,10 +36,10 @@ export const LumiPromptBanner: React.FC<LumiPromptBannerProps> = ({
       className={`flex items-center gap-2.5 sm:gap-4 w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl px-3 py-2 sm:p-3.5 border-2 ${borderClass} card-3d text-left shrink-0 cursor-pointer`}
     >
       <div className="shrink-0 sm:hidden">
-        <LumiMascot mood={mood} size={48} />
+        <LumiMascot mood={mood} accessory={activeProfile.lumiAccessory} size={48} />
       </div>
       <div className="hidden sm:block shrink-0">
-        <LumiMascot mood={mood} size={66} />
+        <LumiMascot mood={mood} accessory={activeProfile.lumiAccessory} size={66} />
       </div>
       <p className="flex-1 font-display text-sm sm:text-xl font-bold text-slate-800 leading-snug line-clamp-2">
         {text}

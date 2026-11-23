@@ -3,6 +3,8 @@ import type {
   ColorInfo,
   FigureId,
   FigureItem,
+  LumiAccessoryInfo,
+  PaintDrawing,
   PillarId,
   ShapeInfo,
   StickerItem,
@@ -242,7 +244,7 @@ export const RHYME_PAIRS: [FigureId, FigureId][] = [
   ['aviao', 'mao'],
 ];
 
-/** Catálogo das 29 figurinhas colecionáveis do Álbum de Figurinhas. */
+/** Catálogo completo das 36 figurinhas colecionáveis do Álbum de Figurinhas. */
 export const STICKERS: StickerItem[] = [
   { id: 'stk-abelha', name: 'Abelha Zuzu', theme: 'Animais', figureId: 'abelha', bgHex: '#FFF3BF' },
   { id: 'stk-elefante', name: 'Elefante Dudu', theme: 'Animais', figureId: 'elefante', bgHex: '#D0EBFF' },
@@ -253,26 +255,149 @@ export const STICKERS: StickerItem[] = [
   { id: 'stk-pato', name: 'Patinho Quá', theme: 'Animais', figureId: 'pato', bgHex: '#FFF9DB' },
   { id: 'stk-peixe', name: 'Peixe Bolha', theme: 'Animais', figureId: 'peixe', bgHex: '#C5F6FA' },
   { id: 'stk-rato', name: 'Ratinho Tico', theme: 'Animais', figureId: 'rato', bgHex: '#E9ECEF' },
-  { id: 'stk-foguete', name: 'Foguete Turbo', theme: 'Espaço', figureId: 'foguete', bgHex: '#FFE8CC' },
-  { id: 'stk-lua', name: 'Lua Soneca', theme: 'Espaço', figureId: 'lua', bgHex: '#E5DBFF' },
-  { id: 'stk-sol', name: 'Sol Brilhante', theme: 'Espaço', figureId: 'sol', bgHex: '#FFF3BF' },
-  { id: 'stk-estrela', name: 'Estrela Guia', theme: 'Espaço', figureId: 'estrela', bgHex: '#FFF9DB' },
-  { id: 'stk-nuvem', name: 'Nuvem Fofa', theme: 'Natureza', figureId: 'nuvem', bgHex: '#D0EBFF' },
-  { id: 'stk-flor', name: 'Flor Mágica', theme: 'Natureza', figureId: 'flor', bgHex: '#F3D9FA' },
-  { id: 'stk-ilha', name: 'Ilha Feliz', theme: 'Natureza', figureId: 'ilha', bgHex: '#D3F9D8' },
-  { id: 'stk-arvore', name: 'Árvore Viva', theme: 'Natureza', figureId: 'arvore', bgHex: '#D3F9D8' },
-  { id: 'stk-maca', name: 'Maçã Doce', theme: 'Frutas', figureId: 'maca', bgHex: '#FFE3E3' },
-  { id: 'stk-morango', name: 'Moranguinho', theme: 'Frutas', figureId: 'morango', bgHex: '#FFD8E4' },
-  { id: 'stk-banana', name: 'Banana Pop', theme: 'Frutas', figureId: 'banana', bgHex: '#FFF3BF' },
-  { id: 'stk-uva', name: 'Uva Roxinha', theme: 'Frutas', figureId: 'uva', bgHex: '#F3D9FA' },
-  { id: 'stk-carro', name: 'Carrinho Vrum', theme: 'Espaço', figureId: 'carro', bgHex: '#FFE3E3' },
+  { id: 'stk-ovelha', name: 'Ovelha Nuvem', theme: 'Animais', figureId: 'ovelha', bgHex: '#F3D9FA' },
   { id: 'stk-cachorro', name: 'Cachorrinho Au', theme: 'Animais', figureId: 'cachorro', bgHex: '#FFE8CC' },
   { id: 'stk-leao', name: 'Leão Juba', theme: 'Animais', figureId: 'leao', bgHex: '#FFF3BF' },
   { id: 'stk-passaro', name: 'Passarinho Azul', theme: 'Animais', figureId: 'passaro', bgHex: '#D0EBFF' },
   { id: 'stk-tartaruga', name: 'Tartaruga Tina', theme: 'Animais', figureId: 'tartaruga', bgHex: '#D3F9D8' },
+  { id: 'stk-foguete', name: 'Foguete Turbo', theme: 'Espaço', figureId: 'foguete', bgHex: '#FFE8CC' },
+  { id: 'stk-lua', name: 'Lua Soneca', theme: 'Espaço', figureId: 'lua', bgHex: '#E5DBFF' },
+  { id: 'stk-sol', name: 'Sol Brilhante', theme: 'Espaço', figureId: 'sol', bgHex: '#FFF3BF' },
+  { id: 'stk-estrela', name: 'Estrela Guia', theme: 'Espaço', figureId: 'estrela', bgHex: '#FFF9DB' },
   { id: 'stk-aviao', name: 'Avião Veloz', theme: 'Espaço', figureId: 'aviao', bgHex: '#D0EBFF' },
+  { id: 'stk-nuvem', name: 'Nuvem Fofa', theme: 'Natureza', figureId: 'nuvem', bgHex: '#D0EBFF' },
+  { id: 'stk-flor', name: 'Flor Mágica', theme: 'Natureza', figureId: 'flor', bgHex: '#F3D9FA' },
+  { id: 'stk-ilha', name: 'Ilha Feliz', theme: 'Natureza', figureId: 'ilha', bgHex: '#D3F9D8' },
+  { id: 'stk-arvore', name: 'Árvore Viva', theme: 'Natureza', figureId: 'arvore', bgHex: '#D3F9D8' },
   { id: 'stk-arcoiris', name: 'Arco-íris Vivo', theme: 'Natureza', figureId: 'arcoiris', bgHex: '#F3D9FA' },
+  { id: 'stk-maca', name: 'Maçã Doce', theme: 'Frutas', figureId: 'maca', bgHex: '#FFE3E3' },
+  { id: 'stk-morango', name: 'Moranguinho', theme: 'Frutas', figureId: 'morango', bgHex: '#FFD8E4' },
+  { id: 'stk-banana', name: 'Banana Pop', theme: 'Frutas', figureId: 'banana', bgHex: '#FFF3BF' },
+  { id: 'stk-uva', name: 'Uva Roxinha', theme: 'Frutas', figureId: 'uva', bgHex: '#F3D9FA' },
   { id: 'stk-melancia', name: 'Melancia Doce', theme: 'Frutas', figureId: 'melancia', bgHex: '#FFE3E3' },
+  { id: 'stk-carro', name: 'Carrinho Vrum', theme: 'Objetos e Amigos', figureId: 'carro', bgHex: '#FFE3E3' },
+  { id: 'stk-bola', name: 'Bola Pula-Pula', theme: 'Objetos e Amigos', figureId: 'bola', bgHex: '#D0EBFF' },
+  { id: 'stk-casa', name: 'Casinha Feliz', theme: 'Objetos e Amigos', figureId: 'casa', bgHex: '#FFE8CC' },
+  { id: 'stk-dado', name: 'Dado Mágico', theme: 'Objetos e Amigos', figureId: 'dado', bgHex: '#E5DBFF' },
+  { id: 'stk-pao', name: 'Pãozinho Quente', theme: 'Objetos e Amigos', figureId: 'pao', bgHex: '#FFF3BF' },
+  { id: 'stk-mao', name: 'Mãozinha Amiga', theme: 'Objetos e Amigos', figureId: 'mao', bgHex: '#FFD8E4' },
+  { id: 'stk-livro', name: 'Livro de Histórias', theme: 'Objetos e Amigos', figureId: 'livro', bgHex: '#D3F9D8' },
+];
+
+/** Acessórios visuais da mascote Lumi desbloqueados por marcos de estrelas (sem gastar saldo). */
+export const LUMI_ACCESSORIES: LumiAccessoryInfo[] = [
+  { id: 'none', name: 'Lumi Clássica', minStars: 0, description: 'Visual original da Lumi' },
+  { id: 'bow', name: 'Lacinho Mágico', minStars: 10, description: 'Desbloqueia com 10 estrelas' },
+  { id: 'crown', name: 'Coroa Dourada', minStars: 25, description: 'Desbloqueia com 25 estrelas' },
+  { id: 'glasses', name: 'Óculos de Estrela', minStars: 45, description: 'Desbloqueia com 45 estrelas' },
+  { id: 'wizard', name: 'Chapéu de Mago', minStars: 70, description: 'Desbloqueia com 70 estrelas' },
+  { id: 'cape', name: 'Gravatinha Real', minStars: 100, description: 'Desbloqueia com 100 estrelas' },
+];
+
+/** 10 desenhos interativos compartilhados entre a Pintura Mágica e a Galeria do Álbum. */
+export const PAINT_DRAWINGS: PaintDrawing[] = [
+  {
+    id: 'casa',
+    label: 'Casa',
+    parts: [
+      { id: 'telhado', label: 'Telhado', d: 'M 12 50 L 50 16 L 88 50 Z' },
+      { id: 'parede', label: 'Parede', d: 'M 22 50 H 78 V 86 H 22 Z' },
+      { id: 'porta', label: 'Porta', d: 'M 42 60 H 58 V 86 H 42 Z' },
+      { id: 'janela', label: 'Janela', d: 'M 27 58 H 37 V 68 H 27 Z' },
+    ],
+  },
+  {
+    id: 'foguete',
+    label: 'Foguete',
+    parts: [
+      { id: 'corpo', label: 'Corpo', d: 'M 50 12 C 68 28 68 58 62 74 H 38 C 32 58 32 28 50 12 Z' },
+      { id: 'asa-e', label: 'Asa esquerda', d: 'M 36 72 L 20 84 L 28 58 Z' },
+      { id: 'asa-d', label: 'Asa direita', d: 'M 64 72 L 80 84 L 72 58 Z' },
+      { id: 'fogo', label: 'Fogo', d: 'M 42 74 L 50 94 L 58 74 Z' },
+    ],
+  },
+  {
+    id: 'borboleta',
+    label: 'Borboleta',
+    parts: [
+      { id: 'asa-sup-e', label: 'Asa superior esquerda', d: 'M 46 46 C 22 14 10 38 24 54 C 32 60 44 54 46 46 Z' },
+      { id: 'asa-sup-d', label: 'Asa superior direita', d: 'M 54 46 C 78 14 90 38 76 54 C 68 60 56 54 54 46 Z' },
+      { id: 'asa-inf-e', label: 'Asa inferior esquerda', d: 'M 46 54 C 24 56 18 82 36 82 C 44 82 46 66 46 54 Z' },
+      { id: 'asa-inf-d', label: 'Asa inferior direita', d: 'M 54 54 C 76 56 82 82 64 82 C 56 82 54 66 54 54 Z' },
+      { id: 'corpo', label: 'Corpo', d: 'M 45 28 H 55 V 80 H 45 Z' },
+    ],
+  },
+  {
+    id: 'carro',
+    label: 'Carro',
+    parts: [
+      { id: 'teto', label: 'Teto', d: 'M 28 50 L 36 28 H 64 L 72 50 Z' },
+      { id: 'lataria', label: 'Lataria', d: 'M 14 50 H 86 V 72 H 14 Z' },
+      { id: 'roda-e', label: 'Roda esquerda', d: 'M 22 72 A 10 10 0 1 0 42 72 A 10 10 0 1 0 22 72 Z' },
+      { id: 'roda-d', label: 'Roda direita', d: 'M 58 72 A 10 10 0 1 0 78 72 A 10 10 0 1 0 58 72 Z' },
+    ],
+  },
+  {
+    id: 'flor',
+    label: 'Flor',
+    parts: [
+      { id: 'petala-1', label: 'Pétala cima', d: 'M 50 12 A 12 12 0 1 0 50 36 A 12 12 0 1 0 50 12 Z' },
+      { id: 'petala-2', label: 'Pétala esquerda', d: 'M 28 32 A 12 12 0 1 0 28 56 A 12 12 0 1 0 28 32 Z' },
+      { id: 'petala-3', label: 'Pétala direita', d: 'M 72 32 A 12 12 0 1 0 72 56 A 12 12 0 1 0 72 32 Z' },
+      { id: 'miolo', label: 'Miolo', d: 'M 50 34 A 12 12 0 1 0 50 58 A 12 12 0 1 0 50 34 Z' },
+      { id: 'caule', label: 'Caule', d: 'M 46 58 H 54 V 88 H 46 Z' },
+    ],
+  },
+  {
+    id: 'barco',
+    label: 'Barquinho',
+    parts: [
+      { id: 'vela-e', label: 'Vela esquerda', d: 'M 48 16 L 22 58 H 48 Z' },
+      { id: 'vela-d', label: 'Vela direita', d: 'M 52 24 L 76 58 H 52 Z' },
+      { id: 'casco', label: 'Casco', d: 'M 14 62 H 86 L 74 84 H 26 Z' },
+    ],
+  },
+  {
+    id: 'sol',
+    label: 'Sol',
+    parts: [
+      { id: 'raio-cima', label: 'Raio cima', d: 'M 44 26 L 50 8 L 56 26 Z' },
+      { id: 'raio-baixo', label: 'Raio baixo', d: 'M 44 74 L 50 92 L 56 74 Z' },
+      { id: 'raio-esq', label: 'Raio esquerda', d: 'M 26 44 L 8 50 L 26 56 Z' },
+      { id: 'raio-dir', label: 'Raio direita', d: 'M 74 44 L 92 50 L 74 56 Z' },
+      { id: 'centro', label: 'Centro do Sol', d: 'M 28 50 A 22 22 0 1 0 72 50 A 22 22 0 1 0 28 50 Z' },
+    ],
+  },
+  {
+    id: 'peixe',
+    label: 'Peixinho',
+    parts: [
+      { id: 'cauda', label: 'Cauda', d: 'M 68 50 L 90 32 V 68 Z' },
+      { id: 'barbatana', label: 'Barbatana', d: 'M 38 30 L 52 16 L 58 32 Z' },
+      { id: 'corpo', label: 'Corpo', d: 'M 16 50 C 26 26 58 26 70 50 C 58 74 26 74 16 50 Z' },
+      { id: 'cabeca', label: 'Cabeça', d: 'M 16 50 C 20 38 30 33 36 33 V 67 C 30 67 20 62 16 50 Z' },
+    ],
+  },
+  {
+    id: 'arvore',
+    label: 'Árvore',
+    parts: [
+      { id: 'tronco', label: 'Tronco', d: 'M 42 58 H 58 V 88 H 42 Z' },
+      { id: 'copa-e', label: 'Folhas esquerda', d: 'M 18 46 A 18 18 0 1 0 54 46 A 18 18 0 1 0 18 46 Z' },
+      { id: 'copa-d', label: 'Folhas direita', d: 'M 46 46 A 18 18 0 1 0 82 46 A 18 18 0 1 0 46 46 Z' },
+      { id: 'copa-topo', label: 'Folhas topo', d: 'M 30 30 A 20 20 0 1 0 70 30 A 20 20 0 1 0 30 30 Z' },
+    ],
+  },
+  {
+    id: 'sorvete',
+    label: 'Sorvete',
+    parts: [
+      { id: 'casquinha', label: 'Casquinha', d: 'M 34 52 H 66 L 50 90 Z' },
+      { id: 'bola-e', label: 'Bola esquerda', d: 'M 24 44 A 14 14 0 1 0 52 44 A 14 14 0 1 0 24 44 Z' },
+      { id: 'bola-d', label: 'Bola direita', d: 'M 48 44 A 14 14 0 1 0 76 44 A 14 14 0 1 0 48 44 Z' },
+      { id: 'bola-topo', label: 'Bola topo', d: 'M 36 28 A 14 14 0 1 0 64 28 A 14 14 0 1 0 36 28 Z' },
+    ],
+  },
 ];
 
 /** Modelos de traçado (caminhos, formas, letras e números) ordenados por categoria e nível. */
@@ -633,6 +758,107 @@ export const TRACING_TEMPLATES: TracingTemplate[] = [
     svgPath: 'M 22 18 L 50 84 L 78 18',
     checkpoints: [
       { x: 22, y: 18 }, { x: 36, y: 50 }, { x: 50, y: 84 }, { x: 64, y: 50 }, { x: 78, y: 18 },
+    ],
+  },
+  {
+    id: 'trace-H',
+    label: 'H',
+    spokenName: 'a letra H',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 26 18 L 26 84 M 74 18 L 74 84 M 26 50 L 74 50',
+    checkpoints: [
+      { x: 26, y: 20 }, { x: 26, y: 50 }, { x: 26, y: 82 },
+      { x: 50, y: 50 }, { x: 74, y: 20 }, { x: 74, y: 50 }, { x: 74, y: 82 },
+    ],
+  },
+  {
+    id: 'trace-J',
+    label: 'J',
+    spokenName: 'a letra J',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 64 18 L 64 64 C 64 84 32 86 26 68',
+    checkpoints: [
+      { x: 64, y: 20 }, { x: 64, y: 46 }, { x: 64, y: 66 }, { x: 46, y: 82 }, { x: 28, y: 70 },
+    ],
+  },
+  {
+    id: 'trace-K',
+    label: 'K',
+    spokenName: 'a letra K',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 28 18 L 28 84 M 74 18 L 28 52 L 74 84',
+    checkpoints: [
+      { x: 28, y: 20 }, { x: 28, y: 52 }, { x: 28, y: 82 }, { x: 72, y: 20 }, { x: 72, y: 82 },
+    ],
+  },
+  {
+    id: 'trace-N',
+    label: 'N',
+    spokenName: 'a letra N',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 26 84 L 26 18 L 74 84 L 74 18',
+    checkpoints: [
+      { x: 26, y: 82 }, { x: 26, y: 50 }, { x: 26, y: 20 },
+      { x: 50, y: 50 }, { x: 74, y: 82 }, { x: 74, y: 20 },
+    ],
+  },
+  {
+    id: 'trace-Q',
+    label: 'Q',
+    spokenName: 'a letra Q',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 50 16 C 74 16 80 34 80 50 C 80 66 74 82 50 82 C 26 82 20 66 20 50 C 20 34 26 16 50 16 Z M 56 64 L 82 86',
+    checkpoints: [
+      { x: 50, y: 16 }, { x: 78, y: 50 }, { x: 50, y: 82 }, { x: 22, y: 50 }, { x: 78, y: 84 },
+    ],
+  },
+  {
+    id: 'trace-W',
+    label: 'W',
+    spokenName: 'a letra W',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 14 20 L 30 82 L 50 42 L 70 82 L 86 20',
+    checkpoints: [
+      { x: 16, y: 22 }, { x: 30, y: 80 }, { x: 50, y: 44 }, { x: 70, y: 80 }, { x: 84, y: 22 },
+    ],
+  },
+  {
+    id: 'trace-X',
+    label: 'X',
+    spokenName: 'a letra X',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 22 18 L 78 82 M 78 18 L 22 82',
+    checkpoints: [
+      { x: 24, y: 20 }, { x: 50, y: 50 }, { x: 76, y: 80 }, { x: 76, y: 20 }, { x: 24, y: 80 },
+    ],
+  },
+  {
+    id: 'trace-Y',
+    label: 'Y',
+    spokenName: 'a letra Y',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 22 18 L 50 50 L 78 18 M 50 50 L 50 84',
+    checkpoints: [
+      { x: 24, y: 20 }, { x: 50, y: 50 }, { x: 76, y: 20 }, { x: 50, y: 82 },
+    ],
+  },
+  {
+    id: 'trace-Z',
+    label: 'Z',
+    spokenName: 'a letra Z',
+    category: 'letra',
+    minLevel: '5-6',
+    svgPath: 'M 22 20 L 78 20 L 22 82 L 78 82',
+    checkpoints: [
+      { x: 24, y: 20 }, { x: 76, y: 20 }, { x: 50, y: 50 }, { x: 24, y: 82 }, { x: 76, y: 82 },
     ],
   },
 

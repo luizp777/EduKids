@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Smile, Sun, Moon, HeartHandshake, ListOrdered } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { Smile, Sun, Moon, HeartHandshake, ListOrdered, Heart } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -14,7 +14,7 @@ interface Props {
   onBack: () => void;
 }
 
-type EmotionMode = 'feelings' | 'day-night' | 'habits' | 'routine-order';
+type EmotionMode = 'feelings' | 'day-night' | 'habits' | 'routine-order' | 'empathy';
 type FeelingId = 'feliz' | 'triste' | 'surpreso' | 'sono' | 'calmo' | 'bravo';
 
 const FEELINGS: { id: FeelingId; label: string; color: string }[] = [
@@ -210,6 +210,65 @@ function createRoutineOrderQuestions(): RoutineOrderQuestion[] {
   }));
 }
 
+interface EmpathyQuestion {
+  situation: string;
+  options: { id: string; label: string; fig: FigureId; isRight: boolean }[];
+}
+
+const EMPATHY_RAW: {
+  situation: string;
+  rightLabel: string;
+  rightFig: FigureId;
+  wrongLabel: string;
+  wrongFig: FigureId;
+}[] = [
+  {
+    situation: 'O amigo caiu e ficou triste!',
+    rightLabel: 'Dar Carinho e Flor',
+    rightFig: 'flor',
+    wrongLabel: 'Correr de Carro',
+    wrongFig: 'carro',
+  },
+  {
+    situation: 'O cachorrinho está com sede!',
+    rightLabel: 'Dar Água Fresquinha',
+    rightFig: 'nuvem',
+    wrongLabel: 'Jogar Dado',
+    wrongFig: 'dado',
+  },
+  {
+    situation: 'Começou a chover no parque!',
+    rightLabel: 'Abrigar na Casinha',
+    rightFig: 'casa',
+    wrongLabel: 'Soltar Foguete',
+    wrongFig: 'foguete',
+  },
+  {
+    situation: 'O amigo está com fome na hora do lanche!',
+    rightLabel: 'Dividir a Maçã',
+    rightFig: 'maca',
+    wrongLabel: 'Brincar de Avião',
+    wrongFig: 'aviao',
+  },
+  {
+    situation: 'Está na hora de descansar!',
+    rightLabel: 'Ler uma Historinha',
+    rightFig: 'livro',
+    wrongLabel: 'Jogar Bola',
+    wrongFig: 'bola',
+  },
+];
+
+function createEmpathyQuestions(): EmpathyQuestion[] {
+  return shuffle(EMPATHY_RAW).map((item) => ({
+    situation: item.situation,
+    options: shuffle([
+      { id: 'right', label: item.rightLabel, fig: item.rightFig, isRight: true },
+      { id: 'wrong', label: item.wrongLabel, fig: item.wrongFig, isRight: false },
+    ]),
+  }));
+}
+
 const FeelingFaceSvg: React.FC<{ id: FeelingId; size?: number }> = ({ id, size = 76 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" aria-label={id}>
     <circle
@@ -253,7 +312,7 @@ const FeelingFaceSvg: React.FC<{ id: FeelingId; size?: number }> = ({ id, size =
   </svg>
 );
 
-/** Atividade de Emoções e Rotina: sentimentos, dia/noite e hábitos saudáveis. */
+/** Atividade de Emoções e Rotina: sentimentos, dia/noite, hábitos saudáveis, ordem da rotina e empatia. */
 export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<EmotionMode>('feelings');
@@ -262,15 +321,17 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
-  const showHint = wrongAttempts >= 2 && !locked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
 
   const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS).slice(0, 5));
   const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
   const [habitQs, setHabitQs] = useState(() => createHabitQuestions().slice(0, 4));
   const [routineQs, setRoutineQs] = useState(() => createRoutineOrderQuestions());
+  const [empathyQs, setEmpathyQs] = useState(() => createEmpathyQuestions().slice(0, 4));
   const [pickedRoutineIds, setPickedRoutineIds] = useState<string[]>([]);
 
   const totalSteps =
@@ -280,12 +341,15 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         ? dayNightQs.length
         : mode === 'routine-order'
           ? routineQs.length
-          : habitQs.length;
+          : mode === 'empathy'
+            ? empathyQs.length
+            : habitQs.length;
 
   const getPromptText = () => {
     if (mode === 'feelings') return 'Qual rostinho combina com essa situação?';
     if (mode === 'day-night') return 'Isso acontece de dia ou de noite?';
     if (mode === 'routine-order') return routineQs[step]?.title || 'Toque na ordem certa!';
+    if (mode === 'empathy') return 'Como podemos ajudar o amigo?';
     return 'O que usamos para cuidar da nossa saúde?';
   };
 
@@ -298,6 +362,9 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     }
     if (mode === 'routine-order' && routineQs[step]) {
       return `${routineQs[step].title} Toque do primeiro ao último passo!`;
+    }
+    if (mode === 'empathy' && empathyQs[step]) {
+      return `${empathyQs[step].situation} Como podemos ajudar?`;
     }
     if (mode === 'habits' && habitQs[step]) {
       return `${habitQs[step].situation} O que usamos para cuidar da nossa saúde?`;
@@ -318,6 +385,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     setFeedback('');
     setWrongId(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setLocked(false);
     setReward(null);
     setPickedRoutineIds([]);
@@ -325,6 +393,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     setDayNightQs(shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
     setHabitQs(createHabitQuestions().slice(0, 4));
     setRoutineQs(createRoutineOrderQuestions());
+    setEmpathyQs(createEmpathyQuestions().slice(0, 4));
   };
 
   const handleSuccess = (spokenFigureId?: FigureId) => {
@@ -347,6 +416,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setWrongAttempts(0);
+        setManualHint(false);
         setLocked(false);
         setPickedRoutineIds([]);
       }
@@ -368,6 +438,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const currentDN = dayNightQs[step];
   const currentHabit = habitQs[step];
   const currentRoutine = routineQs[step];
+  const currentEmpathy = empathyQs[step];
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#E6F8FF] to-[#FFF9F0]">
@@ -378,15 +449,21 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
+        onRequestHint={() => {
+          sfx('pop');
+          setManualHint(true);
+        }}
+        hintActive={showHint}
         accentColor="#00BBF9"
       />
 
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'feelings' as EmotionMode, label: 'Emoções', icon: Smile },
           { id: 'day-night' as EmotionMode, label: 'Dia e Noite', icon: Sun },
           { id: 'habits' as EmotionMode, label: 'Hábitos', icon: HeartHandshake },
           { id: 'routine-order' as EmotionMode, label: 'Ordem da Rotina', icon: ListOrdered },
+          { id: 'empathy' as EmotionMode, label: 'Ajudar Amigo', icon: Heart },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -403,7 +480,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -562,6 +639,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                     if (item.order === expectedOrder) {
                       sfx('pop');
                       setWrongAttempts(0);
+                      setManualHint(false);
                       const next = [...pickedRoutineIds, item.id];
                       setPickedRoutineIds(next);
                       if (next.length >= currentRoutine.items.length) {
@@ -593,12 +671,54 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
             })}
           </div>
         )}
+        {mode === 'empathy' && currentEmpathy && (
+          <div className="activity-split">
+            <button
+              type="button"
+              onClick={() => say(getSpokenPrompt())}
+              className="rounded-[24px] sm:rounded-[28px] bg-white border-4 border-sky-200 px-5 py-4 sm:px-6 sm:py-5 text-center card-3d max-w-md w-full cursor-pointer hover:border-sky-300 shrink-0"
+            >
+              <p className="font-display text-lg sm:text-2xl font-bold text-slate-800">
+                {currentEmpathy.situation}
+              </p>
+            </button>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-lg">
+              {currentEmpathy.options.map((opt) => {
+                const isShaking = wrongId === opt.id;
+                const showRight = locked && opt.isRight;
+                const isHinted = showHint && opt.isRight;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => (opt.isRight ? handleSuccess(opt.fig) : handleWrong(opt.id))}
+                    className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
+                      showRight
+                        ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-sky-100 hover:border-sky-300'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    <FigureSvg figureId={opt.fig} size={68} className="sm:w-[88px] sm:h-[88px]" />
+                    <span className="font-display text-sm sm:text-lg font-bold text-slate-700 text-center">
+                      {opt.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       {reward && (
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

@@ -1,5 +1,15 @@
-import type { AgeLevel, AppState, AvatarId, ChildProfile, PillarId, PillarStats } from '../types';
-import { PILLARS, STICKERS } from '../data/catalog';
+import type {
+  ActivityHistoryEntry,
+  AgeLevel,
+  AppState,
+  AvatarId,
+  ChildProfile,
+  LumiAccessoryId,
+  PillarId,
+  PillarStats,
+  SavedPainting,
+} from '../types';
+import { LUMI_ACCESSORIES, PILLARS, STICKERS } from '../data/catalog';
 
 /** Chave de versionamento usada no `localStorage` do navegador. */
 export const STORAGE_KEY = 'edukids_state_v1';
@@ -8,6 +18,7 @@ const VALID_AVATARS = new Set<AvatarId>(['owl', 'bear', 'cat', 'bunny', 'fox', '
 const VALID_AGE_LEVELS = new Set<AgeLevel>(['3-4', '5-6']);
 const VALID_VOICE_SPEEDS = new Set(['slow', 'normal', 'fast']);
 const VALID_PILLARS = new Set<PillarId>(PILLARS.map((p) => p.id));
+const VALID_ACCESSORIES = new Set<LumiAccessoryId>(LUMI_ACCESSORIES.map((a) => a.id));
 
 /** Retorna a chave de data local no formato `YYYY-MM-DD`. */
 export function getLocalDateKey(date = new Date()): string {
@@ -15,6 +26,41 @@ export function getLocalDateKey(date = new Date()): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Calcula a ofensiva atualizada (dias seguidos brincando) ao concluir uma rodada.
+ *
+ * @param lastActiveDate - Última data (`YYYY-MM-DD`) em que o perfil jogou.
+ * @param currentStreak - Contagem atual de dias seguidos.
+ * @param todayKey - Chave da data local atual (`YYYY-MM-DD`).
+ * @returns Nova contagem de dias seguidos brincando.
+ */
+export function computeNextStreak(
+  lastActiveDate: string | undefined,
+  currentStreak: number,
+  todayKey = getLocalDateKey()
+): number {
+  if (lastActiveDate === todayKey) {
+    return Math.max(1, currentStreak);
+  }
+  if (lastActiveDate) {
+    const yesterday = new Date(`${todayKey}T12:00:00`);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (getLocalDateKey(yesterday) === lastActiveDate) {
+      return Math.max(1, currentStreak) + 1;
+    }
+  }
+  return 1;
+}
+
+/**
+ * Retorna os IDs de acessórios da Lumi desbloqueados para o saldo de estrelas informado.
+ *
+ * @param stars - Saldo acumulado de estrelas do perfil.
+ */
+export function getUnlockedAccessories(stars: number): LumiAccessoryId[] {
+  return LUMI_ACCESSORIES.filter((a) => stars >= a.minStars).map((a) => a.id);
 }
 
 /** Calcula o nível de medalha de um pilar com base nas rodadas concluídas. */
@@ -78,6 +124,43 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
     const unlockedStickers = Array.isArray(p.unlockedStickers)
       ? Array.from(new Set(p.unlockedStickers.filter((id): id is string => typeof id === 'string' && validStickerIds.has(id))))
       : ['stk-abelha'];
+    const goldenStickers = Array.isArray(p.goldenStickers)
+      ? Array.from(
+          new Set(
+            p.goldenStickers.filter(
+              (id): id is string => typeof id === 'string' && unlockedStickers.includes(id)
+            )
+          )
+        )
+      : [];
+    const lumiAccessory: LumiAccessoryId = VALID_ACCESSORIES.has(p.lumiAccessory as LumiAccessoryId)
+      ? (p.lumiAccessory as LumiAccessoryId)
+      : 'none';
+    const savedPaintings: SavedPainting[] = Array.isArray(p.savedPaintings)
+      ? p.savedPaintings
+          .filter(
+            (item): item is SavedPainting =>
+              Boolean(item) &&
+              typeof item === 'object' &&
+              typeof item.id === 'string' &&
+              typeof item.drawingId === 'string' &&
+              typeof item.label === 'string' &&
+              Boolean(item.parts) &&
+              typeof item.parts === 'object'
+          )
+          .slice(0, 12)
+      : [];
+    const recentHistory: ActivityHistoryEntry[] = Array.isArray(p.recentHistory)
+      ? p.recentHistory
+          .filter(
+            (item): item is ActivityHistoryEntry =>
+              Boolean(item) &&
+              typeof item === 'object' &&
+              VALID_PILLARS.has(item.pillar as PillarId) &&
+              typeof item.completedAt === 'string'
+          )
+          .slice(0, 10)
+      : [];
 
     normalizedProfiles.push({
       id: p.id.trim(),
@@ -86,6 +169,12 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
       ageLevel,
       stars: Math.max(0, Number(p.stars) || 0),
       unlockedStickers,
+      goldenStickers,
+      lumiAccessory,
+      savedPaintings,
+      streakDays: Math.max(0, Number(p.streakDays) || 0),
+      ...(typeof p.lastActiveDate === 'string' ? { lastActiveDate: p.lastActiveDate } : {}),
+      recentHistory,
       stats: baseStats,
       ...(typeof p.dailyBonusDate === 'string' ? { dailyBonusDate: p.dailyBonusDate } : {}),
       ...(VALID_PILLARS.has(p.dailyBonusPillar as PillarId)
@@ -107,6 +196,9 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
     typeof rawVolume === 'number' && Number.isFinite(rawVolume)
       ? Math.max(0.1, Math.min(1, rawVolume))
       : 0.85;
+  const todayKey = getLocalDateKey();
+  const rawScreen = parsed.screenTime;
+  const isSameDay = rawScreen?.usageDate === todayKey;
 
   return {
     version: 1,
@@ -117,6 +209,13 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
       sfxEnabled: parsed.audio?.sfxEnabled ?? true,
       voiceSpeed,
       volume,
+      calmMode: Boolean(parsed.audio?.calmMode),
+    },
+    screenTime: {
+      limitMinutes: Math.max(0, Math.min(180, Number(rawScreen?.limitMinutes) || 0)),
+      usedSecondsToday: isSameDay ? Math.max(0, Number(rawScreen?.usedSecondsToday) || 0) : 0,
+      usageDate: todayKey,
+      extraMinutesToday: isSameDay ? Math.max(0, Number(rawScreen?.extraMinutesToday) || 0) : 0,
     },
   };
 }
@@ -154,11 +253,17 @@ export function createProfile(
     ageLevel,
     stars: 0,
     unlockedStickers: ['stk-abelha'], // Starter welcome sticker!
+    goldenStickers: [],
+    lumiAccessory: 'none',
+    savedPaintings: [],
+    streakDays: 0,
+    recentHistory: [],
     stats: createEmptyStats(),
     createdAt: new Date().toISOString(),
   };
 }
 
+/** Cria o estado inicial padrão da aplicação com um perfil inicial ativo. */
 export function createDefaultState(): AppState {
   const defaultChild = createProfile('Explorador', 'owl', '3-4');
   return {
@@ -170,6 +275,13 @@ export function createDefaultState(): AppState {
       sfxEnabled: true,
       voiceSpeed: 'normal',
       volume: 0.85,
+      calmMode: false,
+    },
+    screenTime: {
+      limitMinutes: 0,
+      usedSecondsToday: 0,
+      usageDate: getLocalDateKey(),
+      extraMinutesToday: 0,
     },
   };
 }
@@ -205,4 +317,16 @@ export function pickNextSticker(unlockedIds: string[]): string | null {
   if (locked.length === 0) return null;
   const idx = Math.floor(Math.random() * locked.length);
   return locked[idx].id;
+}
+
+/**
+ * Sorteia a próxima figurinha já desbloqueada para evoluir para Dourada Brilhante.
+ *
+ * @returns ID da figurinha sorteada ou `null` quando todas já forem douradas.
+ */
+export function pickNextGoldenSticker(unlockedIds: string[], goldenIds: string[]): string | null {
+  const candidates = unlockedIds.filter((id) => !goldenIds.includes(id));
+  if (candidates.length === 0) return null;
+  const idx = Math.floor(Math.random() * candidates.length);
+  return candidates[idx];
 }

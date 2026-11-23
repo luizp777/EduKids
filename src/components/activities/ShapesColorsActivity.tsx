@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus, Paintbrush, Search, Eraser } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, COLORS, ENCOURAGE_PHRASES } from '../../data/catalog';
+import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus, Paintbrush, Search, Eraser, BookmarkCheck } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
+import { CELEBRATE_PHRASES, COLORS, ENCOURAGE_PHRASES, PAINT_DRAWINGS } from '../../data/catalog';
 import {
   generateColorMixRounds,
   generateColorRound,
@@ -29,83 +29,13 @@ interface Props {
 
 type SubMode = 'shapes' | 'colors' | 'mix' | 'pattern' | 'paint' | 'shape-objects';
 
-interface PaintDrawing {
-  id: string;
-  label: string;
-  parts: { id: string; d: string; label: string }[];
-}
-
-const PAINT_DRAWINGS: PaintDrawing[] = [
-  {
-    id: 'casa',
-    label: 'Casa',
-    parts: [
-      { id: 'telhado', label: 'Telhado', d: 'M 12 50 L 50 16 L 88 50 Z' },
-      { id: 'parede', label: 'Parede', d: 'M 22 50 H 78 V 86 H 22 Z' },
-      { id: 'porta', label: 'Porta', d: 'M 42 60 H 58 V 86 H 42 Z' },
-      { id: 'janela', label: 'Janela', d: 'M 27 58 H 37 V 68 H 27 Z' },
-    ],
-  },
-  {
-    id: 'foguete',
-    label: 'Foguete',
-    parts: [
-      { id: 'corpo', label: 'Corpo', d: 'M 50 12 C 68 28 68 58 62 74 H 38 C 32 58 32 28 50 12 Z' },
-      { id: 'asa-e', label: 'Asa esquerda', d: 'M 36 72 L 20 84 L 28 58 Z' },
-      { id: 'asa-d', label: 'Asa direita', d: 'M 64 72 L 80 84 L 72 58 Z' },
-      { id: 'fogo', label: 'Fogo', d: 'M 42 74 L 50 94 L 58 74 Z' },
-    ],
-  },
-  {
-    id: 'borboleta',
-    label: 'Borboleta',
-    parts: [
-      { id: 'asa-sup-e', label: 'Asa superior esquerda', d: 'M 46 46 C 22 14 10 38 24 54 C 32 60 44 54 46 46 Z' },
-      { id: 'asa-sup-d', label: 'Asa superior direita', d: 'M 54 46 C 78 14 90 38 76 54 C 68 60 56 54 54 46 Z' },
-      { id: 'asa-inf-e', label: 'Asa inferior esquerda', d: 'M 46 54 C 24 56 18 82 36 82 C 44 82 46 66 46 54 Z' },
-      { id: 'asa-inf-d', label: 'Asa inferior direita', d: 'M 54 54 C 76 56 82 82 64 82 C 56 82 54 66 54 54 Z' },
-      { id: 'corpo', label: 'Corpo', d: 'M 45 28 H 55 V 80 H 45 Z' },
-    ],
-  },
-  {
-    id: 'carro',
-    label: 'Carro',
-    parts: [
-      { id: 'teto', label: 'Teto', d: 'M 28 50 L 36 28 H 64 L 72 50 Z' },
-      { id: 'lataria', label: 'Lataria', d: 'M 14 50 H 86 V 72 H 14 Z' },
-      { id: 'roda-e', label: 'Roda esquerda', d: 'M 22 72 A 10 10 0 1 0 42 72 A 10 10 0 1 0 22 72 Z' },
-      { id: 'roda-d', label: 'Roda direita', d: 'M 58 72 A 10 10 0 1 0 78 72 A 10 10 0 1 0 58 72 Z' },
-    ],
-  },
-  {
-    id: 'flor',
-    label: 'Flor',
-    parts: [
-      { id: 'petala-1', label: 'Pétala cima', d: 'M 50 12 A 12 12 0 1 0 50 36 A 12 12 0 1 0 50 12 Z' },
-      { id: 'petala-2', label: 'Pétala esquerda', d: 'M 28 32 A 12 12 0 1 0 28 56 A 12 12 0 1 0 28 32 Z' },
-      { id: 'petala-3', label: 'Pétala direita', d: 'M 72 32 A 12 12 0 1 0 72 56 A 12 12 0 1 0 72 32 Z' },
-      { id: 'miolo', label: 'Miolo', d: 'M 50 34 A 12 12 0 1 0 50 58 A 12 12 0 1 0 50 34 Z' },
-      { id: 'caule', label: 'Caule', d: 'M 46 58 H 54 V 88 H 46 Z' },
-    ],
-  },
-  {
-    id: 'barco',
-    label: 'Barquinho',
-    parts: [
-      { id: 'vela-e', label: 'Vela esquerda', d: 'M 48 16 L 22 58 H 48 Z' },
-      { id: 'vela-d', label: 'Vela direita', d: 'M 52 24 L 76 58 H 52 Z' },
-      { id: 'casco', label: 'Casco', d: 'M 14 62 H 86 L 74 84 H 26 Z' },
-    ],
-  },
-];
-
 /** Atividade de Formas e Cores: Encaixar, Caça às Cores, Misturar, Padrões, Formas no Mundo e Pintar. */
 export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, recordCorrectAnswer, completeRound, savePainting, say, sfx } = useApp();
   const [subMode, setSubMode] = useState<SubMode>('shapes');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
 
   // Shapes matching state
@@ -115,6 +45,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const [selectedShape, setSelectedShape] = useState<ShapeId | null>(null);
   const [wrongTarget, setWrongTarget] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [dragPos, setDragPos] = useState<{ id: ShapeId; x: number; y: number } | null>(null);
   const slotRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -145,6 +76,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const [paintIdx, setPaintIdx] = useState(0);
   const [brushColor, setBrushColor] = useState(COLORS[0].hex);
   const [paintedParts, setPaintedParts] = useState<Record<string, string>>({});
+  const [savedNotice, setSavedNotice] = useState(false);
 
   const currentPaint = PAINT_DRAWINGS[paintIdx % PAINT_DRAWINGS.length];
 
@@ -201,7 +133,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
     setReward(null);
     setWrongTarget(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setStepLocked(false);
+    setSavedNotice(false);
 
     if (next === 'shapes') {
       const s = generateShapeRound(activeProfile.ageLevel);
@@ -236,6 +170,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       setMatchedShapes(nextMatched);
       setSelectedShape(null);
       setWrongAttempts(0);
+      setManualHint(false);
       setMood('excited');
       sfx('success');
       recordCorrectAnswer('shapes-colors');
@@ -304,6 +239,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       const next = [...foundColorIds, figId];
       setFoundColorIds(next);
       setWrongAttempts(0);
+      setManualHint(false);
       setMood('excited');
       sfx('success');
       recordCorrectAnswer('shapes-colors');
@@ -347,6 +283,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setStepLocked(false);
         }
       }, 1300);
@@ -382,6 +319,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           setMood('happy');
           setFeedback('');
           setWrongAttempts(0);
+          setManualHint(false);
           setStepLocked(false);
         }
       }, 1200);
@@ -400,7 +338,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const currentMix = mixRounds[mixStep];
   const currentPattern = patternQs[patternStep];
   const currentShapeObj = shapeObjQs[shapeObjStep];
-  const showHint = wrongAttempts >= 2 && !stepLocked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !stepLocked;
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#EEFCF2] to-[#FFF9F0]">
@@ -411,11 +349,20 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getPrompt())}
+        onRequestHint={
+          subMode !== 'paint'
+            ? () => {
+                sfx('pop');
+                setManualHint(true);
+              }
+            : undefined
+        }
+        hintActive={showHint}
         accentColor="#52B788"
       />
 
-      {/* Mode Switcher: horizontal scroll on phones, centered on tablet/laptop */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      {/* Mode Switcher: horizontal scroll on phones, centered wrap on tablet/laptop */}
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'shapes' as SubMode, label: 'Encaixar', icon: Shapes },
           { id: 'colors' as SubMode, label: 'Cores', icon: Palette },
@@ -439,7 +386,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -467,9 +414,11 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                 }`}
               >
                 {shapes.map((s) => {
+                  const firstUnmatchedId = shapes.find((sh) => !matchedShapes.includes(sh.id))?.id;
+                  const hintTargetId = selectedShape || firstUnmatchedId;
                   const isMatched = matchedShapes.includes(s.id);
                   const isShaking = wrongTarget === s.id;
-                  const isHinted = showHint && !isMatched && selectedShape === s.id;
+                  const isHinted = showHint && !isMatched && hintTargetId === s.id;
                   return (
                     <button
                       key={s.id}
@@ -508,8 +457,10 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
               }`}
             >
               {shuffledPieces.map((s) => {
+                const firstUnmatchedId = shapes.find((sh) => !matchedShapes.includes(sh.id))?.id;
                 const isMatched = matchedShapes.includes(s.id);
                 const isSelected = selectedShape === s.id;
+                const isPieceHinted = showHint && !selectedShape && !isMatched && s.id === firstUnmatchedId;
                 return (
                   <div
                     key={s.id}
@@ -533,7 +484,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                         ? 'opacity-25 pointer-events-none bg-slate-100 border-slate-200'
                         : isSelected
                           ? 'bg-[#FFF3BF] border-[#FFCA3A] scale-105 cursor-grabbing'
-                          : 'bg-white border-emerald-200 hover:border-emerald-400 cursor-grab'
+                          : isPieceHinted
+                            ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse cursor-grab'
+                            : 'bg-white border-emerald-200 hover:border-emerald-400 cursor-grab'
                     }`}
                   >
                     <ShapeSvg shapeId={s.id} size={60} className="sm:w-[78px] sm:h-[78px]" />
@@ -775,6 +728,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                             setMood('happy');
                             setFeedback('');
                             setWrongAttempts(0);
+                            setManualHint(false);
                             setStepLocked(false);
                           }
                         }, 1200);
@@ -823,6 +777,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     setPaintIdx(idx);
                     setPaintedParts({});
                     setStepLocked(false);
+                    setSavedNotice(false);
                     setFeedback('');
                     setMood('happy');
                   }}
@@ -897,20 +852,43 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                   ))}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfx('pop');
-                    setPaintedParts({});
-                    setStepLocked(false);
-                    setFeedback('');
-                    setMood('happy');
-                  }}
-                  className="btn-3d flex items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 py-2 font-display text-sm font-bold text-slate-700 cursor-pointer"
-                >
-                  <Eraser className="h-4 w-4" />
-                  Limpar Desenho
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sfx('pop');
+                      setPaintedParts({});
+                      setStepLocked(false);
+                      setSavedNotice(false);
+                      setFeedback('');
+                      setMood('happy');
+                    }}
+                    className="btn-3d flex items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 py-2 font-display text-sm font-bold text-slate-700 cursor-pointer"
+                  >
+                    <Eraser className="h-4 w-4" />
+                    Limpar
+                  </button>
+
+                  {Object.keys(paintedParts).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sfx('success');
+                        savePainting(currentPaint.id, currentPaint.label, paintedParts);
+                        setSavedNotice(true);
+                        setFeedback('Desenho salvo na galeria do Álbum!');
+                      }}
+                      className={`btn-3d flex items-center gap-1.5 rounded-2xl px-3.5 py-2 font-display text-sm font-bold cursor-pointer ${
+                        savedNotice
+                          ? 'bg-[#D3F9D8] border-2 border-[#52B788] text-[#1B4332]'
+                          : 'bg-[#52B788] text-white'
+                      }`}
+                    >
+                      <BookmarkCheck className="h-4 w-4" />
+                      {savedNotice ? 'Salvo!' : 'Salvar no Álbum'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -921,6 +899,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetSubMode(subMode)}
           onGoHome={onBack}
         />

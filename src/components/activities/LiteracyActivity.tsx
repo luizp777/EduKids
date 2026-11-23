@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, PenLine, Music, Hand, Blocks, Sparkles } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { BookOpen, PenLine, Music, Hand, Blocks, Sparkles, Flag } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
+  generateFinalLetterQuestions,
   generateInitialSyllableQuestions,
   generateLiteracyQuestions,
   generateRhymeQuestions,
   generateSyllableQuestions,
   generateWordBuilderQuestions,
   pickRandom,
+  type FinalLetterQuestion,
   type InitialSyllableQuestion,
   type LiteracyQuestion,
   type RhymeQuestion,
@@ -26,9 +28,16 @@ interface Props {
   onBack: () => void;
 }
 
-type LiteracyMode = 'initial' | 'complete' | 'rhyme' | 'syllable' | 'syllable-start' | 'build';
+type LiteracyMode =
+  | 'initial'
+  | 'complete'
+  | 'rhyme'
+  | 'syllable'
+  | 'syllable-start'
+  | 'final-letter'
+  | 'build';
 
-/** Atividade de Alfabetização: Som Inicial, Completar, Rimas, Sílabas, Sílaba Inicial e Montar Palavra. */
+/** Atividade de Alfabetização: Som Inicial, Completar, Rimas, Sílabas, Sílaba Inicial, Letra Final e Montar. */
 export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [mode, setMode] = useState<LiteracyMode>('initial');
@@ -47,6 +56,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const [initSylQs, setInitSylQs] = useState<InitialSyllableQuestion[]>(() =>
     generateInitialSyllableQuestions(activeProfile.ageLevel, 4)
   );
+  const [finalLetterQs, setFinalLetterQs] = useState<FinalLetterQuestion[]>(() =>
+    generateFinalLetterQuestions(activeProfile.ageLevel, 4)
+  );
   const [usedLetterUids, setUsedLetterUids] = useState<string[]>([]);
 
   const [step, setStep] = useState(0);
@@ -54,10 +66,11 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
   const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [manualHint, setManualHint] = useState(false);
   const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
   const { schedule, clearAll } = useTimers();
-  const showHint = wrongAttempts >= 2 && !locked;
+  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
 
   const totalSteps =
     mode === 'rhyme'
@@ -66,14 +79,17 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         ? syllableQs.length
         : mode === 'syllable-start'
           ? initSylQs.length
-          : mode === 'build'
-            ? builderQs.length
-            : questions.length;
+          : mode === 'final-letter'
+            ? finalLetterQs.length
+            : mode === 'build'
+              ? builderQs.length
+              : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'rhyme') return rhymeQs[step]?.spokenPrompt || '';
     if (mode === 'syllable') return syllableQs[step]?.spokenPrompt || '';
     if (mode === 'syllable-start') return initSylQs[step]?.spokenPrompt || '';
+    if (mode === 'final-letter') return finalLetterQs[step]?.spokenPrompt || '';
     if (mode === 'build') return builderQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
@@ -82,6 +98,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'rhyme') return rhymeQs[step]?.promptText || '';
     if (mode === 'syllable') return syllableQs[step]?.promptText || '';
     if (mode === 'syllable-start') return initSylQs[step]?.promptText || '';
+    if (mode === 'final-letter') return finalLetterQs[step]?.promptText || '';
     if (mode === 'build') return 'Toque nas letras na ordem certa!';
     return questions[step]?.promptText || '';
   };
@@ -92,7 +109,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, rhymeQs, syllableQs, initSylQs, builderQs]);
+  }, [mode, step, questions, rhymeQs, syllableQs, initSylQs, finalLetterQs, builderQs]);
 
   const resetMode = (nextMode: LiteracyMode) => {
     clearAll();
@@ -102,6 +119,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     setFeedback('');
     setWrongId(null);
     setWrongAttempts(0);
+    setManualHint(false);
     setLocked(false);
     setReward(null);
     setUsedLetterUids([]);
@@ -115,6 +133,8 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
       setSyllableQs(generateSyllableQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'syllable-start') {
       setInitSylQs(generateInitialSyllableQuestions(activeProfile.ageLevel, 4));
+    } else if (nextMode === 'final-letter') {
+      setFinalLetterQs(generateFinalLetterQuestions(activeProfile.ageLevel, 4));
     } else {
       setBuilderQs(generateWordBuilderQuestions(activeProfile.ageLevel, 4));
     }
@@ -138,10 +158,11 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         setMood('happy');
         setFeedback('');
         setWrongAttempts(0);
+        setManualHint(false);
         setLocked(false);
         setUsedLetterUids([]);
       }
-    }, 1350);
+    }, mode === 'syllable' ? 1850 : 1350);
   };
 
   const handleWrong = (id: string) => {
@@ -159,6 +180,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const currentRhyme = rhymeQs[step];
   const currentSyllable = syllableQs[step];
   const currentInitSyl = initSylQs[step];
+  const currentFinalLetter = finalLetterQs[step];
   const currentBuilder = builderQs[step];
 
   return (
@@ -170,17 +192,23 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
+        onRequestHint={() => {
+          sfx('pop');
+          setManualHint(true);
+        }}
+        hintActive={showHint}
         accentColor="#FF6B6B"
       />
 
-      {/* Sub-mode tabs: horizontal scroll on phones, centered on tablet/laptop */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      {/* Sub-mode tabs: horizontal scroll on phones, centered wrap on tablet/laptop */}
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'initial' as LiteracyMode, label: 'Som Inicial', icon: BookOpen },
           { id: 'complete' as LiteracyMode, label: 'Completar', icon: PenLine },
           { id: 'rhyme' as LiteracyMode, label: 'Rimas', icon: Music },
           { id: 'syllable' as LiteracyMode, label: 'Sílabas', icon: Hand },
           { id: 'syllable-start' as LiteracyMode, label: 'Sílaba Inicial', icon: Sparkles },
+          { id: 'final-letter' as LiteracyMode, label: 'Letra Final', icon: Flag },
           { id: 'build' as LiteracyMode, label: 'Montar', icon: Blocks },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -198,7 +226,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
@@ -400,15 +428,29 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                   currentSyllable.target.syllables.map((syl, idx) => (
                     <span
                       key={idx}
-                      className="rounded-xl sm:rounded-2xl bg-[#D3F9D8] border-2 border-[#52B788] px-2.5 py-0.5 sm:px-3 sm:py-1 font-display text-base sm:text-xl font-bold text-[#1B4332]"
+                      className="animate-pop-in rounded-xl sm:rounded-2xl bg-[#D3F9D8] border-2 border-[#52B788] px-2.5 py-0.5 sm:px-3.5 sm:py-1 font-display text-base sm:text-xl font-bold text-[#1B4332]"
                     >
                       {syl}
                     </span>
                   ))
                 ) : (
-                  <span className="font-display text-xl sm:text-2xl font-bold text-slate-800">
-                    {currentSyllable.target.name}
-                  </span>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <span className="font-display text-xl sm:text-2xl font-bold text-slate-800">
+                      {currentSyllable.target.name}
+                    </span>
+                    {showHint && (
+                      <div className="flex items-center justify-center gap-1.5">
+                        {currentSyllable.target.syllables.map((_, idx) => (
+                          <span
+                            key={idx}
+                            className="flex h-6 w-8 items-center justify-center rounded-lg border-2 border-dashed border-[#FFCA3A] bg-[#FFF3BF] text-xs font-extrabold text-[#A67800]"
+                          >
+                            {idx + 1}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </button>
@@ -511,6 +553,75 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
           </div>
         )}
 
+        {mode === 'final-letter' && currentFinalLetter && (
+          <div className="activity-split">
+            <button
+              type="button"
+              onClick={() => {
+                sfx('pop');
+                say(currentFinalLetter.target.name);
+              }}
+              className="flex flex-col items-center gap-2.5 sm:gap-3 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-rose-200 px-6 py-4 sm:px-8 sm:py-5 card-3d cursor-pointer hover:border-rose-300 shrink-0"
+            >
+              <FigureSvg figureId={currentFinalLetter.target.id} size={82} className="sm:w-[106px] sm:h-[106px]" />
+              <div className="flex items-center justify-center gap-1 sm:gap-1.5 flex-wrap">
+                {currentFinalLetter.target.name.split('').map((ch, idx, arr) => {
+                  const isLast = idx === arr.length - 1;
+                  return (
+                    <span
+                      key={idx}
+                      className={`flex h-9 w-8 sm:h-12 sm:w-10 items-center justify-center rounded-xl font-display text-xl sm:text-3xl font-bold border-3 ${
+                        isLast
+                          ? locked
+                            ? 'bg-[#D3F9D8] border-[#52B788] text-[#1B4332]'
+                            : 'bg-[#FFF3BF] border-[#FFCA3A] text-[#A67800]'
+                          : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    >
+                      {isLast ? (locked ? ch : '?') : ch}
+                    </span>
+                  );
+                })}
+              </div>
+            </button>
+
+            <div
+              className={`grid gap-2.5 sm:gap-4 w-full max-w-lg ${
+                currentFinalLetter.options.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+              }`}
+            >
+              {currentFinalLetter.options.map((letter) => {
+                const isShaking = wrongId === letter;
+                const isRight = locked && letter === currentFinalLetter.correctLetter;
+                const isHinted = showHint && letter === currentFinalLetter.correctLetter;
+                return (
+                  <button
+                    key={letter}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (letter === currentFinalLetter.correctLetter) {
+                        handleCorrect(currentFinalLetter.target.name.toLowerCase());
+                      } else {
+                        handleWrong(letter);
+                      }
+                    }}
+                    className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-3xl sm:text-4xl font-bold border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {mode === 'build' && currentBuilder && (
           <div className="activity-split">
             <button
@@ -556,6 +667,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                       if (item.char === expectedChar) {
                         sfx('pop');
                         setWrongAttempts(0);
+                        setManualHint(false);
                         const nextUsed = [...usedLetterUids, item.uid];
                         setUsedLetterUids(nextUsed);
                         if (nextUsed.length >= currentBuilder.target.name.length) {
@@ -586,6 +698,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={() => resetMode(mode)}
           onGoHome={onBack}
         />

@@ -70,6 +70,15 @@ PHRASES: dict[str, str] = {
     "p-cuidar-sol": "A árvore precisa de luz e calor! Quem ajuda?",
     "p-cuidar-polen": "Quem ajuda a levar o pólen de flor em flor?",
     "p-cuidar-jardim": "Qual bichinho também mora e cuida do jardim?",
+    "p-intruso-cat": "Qual figura não pertence ao grupo das outras?",
+    "p-ritmo": "Ouça as batidas do tambor! Quantas batidas você ouviu?",
+    "p-hora-pausa": "Hora da pausa! Você brincou muito bem hoje! Vamos descansar um pouquinho?",
+    "emp-triste": "O amigo caiu e ficou triste! Como podemos ajudar?",
+    "emp-sede": "O cachorrinho está com sede! Como podemos ajudar?",
+    "emp-chuva": "Começou a chover no parque! Como podemos ajudar?",
+    "emp-fome": "O amigo está com fome na hora do lanche! Como podemos ajudar?",
+    "emp-sono": "Está na hora de descansar! Como podemos ajudar?",
+    "p-parque": "O jardim precisa de carinho! Isso fica na natureza ou devemos guardar?",
 
     # Complete composite sentences for Emotions & Routine
     "emo-abraco": "Ganhou um abraço bem apertado! Qual rostinho combina com essa situação?",
@@ -155,6 +164,11 @@ for start in range(2, 9):
     for rem in range(1, start):
         PHRASES[f"q-sub-{start}-{rem}"] = f"Tinha {start}, saíram {rem}. Quantos ficaram?"
 
+for each in range(1, 6):
+    total = each * 2
+    PHRASES[f"q-dividir-{total}"] = f"Vamos dividir {total} figuras entre dois amigos! Quantas cada um ganha?"
+    PHRASES[f"ans-dividir-{each}"] = f"Cada amigo ganha {each}!"
+
 # Figures (36 items) -> full natural phrases for every figure
 FIGURES = [
     ("abelha", "abelha", "A", 3),
@@ -217,6 +231,8 @@ for fid, spoken, letter, syl_count in FIGURES:
     PHRASES[f"ans-letra-de-{fid}"] = f"{letter_spoken} de {spoken}!"
     PHRASES[f"ans-silabas-{fid}"] = f"{spoken} tem {syl_count} {syl_unit}!"
     PHRASES[f"ans-isso-{fid}"] = f"Isso! {spoken}!"
+    PHRASES[f"q-letra-final-{fid}"] = f"Com qual letra termina a palavra {spoken}?"
+    PHRASES[f"q-parque-{fid}"] = f"{spoken} fica na natureza ou devemos guardar?"
 
 # Rhyme pairs (both directions as complete sentences)
 RHYME_PAIRS = [
@@ -337,6 +353,13 @@ STICKERS = [
     ("aviao", "Avião Veloz"),
     ("arcoiris", "Arco-íris Vivo"),
     ("melancia", "Melancia Doce"),
+    ("ovelha", "Ovelha Nuvem"),
+    ("bola", "Bola Pula-Pula"),
+    ("casa", "Casinha Feliz"),
+    ("dado", "Dado Mágico"),
+    ("pao", "Pãozinho Quente"),
+    ("mao", "Mãozinha Amiga"),
+    ("livro", "Livro de Histórias"),
 ]
 for sid, spoken in STICKERS:
     PHRASES[f"stk-{sid}"] = spoken

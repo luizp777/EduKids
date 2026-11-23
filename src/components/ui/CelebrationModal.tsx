@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
-import { Star, RotateCcw, Home, Sparkles } from 'lucide-react';
+import { Star, RotateCcw, Home, Sparkles, Crown } from 'lucide-react';
 import { STICKERS } from '../../data/catalog';
+import { useApp } from '../../state/AppContext';
 import { FigureSvg } from '../illustrations/FigureSvg';
 import { LumiMascot } from '../illustrations/LumiMascot';
 
@@ -10,6 +11,8 @@ interface CelebrationModalProps {
   starsAwarded: number;
   /** ID da figurinha recém-desbloqueada, ou `null` quando não há nova figurinha. */
   newStickerId: string | null;
+  /** ID da figurinha evoluída para Dourada Brilhante, ou `null`. */
+  newGoldenStickerId?: string | null;
   /** Callback para iniciar uma nova rodada no mesmo modo. */
   onPlayAgain: () => void;
   /** Callback para retornar à tela inicial. */
@@ -18,14 +21,17 @@ interface CelebrationModalProps {
 
 const CONFETTI_COLORS = ['#FF595E', '#FFCA3A', '#6BCB77', '#4D96FF', '#9B5DE5', '#FF9F43'];
 
-/** Modal de celebração ao final da rodada com confetes, estrelas ganhas e figurinha desbloqueada. */
+/** Modal de celebração ao final da rodada com confetes, estrelas ganhas e figurinha desbloqueada ou dourada. */
 export const CelebrationModal: React.FC<CelebrationModalProps> = ({
   starsAwarded,
   newStickerId,
+  newGoldenStickerId = null,
   onPlayAgain,
   onGoHome,
 }) => {
-  const sticker = STICKERS.find((s) => s.id === newStickerId) || null;
+  const { activeProfile, calmMode } = useApp();
+  const sticker = STICKERS.find((s) => s.id === (newStickerId || newGoldenStickerId)) || null;
+  const isGoldenUpgrade = !newStickerId && Boolean(newGoldenStickerId);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,27 +61,29 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
       aria-label="Parabéns! Atividade concluída"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-hidden"
     >
-      {/* Confetti */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        {confettiPieces.map((p) => (
-          <div
-            key={p.id}
-            className="animate-confetti absolute top-0 rounded-sm"
-            style={{
-              left: p.left,
-              width: p.size,
-              height: p.size * 0.6,
-              backgroundColor: p.color,
-              animationDelay: p.delay,
-              animationDuration: p.duration,
-            }}
-          />
-        ))}
-      </div>
+      {/* Confetti (disabled in Calm / Sensory Mode) */}
+      {!calmMode && (
+        <div className="pointer-events-none fixed inset-0 overflow-hidden">
+          {confettiPieces.map((p) => (
+            <div
+              key={p.id}
+              className="animate-confetti absolute top-0 rounded-sm"
+              style={{
+                left: p.left,
+                width: p.size,
+                height: p.size * 0.6,
+                backgroundColor: p.color,
+                animationDelay: p.delay,
+                animationDuration: p.duration,
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="animate-pop-in relative w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-[28px] sm:rounded-[32px] bg-[#FFF9F0] border-4 border-[#FFCA3A] p-5 sm:p-6 text-center shadow-2xl">
         <div className="flex justify-center -mt-2 sm:-mt-4 mb-1">
-          <LumiMascot mood="excited" size={92} />
+          <LumiMascot mood="excited" accessory={activeProfile.lumiAccessory} size={92} />
         </div>
 
         <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#6C5CE7]">
@@ -95,16 +103,28 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
           </span>
         </div>
 
-        {/* New sticker unlocked */}
+        {/* New sticker unlocked or Golden upgrade */}
         {sticker && (
-          <div className="mt-4 rounded-3xl bg-white border-2 border-purple-200 p-3 sm:p-4 shadow-sm">
-            <div className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-wide text-[#6C5CE7]">
-              <Sparkles className="h-4 w-4" />
-              Nova figurinha no seu álbum!
+          <div
+            className={`mt-4 rounded-3xl p-3 sm:p-4 shadow-sm border-2 ${
+              isGoldenUpgrade
+                ? 'bg-gradient-to-br from-[#FFF9DB] to-[#FFF3BF] border-[#FFCA3A] golden-shimmer'
+                : 'bg-white border-purple-200'
+            }`}
+          >
+            <div
+              className={`inline-flex items-center gap-1.5 text-xs sm:text-sm font-extrabold uppercase tracking-wide ${
+                isGoldenUpgrade ? 'text-[#A67800]' : 'text-[#6C5CE7]'
+              }`}
+            >
+              {isGoldenUpgrade ? <Crown className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              {isGoldenUpgrade ? 'Figurinha Dourada Brilhante!' : 'Nova figurinha no seu álbum!'}
             </div>
             <div className="mt-2 flex flex-col items-center">
               <div
-                className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl border-4 border-white shadow-md"
+                className={`flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl border-4 shadow-md ${
+                  isGoldenUpgrade ? 'border-[#FFCA3A] ring-4 ring-amber-200' : 'border-white'
+                }`}
                 style={{ backgroundColor: sticker.bgHex }}
               >
                 <FigureSvg figureId={sticker.figureId} size={66} />

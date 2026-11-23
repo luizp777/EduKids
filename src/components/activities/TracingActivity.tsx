@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Eraser, ChevronRight, Shapes, Type, Hash } from 'lucide-react';
-import { useApp } from '../../state/AppContext';
+import { Eraser, ChevronLeft, ChevronRight, Shapes, Type, Hash } from 'lucide-react';
+import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, TRACING_TEMPLATES } from '../../data/catalog';
 import { pickRandom } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -25,7 +25,7 @@ const CRAYON_COLORS = [
 
 /** Atividade de Traçado Mágico: Caminhos motores, formas geométricas, letras e números guiados por checkpoints. */
 export const TracingActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, calmMode, recordCorrectAnswer, completeRound, say, sfx } = useApp();
   const [tab, setTab] = useState<TracingTab>('caminho-forma');
 
   const templates = useMemo(() => {
@@ -46,7 +46,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<MascotMood>('happy');
   const [completedOne, setCompletedOne] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
-  const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
+  const [reward, setReward] = useState<RoundReward | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
@@ -178,6 +178,12 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
     lastPointRef.current = null;
   };
 
+  const handlePrevTemplate = () => {
+    sfx('pop');
+    setTemplateIdx((i) => (i - 1 + templates.length) % templates.length);
+    clearCanvas();
+  };
+
   const handleNextTemplate = () => {
     sfx('pop');
     setTemplateIdx((i) => (i + 1) % templates.length);
@@ -206,7 +212,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
       />
 
       {/* Category Tabs */}
-      <div className="activity-tabs-fade w-full max-w-5xl mx-auto flex items-center sm:justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 pt-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'caminho-forma' as TracingTab, label: 'Caminhos e Formas', icon: Shapes },
           { id: 'letra' as TracingTab, label: 'Letras', icon: Type },
@@ -226,14 +232,14 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
                 : 'bg-white text-slate-600 border-2 border-slate-200'
             }`}
           >
-            <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <Icon className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.4]" />
             {label}
           </button>
         ))}
       </div>
 
       {/* Quick Template Pills: horizontal scroll on mobile */}
-      <div className="activity-tabs-fade w-full max-w-3xl mx-auto flex items-center sm:justify-center gap-1.5 px-3 sm:px-4 pt-1.5 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
+      <div className="activity-tabs-fade w-full max-w-3xl mx-auto flex items-center sm:justify-center gap-1.5 px-3 sm:px-4 pt-1 pb-1 overflow-x-auto no-scrollbar snap-x shrink-0">
         {templates.map((t, idx) => (
           <button
             key={t.id}
@@ -245,7 +251,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
               setTemplateIdx(idx);
               clearCanvas();
             }}
-            className={`snap-start shrink-0 rounded-xl px-2.5 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
+            className={`snap-start shrink-0 min-h-[38px] min-w-[38px] rounded-xl px-3 py-1.5 font-display text-sm font-bold border-2 cursor-pointer transition-colors ${
               idx === safeIdx
                 ? 'bg-[#FFF3BF] border-[#FF9F43] text-[#B85D00]'
                 : 'bg-white/80 border-amber-100 text-slate-600 hover:bg-white'
@@ -293,6 +299,12 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
+              {/* Animated guide dot showing tracing direction before the child starts */}
+              {hitCheckpoints.length === 0 && !completedOne && !calmMode && (
+                <circle r="4.5" fill="#FF9F43" stroke="#FFFFFF" strokeWidth="1.4" opacity="0.9">
+                  <animateMotion dur="3.4s" repeatCount="indefinite" path={current.svgPath} />
+                </circle>
+              )}
               {(() => {
                 const nextTargetIdx = current.checkpoints.findIndex(
                   (_, i) => !hitCheckpoints.includes(i)
@@ -374,8 +386,8 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
                     setCrayonColor(c.hex);
                   }}
                   aria-label={`Cor ${c.name}`}
-                  className={`h-9 w-9 sm:h-11 sm:w-11 rounded-full border-4 transition-transform cursor-pointer ${
-                    crayonColor === c.hex ? 'scale-115 border-slate-800 shadow-md' : 'border-white'
+                  className={`h-11 w-11 sm:h-12 sm:w-12 rounded-full border-4 transition-transform cursor-pointer ${
+                    crayonColor === c.hex ? 'scale-110 border-slate-800 shadow-md' : 'border-white'
                   }`}
                   style={{ backgroundColor: c.hex }}
                 />
@@ -385,11 +397,21 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={handlePrevTemplate}
+                aria-label="Modelo anterior"
+                className="btn-3d flex h-11 items-center gap-1 rounded-2xl bg-white border-2 border-amber-200 px-3 sm:px-4 font-display text-sm sm:text-base font-bold text-amber-800 cursor-pointer"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   sfx('pop');
                   clearCanvas();
                 }}
-                className="btn-3d flex items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 py-2.5 sm:px-4 sm:py-3 font-display text-sm sm:text-base font-bold text-slate-700 cursor-pointer"
+                className="btn-3d flex h-11 items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 sm:px-4 font-display text-sm sm:text-base font-bold text-slate-700 cursor-pointer"
               >
                 <Eraser className="h-4 w-4 sm:h-5 sm:w-5" />
                 Limpar
@@ -398,10 +420,10 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
               <button
                 type="button"
                 onClick={handleNextTemplate}
-                className="btn-3d flex items-center gap-1 rounded-2xl bg-[#FF9F43] px-4 py-2.5 sm:px-5 sm:py-3 font-display text-sm sm:text-base font-bold text-white cursor-pointer"
+                className="btn-3d flex h-11 items-center gap-1 rounded-2xl bg-[#FF9F43] px-4 sm:px-5 font-display text-sm sm:text-base font-bold text-white cursor-pointer"
               >
                 Próximo
-                <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                <ChevronRight className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -412,6 +434,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
         <CelebrationModal
           starsAwarded={reward.starsAwarded}
           newStickerId={reward.newStickerId}
+          newGoldenStickerId={reward.newGoldenStickerId}
           onPlayAgain={handlePlayAgain}
           onGoHome={onBack}
         />

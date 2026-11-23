@@ -15,6 +15,11 @@ import {
   Upload,
   Trophy,
   Sparkles,
+  Moon,
+  Clock,
+  WifiOff,
+  Flame,
+  History,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { PILLARS } from '../data/catalog';
@@ -39,8 +44,74 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
     resetProfileProgress,
     importBackupState,
     updateAudio,
+    updateScreenTimeLimit,
     say,
   } = useApp();
+
+  const [offlineProgress, setOfflineProgress] = useState<{
+    running: boolean;
+    done: number;
+    total: number;
+    status: string;
+  } | null>(null);
+
+  const handleDownloadAllOfflineAudio = async () => {
+    if (typeof window === 'undefined' || !('caches' in window)) {
+      setOfflineProgress({
+        running: false,
+        done: 0,
+        total: 0,
+        status: 'Seu navegador não suporta cache offline (Cache API).',
+      });
+      return;
+    }
+    try {
+      setOfflineProgress({ running: true, done: 0, total: 0, status: 'Carregando lista de áudios...' });
+      const res = await fetch('/audio/pt-br/manifest.json');
+      if (!res.ok) throw new Error('Manifest unavailable');
+      const urls = (await res.json()) as string[];
+      const cache = await caches.open('edukids-cache-v4');
+      let completed = 0;
+      setOfflineProgress({
+        running: true,
+        done: 0,
+        total: urls.length,
+        status: `Baixando 0 de ${urls.length} áudios...`,
+      });
+      const batchSize = 12;
+      for (let i = 0; i < urls.length; i += batchSize) {
+        const batch = urls.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (url) => {
+            const existing = await cache.match(url);
+            if (!existing) {
+              await cache.add(url);
+            }
+            completed += 1;
+          })
+        );
+        setOfflineProgress({
+          running: true,
+          done: completed,
+          total: urls.length,
+          status: `Baixando ${completed} de ${urls.length} áudios...`,
+        });
+      }
+      setOfflineProgress({
+        running: false,
+        done: urls.length,
+        total: urls.length,
+        status: `Pronto! Todos os ${urls.length} áudios estão salvos para uso 100% offline!`,
+      });
+    } catch {
+      setOfflineProgress({
+        running: false,
+        done: 0,
+        total: 0,
+        status: 'Não foi possível concluir o download offline. Verifique sua conexão.',
+      });
+    }
+  };
 
   const [newName, setNewName] = useState('');
   const [newAvatar, setNewAvatar] = useState<AvatarId>('bear');
@@ -195,6 +266,32 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
               </div>
               <span className="font-extrabold text-sm">
                 {state.audio.sfxEnabled ? 'ATIVO' : 'DESLIGADO'}
+              </span>
+            </button>
+          </div>
+
+          {/* Calm / Sensory Mode */}
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => updateAudio({ calmMode: !state.audio.calmMode })}
+              className={`w-full flex items-center justify-between rounded-2xl p-4 border-2 cursor-pointer transition-colors ${
+                state.audio.calmMode
+                  ? 'bg-teal-50 border-teal-400 text-teal-900'
+                  : 'bg-slate-50 border-slate-200 text-slate-600'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Moon className={`h-6 w-6 ${state.audio.calmMode ? 'text-teal-600' : 'text-slate-400'}`} />
+                <div className="text-left">
+                  <div className="font-bold">Modo Calmo / Sensorial</div>
+                  <div className="text-xs opacity-75">
+                    Desativa confetes, reduz vibrações/saturação e suaviza o volume para momentos tranquilos
+                  </div>
+                </div>
+              </div>
+              <span className="font-extrabold text-sm shrink-0">
+                {state.audio.calmMode ? 'ATIVO' : 'DESLIGADO'}
               </span>
             </button>
           </div>
@@ -559,7 +656,7 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
           </p>
 
           {/* Pedagogical Summary */}
-          <div className="grid sm:grid-cols-2 gap-3 mb-4">
+          <div className="grid sm:grid-cols-3 gap-3 mb-4">
             <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3.5 flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200 text-amber-800 shrink-0">
                 <Trophy className="h-5 w-5" />
@@ -571,7 +668,7 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                 <div className="font-display text-base font-bold text-slate-800 truncate">
                   {favoritePillar.stat.starsEarned > 0
                     ? `${favoritePillar.pillar.title} (${favoritePillar.stat.starsEarned} ★)`
-                    : 'Comece a jogar para descobrir!'}
+                    : 'Comece a jogar!'}
                 </div>
               </div>
             </div>
@@ -586,6 +683,21 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                 </div>
                 <div className="font-display text-base font-bold text-slate-800 truncate">
                   {practiceSuggestion.pillar.title}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-orange-50 border border-orange-200 p-3.5 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-200 text-orange-800 shrink-0">
+                <Flame className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold uppercase tracking-wide text-orange-700">
+                  Dias Brincando
+                </div>
+                <div className="font-display text-base font-bold text-slate-800 truncate">
+                  {activeProfile.streakDays || 0}{' '}
+                  {(activeProfile.streakDays || 0) === 1 ? 'dia seguido' : 'dias seguidos'}
                 </div>
               </div>
             </div>
@@ -643,6 +755,111 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
               );
             })}
           </div>
+          {/* Recent Activity History */}
+          {(activeProfile.recentHistory || []).length > 0 && (
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <h3 className="font-display text-sm font-bold text-slate-700 flex items-center gap-1.5 mb-2.5">
+                <History className="h-4 w-4 text-indigo-500" />
+                Atividades Recentes
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-2">
+                {(activeProfile.recentHistory || []).slice(0, 6).map((entry, idx) => {
+                  const pMeta = PILLARS.find((p) => p.id === entry.pillar);
+                  return (
+                    <div
+                      key={`${entry.completedAt}-${idx}`}
+                      className="flex items-center justify-between rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600"
+                    >
+                      <span className="truncate">{pMeta?.title || entry.pillar}</span>
+                      <span className="shrink-0 text-amber-600">
+                        +{entry.starsEarned} ★ •{' '}
+                        {new Date(entry.completedAt).toLocaleTimeString('pt-BR', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Screen Time & Gentle Break */}
+        <section className="rounded-3xl bg-white p-5 border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <h2 className="font-display text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-indigo-600" />
+              Tempo de Tela (Hora da Pausa com a Lumi)
+            </h2>
+            <span className="text-xs font-extrabold text-indigo-600">
+              Hoje: {Math.floor((state.screenTime?.usedSecondsToday || 0) / 60)} min
+            </span>
+          </div>
+          <p className="text-sm text-slate-500 mb-4">
+            Quando o tempo diário acabar, a Lumi aparece com soninho convidando a criança para descansar.
+          </p>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            {[
+              { label: 'Sem limite', mins: 0 },
+              { label: '15 min', mins: 15 },
+              { label: '30 min', mins: 30 },
+              { label: '45 min', mins: 45 },
+              { label: '60 min', mins: 60 },
+            ].map((opt) => {
+              const active = (state.screenTime?.limitMinutes || 0) === opt.mins;
+              return (
+                <button
+                  key={opt.mins}
+                  type="button"
+                  onClick={() => updateScreenTimeLimit(opt.mins)}
+                  className={`rounded-xl py-2.5 text-xs font-extrabold border-2 cursor-pointer transition-colors ${
+                    active
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Full Offline Mode (PWA Audio Download) */}
+        <section className="rounded-3xl bg-white p-5 border border-slate-200 shadow-sm">
+          <h2 className="font-display text-lg font-bold text-slate-800 flex items-center gap-2 mb-1">
+            <WifiOff className="h-5 w-5 text-emerald-600" />
+            Modo Offline Total (Viagens sem Internet)
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Baixe todos os clipes de voz neural da Lumi de uma só vez para usar o EduKids sem Wi-Fi ou 4G.
+          </p>
+          <button
+            type="button"
+            disabled={offlineProgress?.running}
+            onClick={handleDownloadAllOfflineAudio}
+            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+          >
+            <Download className="h-4 w-4" />
+            {offlineProgress?.running ? 'Baixando áudios...' : 'Baixar Todos os Áudios Offline'}
+          </button>
+          {offlineProgress && (
+            <div className="mt-3">
+              {offlineProgress.total > 0 && (
+                <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden mb-1.5">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{
+                      width: `${Math.round((offlineProgress.done / offlineProgress.total) * 100)}%`,
+                    }}
+                  />
+                </div>
+              )}
+              <p className="text-xs font-bold text-slate-600">{offlineProgress.status}</p>
+            </div>
+          )}
         </section>
 
         {/* Backup & Restore */}

@@ -907,3 +907,117 @@ export function generateMatrixLogicQuestions(
   });
 }
 
+// --- New v4 Generators ---
+
+/** Questão de identificação da letra final da palavra. */
+export interface FinalLetterQuestion {
+  target: FigureItem;
+  correctLetter: string;
+  options: string[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+const FINAL_LETTER_POOL = ['A', 'E', 'I', 'O', 'U', 'L', 'M', 'R', 'S'];
+
+/** Gera rodadas para identificar a letra final de cada palavra. */
+export function generateFinalLetterQuestions(
+  ageLevel: AgeLevel,
+  count = 4
+): FinalLetterQuestion[] {
+  const eligible = FIGURES.filter((f) => /^[A-Z]$/.test(f.name.slice(-1)));
+  const pool =
+    ageLevel === '3-4'
+      ? eligible.filter((f) => ['A', 'E', 'O', 'U'].includes(f.name.slice(-1)))
+      : eligible;
+  const selected = shuffle(pool).slice(0, count);
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return selected.map((target) => {
+    const correctLetter = target.name.slice(-1);
+    const distractors = shuffle(
+      FINAL_LETTER_POOL.filter((l) => l !== correctLetter)
+    ).slice(0, optionCount - 1);
+    return {
+      target,
+      correctLetter,
+      options: shuffle([correctLetter, ...distractors]),
+      promptText: `Com qual letra termina ${target.name}?`,
+      spokenPrompt: `Com qual letra termina a palavra ${target.name.toLowerCase()}?`,
+    };
+  });
+}
+
+/** Questão visual de divisão igualitária entre 2 amigos (metade concreta). */
+export interface ShareQuestion {
+  figure: FigureItem;
+  total: number;
+  answer: number;
+  options: number[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera problemas visuais de dividir figuras igualmente entre dois amigos. */
+export function generateShareQuestions(ageLevel: AgeLevel, count = 4): ShareQuestion[] {
+  const maxEach = ageLevel === '3-4' ? 3 : 5;
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+
+  return Array.from({ length: count }, () => {
+    const figure = pickRandom(COUNTABLE_FIGURES);
+    const answer = 1 + Math.floor(Math.random() * maxEach);
+    const total = answer * 2;
+    const optionSet = new Set<number>([answer]);
+    let spread = 4;
+    while (optionSet.size < optionCount) {
+      const candidate = Math.max(1, answer + Math.floor(Math.random() * spread) - 1);
+      optionSet.add(candidate);
+      spread += 1;
+    }
+    return {
+      figure,
+      total,
+      answer,
+      options: shuffle(Array.from(optionSet)),
+      promptText: `Divida ${total} igualmente para 2 amigos!`,
+      spokenPrompt: `Vamos dividir ${total} figuras entre dois amigos! Quantas cada um ganha?`,
+    };
+  });
+}
+
+/** Questão semântica de encontrar o intruso da categoria (3 da mesma categoria + 1 diferente). */
+export interface CategoryIntruderQuestion {
+  majorityCategory: CategoryGroup;
+  intruder: FigureItem;
+  items: { figure: FigureItem; isIntruder: boolean }[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera desafios semânticos com 3 figuras de uma categoria e 1 intruso de outra categoria. */
+export function generateCategoryIntruderQuestions(
+  _ageLevel: AgeLevel,
+  count = 4
+): CategoryIntruderQuestion[] {
+  const categories: CategoryGroup['id'][] = ['animal', 'fruta', 'natureza', 'objeto'];
+  const chosenCats = shuffle(categories);
+
+  return Array.from({ length: count }, (_, idx) => {
+    const majId = chosenCats[idx % chosenCats.length];
+    const otherCatId = pickRandom(categories.filter((c) => c !== majId));
+    const majorityItems = shuffle(FIGURES.filter((f) => f.category === majId)).slice(0, 3);
+    const intruder = pickRandom(FIGURES.filter((f) => f.category === otherCatId));
+
+    return {
+      majorityCategory: CATEGORY_META[majId],
+      intruder,
+      items: shuffle([
+        ...majorityItems.map((figure) => ({ figure, isIntruder: false })),
+        { figure: intruder, isIntruder: true },
+      ]),
+      promptText: 'Qual figura NÃO pertence ao grupo?',
+      spokenPrompt: 'Qual figura não pertence ao grupo das outras?',
+    };
+  });
+}
+
