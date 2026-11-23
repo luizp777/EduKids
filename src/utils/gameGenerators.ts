@@ -1,5 +1,12 @@
-import type { AgeLevel, ColorInfo, FigureId, FigureItem, ShapeInfo } from '../types';
+import type { AgeLevel, ColorInfo, FigureId, FigureItem, ForeignLanguage, ShapeInfo } from '../types';
 import { COLOR_MIXES, COLORS, FIGURES, RHYME_PAIRS, SHAPES } from '../data/catalog';
+import {
+  COLOR_TRANSLATIONS,
+  FIGURE_TRANSLATIONS,
+  GREETINGS,
+  NUMBER_TRANSLATIONS,
+  type GreetingItem,
+} from '../data/languagesCatalog';
 
 /** Embaralha uma cópia do array usando Fisher-Yates. */
 export function shuffle<T>(arr: T[]): T[] {
@@ -1017,6 +1024,159 @@ export function generateCategoryIntruderQuestions(
       ]),
       promptText: 'Qual figura NÃO pertence ao grupo?',
       spokenPrompt: 'Qual figura não pertence ao grupo das outras?',
+    };
+  });
+}
+
+// --- New v5 Generators (Foreign Languages: EN & ES) ---
+
+/** Questão de vocabulário em idioma estrangeiro (Inglês ou Espanhol). */
+export interface LangVocabQuestion {
+  target: FigureItem;
+  word: string;
+  options: FigureItem[];
+  promptClips: string[];
+  nativeClipId: string;
+  promptText: string;
+}
+
+/** Gera rodadas de vocabulário bilíngue (3 opções para `3-4`; 4 opções para `5-6`). */
+export function generateLangVocabQuestions(
+  lang: ForeignLanguage,
+  ageLevel: AgeLevel,
+  count = 5
+): LangVocabQuestion[] {
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const targets = shuffle(FIGURES).slice(0, count);
+  const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
+
+  return targets.map((target) => {
+    const distractors = shuffle(FIGURES.filter((f) => f.id !== target.id)).slice(
+      0,
+      optionCount - 1
+    );
+    const word = FIGURE_TRANSLATIONS[target.id][lang];
+    const nativeClipId = `lang-${lang}-fig-${target.id}`;
+    return {
+      target,
+      word,
+      options: shuffle([target, ...distractors]),
+      promptClips: [`p-lang-toque-${lang}`, nativeClipId],
+      nativeClipId,
+      promptText: `Em ${langLabel}, toque em: ${word}!`,
+    };
+  });
+}
+
+/** Questão de reconhecimento de cores em idioma estrangeiro. */
+export interface LangColorQuestion {
+  target: ColorInfo;
+  word: string;
+  options: ColorInfo[];
+  promptClips: string[];
+  nativeClipId: string;
+  promptText: string;
+}
+
+/** Gera rodadas de reconhecimento de cores em Inglês ou Espanhol. */
+export function generateLangColorQuestions(
+  lang: ForeignLanguage,
+  ageLevel: AgeLevel,
+  count = 4
+): LangColorQuestion[] {
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const targets = shuffle(COLORS).slice(0, count);
+  const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
+
+  return targets.map((target) => {
+    const distractors = shuffle(COLORS.filter((c) => c.id !== target.id)).slice(
+      0,
+      optionCount - 1
+    );
+    const word = COLOR_TRANSLATIONS[target.id][lang];
+    const nativeClipId = `lang-${lang}-color-${target.id}`;
+    return {
+      target,
+      word,
+      options: shuffle([target, ...distractors]),
+      promptClips: [`p-lang-cor-${lang}`, nativeClipId],
+      nativeClipId,
+      promptText: `Qual é a cor em ${langLabel}: ${word}?`,
+    };
+  });
+}
+
+/** Questão de reconhecimento de números em idioma estrangeiro. */
+export interface LangNumberQuestion {
+  target: number;
+  word: string;
+  options: number[];
+  promptClips: string[];
+  nativeClipId: string;
+  promptText: string;
+}
+
+/** Gera rodadas de números em Inglês ou Espanhol (`1–5` para `3-4`; `1–10` para `5-6`). */
+export function generateLangNumberQuestions(
+  lang: ForeignLanguage,
+  ageLevel: AgeLevel,
+  count = 5
+): LangNumberQuestion[] {
+  const maxNum = ageLevel === '3-4' ? 5 : 10;
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const pool = Array.from({ length: maxNum }, (_, i) => i + 1);
+  const targets = shuffle(pool).slice(0, Math.min(count, pool.length));
+  const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
+
+  return targets.map((target) => {
+    const distractors = shuffle(pool.filter((n) => n !== target)).slice(0, optionCount - 1);
+    const word = NUMBER_TRANSLATIONS[target][lang];
+    const nativeClipId = `lang-${lang}-num-${target}`;
+    return {
+      target,
+      word,
+      options: shuffle([target, ...distractors]),
+      promptClips: [`p-lang-num-${lang}`, nativeClipId],
+      nativeClipId,
+      promptText: `Toque no número em ${langLabel}: ${word}!`,
+    };
+  });
+}
+
+/** Questão de cumprimentos e expressões cotidianas em idioma estrangeiro. */
+export interface LangGreetingQuestion {
+  target: GreetingItem;
+  word: string;
+  options: GreetingItem[];
+  promptClips: string[];
+  nativeClipId: string;
+  promptText: string;
+}
+
+/** Gera rodadas de associação entre cumprimentos em Inglês/Espanhol e cenas ilustradas. */
+export function generateLangGreetingQuestions(
+  lang: ForeignLanguage,
+  ageLevel: AgeLevel,
+  count = 4
+): LangGreetingQuestion[] {
+  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const targets = shuffle(GREETINGS).slice(0, Math.min(count, GREETINGS.length));
+  const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
+
+  return targets.map((target) => {
+    const distractors = shuffle(GREETINGS.filter((g) => g.id !== target.id)).slice(
+      0,
+      optionCount - 1
+    );
+    const word = target.translations[lang];
+    const nativeClipId = `lang-${lang}-greet-${target.id}`;
+    return {
+      target,
+      word,
+      options: shuffle([target, ...distractors]),
+      promptClips: [`p-lang-greet-${lang}-${target.id}`, nativeClipId],
+      nativeClipId,
+      promptText: `Em ${langLabel}: "${word}" (${target.ptLabel})`,
     };
   });
 }

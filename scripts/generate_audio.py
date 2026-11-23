@@ -6,6 +6,8 @@ import unicodedata
 import edge_tts
 
 VOICE = "pt-BR-FranciscaNeural"
+VOICE_EN = "en-US-AnaNeural"
+VOICE_ES = "es-MX-DaliaNeural"
 PITCH = "+4Hz"
 RATE = "-6%"
 
@@ -79,6 +81,26 @@ PHRASES: dict[str, str] = {
     "emp-fome": "O amigo está com fome na hora do lanche! Como podemos ajudar?",
     "emp-sono": "Está na hora de descansar! Como podemos ajudar?",
     "p-parque": "O jardim precisa de carinho! Isso fica na natureza ou devemos guardar?",
+    # Foreign Languages pillar (Portuguese scaffolding prompts)
+    "p-lang-explorar": "Toque em qualquer cartão para ouvir a pronúncia!",
+    "p-lang-toque-en": "Em inglês, toque em:",
+    "p-lang-toque-es": "Em espanhol, toque em:",
+    "p-lang-cor-en": "Qual é a cor em inglês:",
+    "p-lang-cor-es": "Qual é a cor em espanhol:",
+    "p-lang-num-en": "Toque no número em inglês:",
+    "p-lang-num-es": "Toque no número em espanhol:",
+    "p-lang-greet-en-hello": "Como dizemos Olá em inglês?",
+    "p-lang-greet-en-good-morning": "Como dizemos Bom dia em inglês?",
+    "p-lang-greet-en-good-night": "Como dizemos Boa noite em inglês?",
+    "p-lang-greet-en-thank-you": "Como dizemos Obrigado em inglês?",
+    "p-lang-greet-en-bye": "Como dizemos Tchau em inglês?",
+    "p-lang-greet-en-friend": "Como dizemos Amigo em inglês?",
+    "p-lang-greet-es-hello": "Como dizemos Olá em espanhol?",
+    "p-lang-greet-es-good-morning": "Como dizemos Bom dia em espanhol?",
+    "p-lang-greet-es-good-night": "Como dizemos Boa noite em espanhol?",
+    "p-lang-greet-es-thank-you": "Como dizemos Obrigado em espanhol?",
+    "p-lang-greet-es-bye": "Como dizemos Tchau em espanhol?",
+    "p-lang-greet-es-friend": "Como dizemos Amigo em espanhol?",
 
     # Complete composite sentences for Emotions & Routine
     "emo-abraco": "Ganhou um abraço bem apertado! Qual rostinho combina com essa situação?",
@@ -364,15 +386,101 @@ STICKERS = [
 for sid, spoken in STICKERS:
     PHRASES[f"stk-{sid}"] = spoken
 
+# Native foreign language clips: clip_id -> (text, voice)
+FOREIGN_CLIPS: dict[str, tuple[str, str]] = {}
 
-async def synth_one(sem: asyncio.Semaphore, clip_id: str, text: str) -> None:
+LANG_FIGURES = [
+    ("abelha", "Bee", "Abeja"),
+    ("elefante", "Elephant", "Elefante"),
+    ("ilha", "Island", "Isla"),
+    ("ovelha", "Sheep", "Oveja"),
+    ("urso", "Bear", "Oso"),
+    ("bola", "Ball", "Pelota"),
+    ("casa", "House", "Casa"),
+    ("dado", "Dice", "Dado"),
+    ("flor", "Flower", "Flor"),
+    ("gato", "Cat", "Gato"),
+    ("lua", "Moon", "Luna"),
+    ("maca", "Apple", "Manzana"),
+    ("nuvem", "Cloud", "Nube"),
+    ("pato", "Duck", "Pato"),
+    ("sapo", "Frog", "Rana"),
+    ("sol", "Sun", "Sol"),
+    ("peixe", "Fish", "Pez"),
+    ("morango", "Strawberry", "Fresa"),
+    ("banana", "Banana", "Plátano"),
+    ("borboleta", "Butterfly", "Mariposa"),
+    ("carro", "Car", "Coche"),
+    ("foguete", "Rocket", "Cohete"),
+    ("rato", "Mouse", "Ratón"),
+    ("pao", "Bread", "Pan"),
+    ("mao", "Hand", "Mano"),
+    ("uva", "Grape", "Uva"),
+    ("arvore", "Tree", "Árbol"),
+    ("estrela", "Star", "Estrella"),
+    ("cachorro", "Dog", "Perro"),
+    ("leao", "Lion", "León"),
+    ("passaro", "Bird", "Pájaro"),
+    ("tartaruga", "Turtle", "Tortuga"),
+    ("aviao", "Airplane", "Avión"),
+    ("livro", "Book", "Libro"),
+    ("arcoiris", "Rainbow", "Arcoíris"),
+    ("melancia", "Watermelon", "Sandía"),
+]
+for fid, en_word, es_word in LANG_FIGURES:
+    FOREIGN_CLIPS[f"lang-en-fig-{fid}"] = (en_word, VOICE_EN)
+    FOREIGN_CLIPS[f"lang-es-fig-{fid}"] = (es_word, VOICE_ES)
+
+LANG_COLORS = [
+    ("vermelho", "Red", "Rojo"),
+    ("azul", "Blue", "Azul"),
+    ("amarelo", "Yellow", "Amarillo"),
+    ("verde", "Green", "Verde"),
+    ("laranja", "Orange", "Naranja"),
+    ("roxo", "Purple", "Morado"),
+]
+for cid, en_word, es_word in LANG_COLORS:
+    FOREIGN_CLIPS[f"lang-en-color-{cid}"] = (en_word, VOICE_EN)
+    FOREIGN_CLIPS[f"lang-es-color-{cid}"] = (es_word, VOICE_ES)
+
+LANG_NUMBERS = [
+    (1, "One", "Uno"),
+    (2, "Two", "Dos"),
+    (3, "Three", "Tres"),
+    (4, "Four", "Cuatro"),
+    (5, "Five", "Cinco"),
+    (6, "Six", "Seis"),
+    (7, "Seven", "Siete"),
+    (8, "Eight", "Ocho"),
+    (9, "Nine", "Nueve"),
+    (10, "Ten", "Diez"),
+]
+for num, en_word, es_word in LANG_NUMBERS:
+    FOREIGN_CLIPS[f"lang-en-num-{num}"] = (en_word, VOICE_EN)
+    FOREIGN_CLIPS[f"lang-es-num-{num}"] = (es_word, VOICE_ES)
+
+LANG_GREETINGS = [
+    ("hello", "Hello!", "¡Hola!"),
+    ("good-morning", "Good morning!", "¡Buenos días!"),
+    ("good-night", "Good night!", "¡Buenas noches!"),
+    ("thank-you", "Thank you!", "¡Gracias!"),
+    ("bye", "Goodbye!", "¡Adiós!"),
+    ("friend", "Friend!", "¡Amigo!"),
+]
+for gid, en_word, es_word in LANG_GREETINGS:
+    FOREIGN_CLIPS[f"lang-en-greet-{gid}"] = (en_word, VOICE_EN)
+    FOREIGN_CLIPS[f"lang-es-greet-{gid}"] = (es_word, VOICE_ES)
+
+
+async def synth_one(sem: asyncio.Semaphore, clip_id: str, text: str, voice: str = VOICE) -> None:
     out_file = os.path.join(OUT_DIR, f"{clip_id}.mp3")
     if os.path.exists(out_file) and os.path.getsize(out_file) > 100:
         return
     async with sem:
         for attempt in range(3):
             try:
-                comm = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
+                pitch = PITCH if voice == VOICE else "+0Hz"
+                comm = edge_tts.Communicate(text, voice, rate=RATE, pitch=pitch)
                 await comm.save(out_file)
                 return
             except Exception:
@@ -384,12 +492,15 @@ async def synth_one(sem: asyncio.Semaphore, clip_id: str, text: str) -> None:
 async def main() -> None:
     os.makedirs(OUT_DIR, exist_ok=True)
     sem = asyncio.Semaphore(10)
-    tasks = [synth_one(sem, cid, text) for cid, text in PHRASES.items()]
+    tasks = [synth_one(sem, cid, text, VOICE) for cid, text in PHRASES.items()]
+    tasks += [synth_one(sem, cid, text, voice) for cid, (text, voice) in FOREIGN_CLIPS.items()]
     await asyncio.gather(*tasks)
 
-    # Remove orphan .mp3 files that are no longer in PHRASES
+    all_clip_ids = sorted(set(PHRASES.keys()) | set(FOREIGN_CLIPS.keys()))
+
+    # Remove orphan .mp3 files that are no longer in PHRASES or FOREIGN_CLIPS
     removed = 0
-    valid_files = {f"{cid}.mp3" for cid in PHRASES.keys()}
+    valid_files = {f"{cid}.mp3" for cid in all_clip_ids}
     for fname in os.listdir(OUT_DIR):
         if fname.endswith(".mp3") and fname not in valid_files:
             os.remove(os.path.join(OUT_DIR, fname))
@@ -399,7 +510,7 @@ async def main() -> None:
     ts_content = (
         "// Auto-generated by scripts/generate_audio.py\n"
         "export const AUDIO_CLIP_IDS = new Set<string>([\n"
-        + "".join(f"  {json.dumps(cid)},\n" for cid in sorted(PHRASES.keys()))
+        + "".join(f"  {json.dumps(cid)},\n" for cid in all_clip_ids)
         + "]);\n"
     )
     with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
@@ -407,11 +518,11 @@ async def main() -> None:
 
     # Write JSON manifest for Service Worker offline pre-caching
     sw_manifest_path = os.path.join(OUT_DIR, "manifest.json")
-    audio_urls = [f"/audio/pt-br/{cid}.mp3" for cid in sorted(PHRASES.keys())]
+    audio_urls = [f"/audio/pt-br/{cid}.mp3" for cid in all_clip_ids]
     with open(sw_manifest_path, "w", encoding="utf-8") as f:
         json.dump(audio_urls, f, indent=2)
 
-    print(f"Generated/verified {len(PHRASES)} neural audio clips in {OUT_DIR} (removed {removed} orphans)")
+    print(f"Generated/verified {len(all_clip_ids)} neural audio clips in {OUT_DIR} (removed {removed} orphans)")
 
 
 if __name__ == "__main__":

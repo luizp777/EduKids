@@ -20,6 +20,7 @@ import {
   WifiOff,
   Flame,
   History,
+  Globe,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { PILLARS } from '../data/catalog';
@@ -543,6 +544,38 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                     </button>
                   </div>
 
+                  {/* Foreign Language preference toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-slate-500 shrink-0">
+                      <Globe className="h-3.5 w-3.5 text-sky-600" />
+                      Idioma:
+                    </span>
+                    <button
+                      type="button"
+                      aria-pressed={(prof.preferredLanguage || 'en') === 'en'}
+                      onClick={() => updateProfile(prof.id, { preferredLanguage: 'en' })}
+                      className={`flex-1 rounded-xl py-1 text-xs font-extrabold border cursor-pointer ${
+                        (prof.preferredLanguage || 'en') === 'en'
+                          ? 'bg-sky-600 text-white border-sky-600'
+                          : 'bg-white text-slate-600 border-slate-300'
+                      }`}
+                    >
+                      Inglês (EN)
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={prof.preferredLanguage === 'es'}
+                      onClick={() => updateProfile(prof.id, { preferredLanguage: 'es' })}
+                      className={`flex-1 rounded-xl py-1 text-xs font-extrabold border cursor-pointer ${
+                        prof.preferredLanguage === 'es'
+                          ? 'bg-sky-600 text-white border-sky-600'
+                          : 'bg-white text-slate-600 border-slate-300'
+                      }`}
+                    >
+                      Espanhol (ES)
+                    </button>
+                  </div>
+
                   <div className="flex items-center justify-between pt-1 border-t border-slate-200/70">
                     {!isActive ? (
                       <button
@@ -652,7 +685,11 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
             Progresso de {activeProfile.name}
           </h2>
           <p className="text-sm text-slate-500 mb-4">
-            Nível atual: {activeProfile.ageLevel === '3-4' ? '3–4 anos (Exploradores)' : '5–6 anos (Descobridores)'}
+            Nível atual:{' '}
+            {activeProfile.ageLevel === '3-4' ? '3–4 anos (Exploradores)' : '5–6 anos (Descobridores)'}
+            {' • '}
+            Idioma:{' '}
+            {(activeProfile.preferredLanguage || 'en') === 'en' ? 'Inglês (EN)' : 'Espanhol (ES)'}
           </p>
 
           {/* Pedagogical Summary */}

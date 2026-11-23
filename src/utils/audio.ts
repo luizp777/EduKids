@@ -1,5 +1,41 @@
-import type { AgeLevel, VoiceSpeed } from '../types';
+import type { AgeLevel, ForeignLanguage, VoiceSpeed } from '../types';
 import { AUDIO_CLIP_IDS } from '../data/audioClips';
+import {
+  COLOR_TRANSLATIONS,
+  FIGURE_TRANSLATIONS,
+  GREETINGS,
+  NUMBER_TRANSLATIONS,
+} from '../data/languagesCatalog';
+
+const LANG_FIG_CLIP_MAP: Record<ForeignLanguage, Record<string, string>> = { en: {}, es: {} };
+for (const [figId, tr] of Object.entries(FIGURE_TRANSLATIONS)) {
+  LANG_FIG_CLIP_MAP.en[tr.en.toLowerCase()] = `lang-en-fig-${figId}`;
+  LANG_FIG_CLIP_MAP.es[tr.es.toLowerCase()] = `lang-es-fig-${figId}`;
+}
+
+const LANG_COLOR_CLIP_MAP: Record<ForeignLanguage, Record<string, string>> = { en: {}, es: {} };
+for (const [colId, tr] of Object.entries(COLOR_TRANSLATIONS)) {
+  LANG_COLOR_CLIP_MAP.en[tr.en.toLowerCase()] = `lang-en-color-${colId}`;
+  LANG_COLOR_CLIP_MAP.es[tr.es.toLowerCase()] = `lang-es-color-${colId}`;
+}
+
+const LANG_NUM_CLIP_MAP: Record<ForeignLanguage, Record<string, string>> = { en: {}, es: {} };
+for (const [num, tr] of Object.entries(NUMBER_TRANSLATIONS)) {
+  LANG_NUM_CLIP_MAP.en[tr.en.toLowerCase()] = `lang-en-num-${num}`;
+  LANG_NUM_CLIP_MAP.es[tr.es.toLowerCase()] = `lang-es-num-${num}`;
+}
+
+const LANG_GREET_CLIP_MAP: Record<ForeignLanguage, Record<string, string[]>> = { en: {}, es: {} };
+for (const g of GREETINGS) {
+  LANG_GREET_CLIP_MAP.en[g.translations.en.toLowerCase()] = [
+    `p-lang-greet-en-${g.id}`,
+    `lang-en-greet-${g.id}`,
+  ];
+  LANG_GREET_CLIP_MAP.es[g.translations.es.toLowerCase()] = [
+    `p-lang-greet-es-${g.id}`,
+    `lang-es-greet-${g.id}`,
+  ];
+}
 
 let audioCtx: AudioContext | null = null;
 let masterGainNode: GainNode | null = null;
@@ -389,6 +425,7 @@ const EXACT_CLIPS: Record<string, string> = {
   'o amigo está com fome na hora do lanche! como podemos ajudar?': 'emp-fome',
   'está na hora de descansar! como podemos ajudar?': 'emp-sono',
   'o jardim precisa de carinho! isso fica na natureza ou devemos guardar?': 'p-parque',
+  'toque em qualquer cartão para ouvir a pronúncia!': 'p-lang-explorar',
   // Complete composite sentences for Emotions, Day/Night, Habits, Routine, Weather
   'ganhou um abraço bem apertado! qual rostinho combina com essa situação?': 'emo-abraco',
   'o sorvete caiu no chão! qual rostinho combina com essa situação?': 'emo-sorvete',
@@ -749,6 +786,46 @@ export function resolveAudioClips(rawText: string): string[] | null {
     if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
+  // Foreign Languages pillar prompts (EN / ES)
+  m = trimmed.match(/^Em (inglês|espanhol), toque em:\s*(.+?)!$/i);
+  if (m) {
+    const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
+    const wordClip = LANG_FIG_CLIP_MAP[lang][m[2].trim().toLowerCase()];
+    const promptClip = `p-lang-toque-${lang}`;
+    if (wordClip && AUDIO_CLIP_IDS.has(promptClip) && AUDIO_CLIP_IDS.has(wordClip)) {
+      return [promptClip, wordClip];
+    }
+  }
+
+  m = trimmed.match(/^Qual é a cor em (inglês|espanhol):\s*(.+?)\?$/i);
+  if (m) {
+    const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
+    const wordClip = LANG_COLOR_CLIP_MAP[lang][m[2].trim().toLowerCase()];
+    const promptClip = `p-lang-cor-${lang}`;
+    if (wordClip && AUDIO_CLIP_IDS.has(promptClip) && AUDIO_CLIP_IDS.has(wordClip)) {
+      return [promptClip, wordClip];
+    }
+  }
+
+  m = trimmed.match(/^Toque no número em (inglês|espanhol):\s*(.+?)!$/i);
+  if (m) {
+    const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
+    const wordClip = LANG_NUM_CLIP_MAP[lang][m[2].trim().toLowerCase()];
+    const promptClip = `p-lang-num-${lang}`;
+    if (wordClip && AUDIO_CLIP_IDS.has(promptClip) && AUDIO_CLIP_IDS.has(wordClip)) {
+      return [promptClip, wordClip];
+    }
+  }
+
+  m = trimmed.match(/^Em (inglês|espanhol):\s*"(.+?)"\s*\((.+?)\)$/i);
+  if (m) {
+    const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
+    const clips = LANG_GREET_CLIP_MAP[lang][m[2].trim().toLowerCase()];
+    if (clips && clips.every((id) => AUDIO_CLIP_IDS.has(id))) {
+      return clips;
+    }
+  }
+
   return null;
 }
 
@@ -858,6 +935,15 @@ function playNextClip(session: number, rate: number): void {
  * MP3 neurais pré-gerados (`pt-BR-FranciscaNeural`), sem vozes robóticas.
  */
 export function speak(text: string, options: SpeakOptions | boolean = true): void {
+  const clips = resolveAudioClips(text);
+  playClipSequence(clips ?? [], options);
+}
+
+/**
+ * Reproduz uma sequência explícita de IDs de clipes MP3 neurais (ex.: instrução em pt-BR + pronúncia nativa em EN/ES)
+ * mantendo o mesmo volume mestre normalizado e velocidade selecionada.
+ */
+export function playClipSequence(clipIds: string[], options: SpeakOptions | boolean = true): void {
   const opts: SpeakOptions =
     typeof options === 'boolean' ? { enabled: options } : options;
   const enabled = opts.enabled ?? true;
@@ -866,26 +952,25 @@ export function speak(text: string, options: SpeakOptions | boolean = true): voi
     return;
   }
 
-  const clips = resolveAudioClips(text);
-  if (clips && clips.length > 0) {
-    const rate = getAudioPlaybackRate(opts.speed, opts.ageLevel);
-    if (opts.queue && (currentAudio || clipQueue.length > 0)) {
-      clipQueue.push(...clips);
-      if (opts.onEnd) onPlaybackEnd = opts.onEnd;
-      return;
-    }
-
-    stopSpeaking();
-    onPlaybackEnd = opts.onEnd ?? null;
-    const session = ++playbackSession;
-    clipQueue = [...clips];
-    playNextClip(session, rate);
+  const validClips = clipIds.filter((id) => AUDIO_CLIP_IDS.has(id));
+  if (validClips.length === 0) {
+    notifySpeaking(false);
+    opts.onEnd?.();
     return;
   }
 
-  // No robotic speechSynthesis fallback: finish cleanly without speaking robotic voices
-  notifySpeaking(false);
-  opts.onEnd?.();
+  const rate = getAudioPlaybackRate(opts.speed, opts.ageLevel);
+  if (opts.queue && (currentAudio || clipQueue.length > 0)) {
+    clipQueue.push(...validClips);
+    if (opts.onEnd) onPlaybackEnd = opts.onEnd;
+    return;
+  }
+
+  stopSpeaking();
+  onPlaybackEnd = opts.onEnd ?? null;
+  const session = ++playbackSession;
+  clipQueue = [...validClips];
+  playNextClip(session, rate);
 }
 
 /** Interrompe imediatamente qualquer clipe MP3 em andamento. */

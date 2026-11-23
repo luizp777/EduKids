@@ -6,13 +6,19 @@ import {
   resolveAudioClips,
   setMasterVolume,
 } from './audio';
-import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
+import { FIGURES, COLORS, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
+import { AUDIO_CLIP_IDS } from '../data/audioClips';
+import { GREETINGS } from '../data/languagesCatalog';
 import {
   generateAnimalSoundQuestions,
   generateAssociationQuestions,
   generateCategoryIntruderQuestions,
   generateFinalLetterQuestions,
   generateInitialSyllableQuestions,
+  generateLangColorQuestions,
+  generateLangGreetingQuestions,
+  generateLangNumberQuestions,
+  generateLangVocabQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
   generateNumberQuantityQuestions,
@@ -170,5 +176,49 @@ describe('audio speech helpers', () => {
 
     // Restore default
     setMasterVolume(0.85);
+  });
+
+  it('includes 100% of native English and Spanish neural audio clips in manifest', () => {
+    expect(AUDIO_CLIP_IDS.has('p-lang-explorar')).toBe(true);
+    for (const lang of ['en', 'es'] as const) {
+      expect(AUDIO_CLIP_IDS.has(`p-lang-toque-${lang}`)).toBe(true);
+      expect(AUDIO_CLIP_IDS.has(`p-lang-cor-${lang}`)).toBe(true);
+      expect(AUDIO_CLIP_IDS.has(`p-lang-num-${lang}`)).toBe(true);
+      for (const fig of FIGURES) {
+        expect(AUDIO_CLIP_IDS.has(`lang-${lang}-fig-${fig.id}`)).toBe(true);
+      }
+      for (const col of COLORS) {
+        expect(AUDIO_CLIP_IDS.has(`lang-${lang}-color-${col.id}`)).toBe(true);
+      }
+      for (let n = 1; n <= 10; n++) {
+        expect(AUDIO_CLIP_IDS.has(`lang-${lang}-num-${n}`)).toBe(true);
+      }
+      for (const g of GREETINGS) {
+        expect(AUDIO_CLIP_IDS.has(`p-lang-greet-${lang}-${g.id}`)).toBe(true);
+        expect(AUDIO_CLIP_IDS.has(`lang-${lang}-greet-${g.id}`)).toBe(true);
+      }
+    }
+  });
+
+  it('resolves 100% of Foreign Languages promptText strings to valid clip sequences', () => {
+    expect(resolveAudioClips('Toque em qualquer cartão para ouvir a pronúncia!')).toEqual([
+      'p-lang-explorar',
+    ]);
+
+    for (const lang of ['en', 'es'] as const) {
+      const langPrompts = [
+        ...generateLangVocabQuestions(lang, '5-6', 36),
+        ...generateLangColorQuestions(lang, '5-6', 6),
+        ...generateLangNumberQuestions(lang, '5-6', 10),
+        ...generateLangGreetingQuestions(lang, '5-6', 6),
+      ];
+
+      for (const q of langPrompts) {
+        expect(
+          resolveAudioClips(q.promptText),
+          `Failed to resolve promptText: "${q.promptText}"`
+        ).toEqual(q.promptClips);
+      }
+    }
   });
 });

@@ -5,6 +5,7 @@ import type {
   AudioSettings,
   AvatarId,
   ChildProfile,
+  ForeignLanguage,
   LumiAccessoryId,
   PillarId,
 } from '../types';
@@ -21,6 +22,7 @@ import {
   validateAndNormalizeState,
 } from './storage';
 import {
+  playClipSequence,
   playSfx,
   setCalmAudioMode,
   setMasterVolume,
@@ -60,10 +62,15 @@ interface AppContextValue {
   setActiveProfile: (id: string) => void;
   /** Cria e ativa um novo perfil infantil. */
   addProfile: (name: string, avatar: AvatarId, ageLevel: AgeLevel) => void;
-  /** Atualiza nome, avatar ou faixa etária de um perfil existente. */
-  updateProfile: (id: string, patch: Partial<Pick<ChildProfile, 'name' | 'avatar' | 'ageLevel'>>) => void;
+  /** Atualiza nome, avatar, faixa etária ou idioma preferido de um perfil existente. */
+  updateProfile: (
+    id: string,
+    patch: Partial<Pick<ChildProfile, 'name' | 'avatar' | 'ageLevel' | 'preferredLanguage'>>
+  ) => void;
   /** Equipa um acessório visual na mascote Lumi do perfil ativo. */
   setLumiAccessory: (accessory: LumiAccessoryId) => void;
+  /** Salva o idioma estrangeiro preferido (`en` ou `es`) no perfil ativo. */
+  setPreferredLanguage: (lang: ForeignLanguage) => void;
   /** Salva uma pintura mágica na galeria do perfil ativo. */
   savePainting: (drawingId: string, label: string, parts: Record<string, string>) => void;
   /** Remove uma pintura salva da galeria do perfil ativo. */
@@ -88,6 +95,8 @@ interface AppContextValue {
   completeRound: (pillar: PillarId, starsAwarded?: number) => RoundReward;
   /** Reproduz uma fala da Lumi respeitando as configurações de áudio do app. */
   say: (text: string, opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) => void;
+  /** Reproduz uma sequência explícita de clipes MP3 neurais (incluindo vozes nativas EN/ES). */
+  sayClips: (clipIds: string[], opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) => void;
   /** Dispara um efeito sonoro sintetizado se os efeitos estiverem habilitados. */
   sfx: (type: SfxType) => void;
 }
@@ -156,7 +165,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateProfile = (
     id: string,
-    patch: Partial<Pick<ChildProfile, 'name' | 'avatar' | 'ageLevel'>>
+    patch: Partial<Pick<ChildProfile, 'name' | 'avatar' | 'ageLevel' | 'preferredLanguage'>>
   ) => {
     setState((prev) => ({
       ...prev,
@@ -182,6 +191,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       profiles: prev.profiles.map((p) =>
         p.id === prev.activeProfileId ? { ...p, lumiAccessory: accessory } : p
+      ),
+    }));
+  };
+
+  const setPreferredLanguage = (lang: ForeignLanguage) => {
+    setState((prev) => ({
+      ...prev,
+      profiles: prev.profiles.map((p) =>
+        p.id === prev.activeProfileId ? { ...p, preferredLanguage: lang } : p
       ),
     }));
   };
@@ -408,6 +426,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       queue: opts?.queue,
       onEnd: opts?.onEnd,
     });
+  const sayClips = (clipIds: string[], opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) =>
+    playClipSequence(clipIds, {
+      enabled: state.audio.voiceEnabled,
+      speed: state.audio.voiceSpeed,
+      ageLevel: activeProfile.ageLevel,
+      queue: opts?.queue,
+      onEnd: opts?.onEnd,
+    });
   const sfx = (type: SfxType) => playSfx(type, state.audio.sfxEnabled);
 
   return (
@@ -424,6 +450,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProfile,
         updateProfile,
         setLumiAccessory,
+        setPreferredLanguage,
         savePainting,
         deletePainting,
         updateScreenTimeLimit,
@@ -436,6 +463,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         recordCorrectAnswer,
         completeRound,
         say,
+        sayClips,
         sfx,
       }}
     >

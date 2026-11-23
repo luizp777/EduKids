@@ -19,6 +19,7 @@ import {
   Flame,
   Crown,
   Lock,
+  Globe,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { getPillarTier } from '../state/storage';
@@ -29,7 +30,7 @@ import { AvatarSvg } from '../components/illustrations/AvatarSvg';
 
 /** Propriedades da tela inicial `HomePage`. */
 interface HomePageProps {
-  /** Callback ao selecionar um dos 8 pilares pedagógicos. */
+  /** Callback ao selecionar um dos 9 pilares pedagógicos. */
   onSelectPillar: (pillar: PillarId) => void;
   /** Callback para abrir o Álbum de Figurinhas. */
   onOpenAlbum: () => void;
@@ -46,9 +47,10 @@ const PILLAR_ICONS: Record<PillarId, React.ComponentType<{ className?: string }>
   'music-sounds': Music,
   'emotions-routine': Smile,
   'nature-habitats': Trees,
+  languages: Globe,
 };
 
-/** Tela inicial do EduKids com troca rápida de perfil/idade, acesso ao Álbum, Área dos Pais e os 8 pilares. */
+/** Tela inicial do EduKids com troca rápida de perfil/idade, acesso ao Álbum, Área dos Pais e os 9 pilares. */
 export const HomePage: React.FC<HomePageProps> = ({
   onSelectPillar,
   onOpenAlbum,
@@ -306,9 +308,9 @@ export const HomePage: React.FC<HomePageProps> = ({
         </button>
       </section>
 
-      {/* 8 Activity Pillar Cards */}
+      {/* 9 Activity Pillar Cards (symmetric 3x3 on md+) */}
       <main className="max-w-6xl mx-auto px-3 sm:px-6">
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5">
           {PILLARS.map((pillar) => {
             const Icon = PILLAR_ICONS[pillar.id];
             const stats = activeProfile.stats[pillar.id];
@@ -334,7 +336,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 }}
                 className={`btn-3d group relative overflow-hidden rounded-[24px] sm:rounded-[32px] bg-gradient-to-br ${pillar.bgGradient} p-4 sm:p-6 text-left text-white border-4 ${
                   isDaily ? 'border-[#FFCA3A] ring-4 ring-[#FFCA3A]/40' : 'border-white/80'
-                } cursor-pointer flex flex-col justify-between min-h-[148px] sm:min-h-[184px]`}
+                } cursor-pointer flex flex-col justify-between min-h-[148px] sm:min-h-[184px] last:col-span-2 md:last:col-span-1`}
               >
                 {/* Decorative bubble */}
                 <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-white/15 transition-transform group-hover:scale-110" />

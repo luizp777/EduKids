@@ -9,6 +9,10 @@ import {
   generateCompareQuestions,
   generateFinalLetterQuestions,
   generateInitialSyllableQuestions,
+  generateLangColorQuestions,
+  generateLangGreetingQuestions,
+  generateLangNumberQuestions,
+  generateLangVocabQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
   generateMatrixLogicQuestions,
@@ -289,6 +293,7 @@ describe('EduKids game generators', () => {
     profile.stats['music-sounds'].completedRounds = 2;
     profile.stats['emotions-routine'].completedRounds = 2;
     profile.stats['nature-habitats'].completedRounds = 0;
+    profile.stats.languages.completedRounds = 2;
 
     expect(getRecommendedPillar(profile)).toBe('nature-habitats');
   });
@@ -332,6 +337,48 @@ describe('EduKids game generators', () => {
       expect(q.items).toHaveLength(4);
       expect(q.items.filter((i) => i.isIntruder)).toHaveLength(1);
       expect(q.intruder.category).not.toBe(q.majorityCategory.id);
+    }
+  });
+
+  it('generates v5 bilingual (English & Spanish) questions for both age levels', () => {
+    for (const lang of ['en', 'es'] as const) {
+      const vocab34 = generateLangVocabQuestions(lang, '3-4', 5);
+      expect(vocab34).toHaveLength(5);
+      for (const q of vocab34) {
+        expect(q.options).toHaveLength(3);
+        expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
+        expect(q.nativeClipId).toBe(`lang-${lang}-fig-${q.target.id}`);
+      }
+
+      const colors56 = generateLangColorQuestions(lang, '5-6', 4);
+      expect(colors56).toHaveLength(4);
+      for (const q of colors56) {
+        expect(q.options).toHaveLength(4);
+        expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
+      }
+
+      const nums34 = generateLangNumberQuestions(lang, '3-4', 5);
+      for (const q of nums34) {
+        expect(q.target).toBeGreaterThanOrEqual(1);
+        expect(q.target).toBeLessThanOrEqual(5);
+        expect(q.options).toHaveLength(3);
+        expect(q.options).toContain(q.target);
+      }
+
+      const nums56 = generateLangNumberQuestions(lang, '5-6', 5);
+      for (const q of nums56) {
+        expect(q.target).toBeGreaterThanOrEqual(1);
+        expect(q.target).toBeLessThanOrEqual(10);
+        expect(q.options).toHaveLength(4);
+        expect(q.options).toContain(q.target);
+      }
+
+      const greets = generateLangGreetingQuestions(lang, '3-4', 4);
+      expect(greets).toHaveLength(4);
+      for (const q of greets) {
+        expect(q.options).toHaveLength(3);
+        expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
+      }
     }
   });
 });

@@ -29,7 +29,7 @@ export interface PillarMeta {
   badgeColor: string;
 }
 
-/** Catálogo dos 8 pilares pedagógicos do EduKids. */
+/** Catálogo dos 9 pilares pedagógicos do EduKids. */
 export const PILLARS: PillarMeta[] = [
   {
     id: 'literacy',
@@ -102,6 +102,15 @@ export const PILLARS: PillarMeta[] = [
     bgGradient: 'from-[#10B981] to-[#34D399]',
     borderColor: '#059669',
     badgeColor: '#DCFCE7',
+  },
+  {
+    id: 'languages',
+    title: 'Idiomas',
+    subtitle: 'Inglês e Espanhol com voz nativa',
+    spokenIntro: 'Vamos aprender palavras em inglês e espanhol!',
+    bgGradient: 'from-[#0EA5E9] to-[#6366F1]',
+    borderColor: '#4F46E5',
+    badgeColor: '#E0E7FF',
   },
 ];
 

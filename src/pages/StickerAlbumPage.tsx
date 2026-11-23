@@ -61,7 +61,7 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
     {
       id: 'all-pillars',
       title: 'Explorador Total',
-      desc: 'Jogue todos os 8 pilares',
+      desc: `Jogue todos os ${PILLARS.length} pilares`,
       done: pillarsPlayed >= PILLARS.length,
     },
     {

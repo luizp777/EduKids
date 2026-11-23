@@ -15,6 +15,7 @@ import { TracingActivity } from './components/activities/TracingActivity';
 import { MusicSoundsActivity } from './components/activities/MusicSoundsActivity';
 import { EmotionsRoutineActivity } from './components/activities/EmotionsRoutineActivity';
 import { NatureHabitatsActivity } from './components/activities/NatureHabitatsActivity';
+import { LanguagesActivity } from './components/activities/LanguagesActivity';
 
 type View =
   | { type: 'home' }
@@ -108,6 +109,9 @@ const AppContent: React.FC = () => {
       )}
       {view.type === 'activity' && view.pillar === 'nature-habitats' && (
         <NatureHabitatsActivity key={activityKey} onBack={goHome} />
+      )}
+      {view.type === 'activity' && view.pillar === 'languages' && (
+        <LanguagesActivity key={activityKey} onBack={goHome} />
       )}
 
       {screenTimeReached && view.type !== 'parents' && !gateReason && (

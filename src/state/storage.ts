@@ -4,6 +4,7 @@ import type {
   AppState,
   AvatarId,
   ChildProfile,
+  ForeignLanguage,
   LumiAccessoryId,
   PillarId,
   PillarStats,
@@ -136,6 +137,8 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
     const lumiAccessory: LumiAccessoryId = VALID_ACCESSORIES.has(p.lumiAccessory as LumiAccessoryId)
       ? (p.lumiAccessory as LumiAccessoryId)
       : 'none';
+    const preferredLanguage: ForeignLanguage =
+      p.preferredLanguage === 'es' ? 'es' : 'en';
     const savedPaintings: SavedPainting[] = Array.isArray(p.savedPaintings)
       ? p.savedPaintings
           .filter(
@@ -171,6 +174,7 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
       unlockedStickers,
       goldenStickers,
       lumiAccessory,
+      preferredLanguage,
       savedPaintings,
       streakDays: Math.max(0, Number(p.streakDays) || 0),
       ...(typeof p.lastActiveDate === 'string' ? { lastActiveDate: p.lastActiveDate } : {}),
@@ -220,7 +224,7 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
   };
 }
 
-/** Cria um mapa inicial zerado de estatísticas para todos os 8 pilares. */
+/** Cria um mapa inicial zerado de estatísticas para todos os 9 pilares. */
 export function createEmptyStats(): Record<PillarId, PillarStats> {
   return {
     literacy: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
@@ -231,6 +235,7 @@ export function createEmptyStats(): Record<PillarId, PillarStats> {
     'music-sounds': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     'emotions-routine': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     'nature-habitats': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    languages: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
   };
 }
 
@@ -255,6 +260,7 @@ export function createProfile(
     unlockedStickers: ['stk-abelha'], // Starter welcome sticker!
     goldenStickers: [],
     lumiAccessory: 'none',
+    preferredLanguage: 'en',
     savedPaintings: [],
     streakDays: 0,
     recentHistory: [],

@@ -1,7 +1,7 @@
 /** Faixas etárias suportadas pelo EduKids (3–4: Exploradores, 5–6: Descobridores). */
 export type AgeLevel = '3-4' | '5-6';
 
-/** Identificadores dos 8 pilares pedagógicos do aplicativo. */
+/** Identificadores dos 9 pilares pedagógicos do aplicativo. */
 export type PillarId =
   | 'literacy'
   | 'math'
@@ -10,7 +10,11 @@ export type PillarId =
   | 'tracing'
   | 'music-sounds'
   | 'emotions-routine'
-  | 'nature-habitats';
+  | 'nature-habitats'
+  | 'languages';
+
+/** Idiomas estrangeiros suportados no pilar de Idiomas (`en`: Inglês, `es`: Espanhol). */
+export type ForeignLanguage = 'en' | 'es';
 
 /** Avatares SVG disponíveis para o perfil da criança. */
 export type AvatarId =
@@ -90,6 +94,8 @@ export interface ChildProfile {
   goldenStickers: string[];
   /** Acessório visual equipado na mascote Lumi. */
   lumiAccessory: LumiAccessoryId;
+  /** Último idioma estrangeiro selecionado pela criança no pilar de Idiomas. */
+  preferredLanguage?: ForeignLanguage;
   /** Galeria de pinturas mágicas salvas pela criança (máx. 12). */
   savedPaintings: SavedPainting[];
   /** Quantidade de dias seguidos brincando (ofensiva). */

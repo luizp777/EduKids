@@ -1,6 +1,6 @@
 # EduKids — Brincar e Aprender
 
-Aplicativo web educativo (PWA offline-first) para crianças da primeira infância (**3 a 6 anos**), com atividades interativas de **alfabetização**, **matemática**, **formas e cores**, **figuras e lógica**, **coordenação motora**, **música e sons**, **emoções e rotina** e **natureza e habitats**.
+Aplicativo web educativo (PWA offline-first) para crianças da primeira infância (**3 a 6 anos**), com atividades interativas de **alfabetização**, **matemática**, **formas e cores**, **figuras e lógica**, **coordenação motora**, **música e sons**, **emoções e rotina**, **natureza e habitats** e **idiomas (Inglês e Espanhol)**.
 
 - **App publicado:** https://edu-kids-pink.vercel.app/
 - **Repositório:** https://github.com/luizp777/EduKids
@@ -12,8 +12,8 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 - **Faixas Etárias Progressivas:**
   - **Exploradores (3–4 anos):** menos opções por tela, foco em vogais, contagem 1–5, tamanhos, cores, formas básicas, caminhos motores e traçado amplo.
   - **Descobridores (5–6 anos):** alfabeto ampliado, completar e montar palavras, sílaba inicial, somas/subtrações visuais, sequências e ordem crescente, matriz lógica, quebra-cabeça 3×2 e traçado de consoantes e números até 9.
-- **Voz Neural Offline e Áudio Normalizado (`pt-BR`):**
-  - **1.170 clipes MP3 neurais** de frases completas pré-gerados com `pt-BR-FranciscaNeural` em `public/audio/pt-br/`, garantindo prosódia natural contínua e **zero vozes robóticas** (sem dependência de `speechSynthesis`).
+- **Voz Neural Offline e Áudio Normalizado (`pt-BR`, `en-US` e `es-MX`):**
+  - **1.305 clipes MP3 neurais** pré-gerados com `pt-BR-FranciscaNeural` (português), `en-US-AnaNeural` (inglês nativo infantil) e `es-MX-DaliaNeural` (espanhol nativo) em `public/audio/pt-br/`, garantindo prosódia natural contínua e **zero vozes robóticas** (sem dependência de `speechSynthesis`).
   - **Barramento Mestre Normalizado:** compressor dinâmico (`DynamicsCompressorNode`) e ganho mestre (`MasterGainNode`) via **Web Audio API**, mantendo leitura de texto, notas musicais do xilofone, discriminação grave/agudo, sons sintetizados dos animais, tambor de ritmo e efeitos sonoros sempre equilibrados no mesmo volume selecionado.
 - **Design Responsivo, Modo Calmo e Ergonomia Infantil:**
   - Layout adaptado para smartphones, tablets (retrato e paisagem) e laptops: jogos ajustados à tela visível (`100dvh`), abas horizontais roláveis com centralização automática no celular e divisão lado a lado em telas largas.
@@ -30,7 +30,7 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 
 ---
 
-## Os 8 Pilares de Atividades
+## Os 9 Pilares de Atividades
 
 | Pilar | Sub-modos |
 | --- | --- |
@@ -42,13 +42,14 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 | **Música e Sons** | Xilofone Mágico (4 músicas guiadas), Melodia (Simon), Sons dos Bichos (9 animais com síntese acústica), Grave ou Agudo, Ritmo (Tambor) |
 | **Emoções e Rotina** | Emoções/Sentimentos (6 emoções, 10 situações), Dia e Noite (10 itens), Hábitos Saudáveis (8 situações), Ordem da Rotina, Ajudar Amigo (Empatia) |
 | **Natureza e Habitats** | Onde o Bichinho Mora (13 animais), Clima e Roupas (7 cenários com ícones), Cuidar da Natureza, Terra, Água ou Céu, Cuidar do Parque |
+| **Idiomas (EN / ES)** | Vocabulário (36 figuras), Cores (6 cores), Números (`1–5` / `1–10`), Cumprimentos (6 expressões do dia a dia), Explorar (Cartões de Descoberta com voz nativa) |
 
 ---
 
 ## Stack Tecnológica
 
 - **Frontend:** React 19, TypeScript, Vite 6, Tailwind CSS v4, Lucide React
-- **Áudio:** HTMLAudioElement (1.170 MP3s neurais contínuos com pré-carregamento em fila) + Web Audio API (Master Compressor/Gain + SFX + Xilofone + Grave/Agudo + Sons Sintetizados de Animais + Tambor)
+- **Áudio:** HTMLAudioElement (1.305 MP3s neurais contínuos em pt-BR, en-US e es-MX com pré-carregamento em fila) + Web Audio API (Master Compressor/Gain + SFX + Xilofone + Grave/Agudo + Sons Sintetizados de Animais + Tambor)
 - **PWA:** `public/manifest.webmanifest` + `public/sw.js` (`edukids-cache-v4`, network-first para navegação/manifestos, pré-cache essencial de UI/elogios + download offline total sob demanda)
 - **Testes:** Vitest
 - **Deploy:** Vercel (`vercel.json`)
@@ -59,18 +60,19 @@ Aplicativo web educativo (PWA offline-first) para crianças da primeira infânci
 
 ```text
 public/
-  audio/pt-br/       # 1.170 clipes MP3 neurais + manifest.json
+  audio/pt-br/       # 1.305 clipes MP3 neurais (PT, EN e ES) + manifest.json
   manifest.webmanifest
   sw.js              # Service Worker offline (edukids-cache-v4)
 scripts/
-  generate_audio.py  # Script Edge-TTS para gerar/atualizar os áudios pt-BR
+  generate_audio.py  # Script Edge-TTS para gerar/atualizar os áudios PT/EN/ES
 src/
   components/
-    activities/      # Os 8 módulos de atividades interativas
+    activities/      # Os 9 módulos de atividades interativas
     illustrations/   # Mascote Lumi (com 6 acessórios), 36 figuras SVG, formas e avatares
     ui/              # ActivityHeader, LumiPromptBanner, CelebrationModal, ScreenTimeBreakModal e ParentalGateModal
   data/
     catalog.ts       # Catálogo de figuras, rimas, cores, formas, 36 figurinhas, 10 desenhos e traçados A-Z
+    languagesCatalog.ts # Traduções EN/ES das 36 figuras, 6 cores, números 1–10 e 6 cumprimentos
     audioClips.ts    # Manifesto gerado com IDs dos clipes MP3 disponíveis
   pages/             # HomePage, StickerAlbumPage e ParentsDashboardPage
   state/             # AppContext e persistência em localStorage

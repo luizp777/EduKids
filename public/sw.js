@@ -48,8 +48,10 @@ self.addEventListener('activate', (event) => {
     .then((res) => (res.ok ? res.json() : []))
     .then((urls) => {
       if (Array.isArray(urls) && urls.length > 0) {
-        const essential = urls.filter((u) =>
-          ESSENTIAL_AUDIO_PREFIXES.some((prefix) => u.startsWith(prefix))
+        const essential = urls.filter(
+          (u) =>
+            !u.startsWith('/audio/pt-br/p-lang-') &&
+            ESSENTIAL_AUDIO_PREFIXES.some((prefix) => u.startsWith(prefix))
         );
         precacheAudioInBatches(essential, 6);
       }
