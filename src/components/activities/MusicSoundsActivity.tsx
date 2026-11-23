@@ -10,7 +10,7 @@ import {
 } from '../../utils/audio';
 import { generateAnimalSoundQuestions, pickRandom, shuffle, type AnimalSoundQuestion } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
-import type { MascotMood } from '../../types';
+import type { FigureId, MascotMood } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
 import { LumiPromptBanner } from '../ui/LumiPromptBanner';
@@ -33,11 +33,15 @@ const XYLOPHONE_KEYS = [
   { note: 'Dó+', color: '#F15BB5', heightClass: 'h-30 sm:h-34' },
 ];
 
-const GUIDED_SONGS = [
-  { id: 'brilha', title: 'Brilha, Brilha, Estrelinha', notes: [0, 0, 4, 4, 5, 5, 4] },
-  { id: 'escala', title: 'Escala Dó-Ré-Mi', notes: [0, 1, 2, 3, 4, 5, 6, 7] },
-  { id: 'balao', title: 'Cai, Cai, Balão', notes: [4, 4, 2, 4, 4, 2, 0] },
-  { id: 'marcha', title: 'Marcha Soldado', notes: [0, 2, 4, 4, 2, 0, 4] },
+const GUIDED_SONGS: { id: string; title: string; figureId: FigureId; notes: number[] }[] = [
+  { id: 'brilha', title: 'Brilha, Brilha, Estrelinha', figureId: 'estrela', notes: [0, 0, 4, 4, 5, 5, 4] },
+  { id: 'escala', title: 'Escala Dó-Ré-Mi', figureId: 'arcoiris', notes: [0, 1, 2, 3, 4, 5, 6, 7] },
+  { id: 'balao', title: 'Cai, Cai, Balão', figureId: 'sol', notes: [4, 4, 2, 4, 4, 2, 0] },
+  { id: 'marcha', title: 'Marcha Soldado', figureId: 'foguete', notes: [0, 2, 4, 4, 2, 0, 4] },
+  { id: 'parabens', title: 'Parabéns pra Você', figureId: 'flor', notes: [0, 0, 1, 0, 3, 2] },
+  { id: 'borboleta', title: 'Borboletinha', figureId: 'borboleta', notes: [2, 3, 4, 4, 5, 4, 3, 2] },
+  { id: 'sapo', title: 'O Sapo Não Lava o Pé', figureId: 'sapo', notes: [4, 4, 4, 2, 0, 2, 4] },
+  { id: 'ciranda', title: 'Ciranda, Cirandinha', figureId: 'ilha', notes: [4, 5, 4, 3, 2, 1, 0] },
 ];
 
 interface PitchQuestion {
@@ -88,7 +92,8 @@ function createRhythmRounds(ageLevel: '3-4' | '5-6', count = 4): number[] {
 
 /** Atividade de Música e Sons: Xilofone Mágico, Memória Musical, Sons dos Bichos, Grave/Agudo e Ritmo. */
 export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
-  const { state, activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { state, activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('music-sounds');
   const [mode, setMode] = useState<MusicMode>('xylophone');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
@@ -103,7 +108,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   const currentSong = GUIDED_SONGS[songIdx % GUIDED_SONGS.length];
 
   // Simon musical memory state
-  const simonLen = activeProfile.ageLevel === '3-4' ? 3 : 4;
+  const simonLen = activeProfile.ageLevel === '3-4' && !challengeMode ? 3 : 4;
   const [simonSeq, setSimonSeq] = useState<number[]>(() => createSimonSequence(simonLen));
   const [simonUserIdx, setSimonUserIdx] = useState(0);
   const [simonPlaying, setSimonPlaying] = useState(false);
@@ -111,7 +116,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
 
   // Animal sounds state
   const [animalQs, setAnimalQs] = useState<AnimalSoundQuestion[]>(() =>
-    generateAnimalSoundQuestions(activeProfile.ageLevel, 4)
+    generateAnimalSoundQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [animalStep, setAnimalStep] = useState(0);
 
@@ -200,7 +205,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'xylophone') {
       say('Toque nas teclas coloridas para fazer música!');
     } else if (mode === 'simon') {
-      playSimonSequence(simonSeq);
+      schedule(() => playSimonSequence(simonSeq), 0);
     } else if (mode === 'pitch' && pitchQs[pitchStep]) {
       say(pitchQs[pitchStep].spokenPrompt, {
         onEnd: () => {
@@ -251,7 +256,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
       setRhythmQs(createRhythmRounds(activeProfile.ageLevel, 4));
       setRhythmStep(0);
     } else {
-      setAnimalQs(generateAnimalSoundQuestions(activeProfile.ageLevel, 4));
+      setAnimalQs(generateAnimalSoundQuestions(activeProfile.ageLevel, 4, challengeMode));
       setAnimalStep(0);
     }
   };
@@ -478,12 +483,13 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                       setGuideStep(0);
                       setFeedback('');
                     }}
-                    className={`shrink-0 rounded-xl px-3 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
+                    className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl pl-2 pr-3 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
                       idx === songIdx
                         ? 'bg-[#FFE5F1] border-[#F15BB5] text-[#C9368C]'
                         : 'bg-white/80 border-pink-100 text-slate-600 hover:bg-white'
                     }`}
                   >
+                    <FigureSvg figureId={s.figureId} size={18} />
                     {s.title}
                   </button>
                 ))}

@@ -12,10 +12,12 @@ import {
   generateLangColorQuestions,
   generateLangGreetingQuestions,
   generateLangNumberQuestions,
+  generateLangPhraseQuestions,
   generateLangVocabQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
   generateMatrixLogicQuestions,
+  generateNeighborQuestions,
   generateNumberQuantityQuestions,
   generateOddOneOutQuestions,
   generateOrderSizeQuestions,
@@ -28,6 +30,7 @@ import {
   generateShareQuestions,
   generateSubtractionQuestions,
   generateSyllableQuestions,
+  generateVowelHuntQuestions,
   generateWordBuilderQuestions,
 } from './gameGenerators';
 import {
@@ -294,6 +297,7 @@ describe('EduKids game generators', () => {
     profile.stats['emotions-routine'].completedRounds = 2;
     profile.stats['nature-habitats'].completedRounds = 0;
     profile.stats.languages.completedRounds = 2;
+    profile.stats.stories.completedRounds = 2;
 
     expect(getRecommendedPillar(profile)).toBe('nature-habitats');
   });
@@ -379,6 +383,44 @@ describe('EduKids game generators', () => {
         expect(q.options).toHaveLength(3);
         expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
       }
+
+      const phrases = generateLangPhraseQuestions(lang, '3-4', 4, true);
+      expect(phrases).toHaveLength(4);
+      for (const q of phrases) {
+        expect(q.options).toHaveLength(4); // challengeMode expands 3-4 options to 4
+        expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
+        expect(q.nativeClipId).toBe(`lang-${lang}-phrase-${q.target.id}`);
+      }
     }
+  });
+
+  it('generates v6 Vowel Hunt, Number Neighbors, and adaptive challengeMode rounds', () => {
+    const vowels34 = generateVowelHuntQuestions('3-4', 4, false);
+    expect(vowels34).toHaveLength(4);
+    for (const q of vowels34) {
+      expect(q.options).toHaveLength(3);
+      expect(q.target.letter).toBe(q.vowel);
+      expect(q.options.some((o) => o.id === q.target.id)).toBe(true);
+    }
+
+    const vowelsChallenge = generateVowelHuntQuestions('3-4', 4, true);
+    expect(vowelsChallenge.every((q) => q.options.length === 4)).toBe(true);
+
+    const neighbors = generateNeighborQuestions('5-6', 4);
+    expect(neighbors).toHaveLength(4);
+    for (const q of neighbors) {
+      const expected = q.direction === 'after' ? q.anchor + 1 : q.anchor - 1;
+      expect(q.answer).toBe(expected);
+      expect(q.options).toContain(q.answer);
+    }
+
+    // Challenge mode expands 3-4 option counts across pillars
+    expect(generateShapeRound('3-4', true)).toHaveLength(4);
+    expect(generateShadowQuestions('3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
+    expect(generateRhymeQuestions('3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
+    expect(generateAssociationQuestions('3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
+    expect(generateAnimalSoundQuestions('3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
+    expect(generateShapeObjectQuestions('3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
+    expect(generateLangVocabQuestions('en', '3-4', 4, true).every((q) => q.options.length === 4)).toBe(true);
   });
 });

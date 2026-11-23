@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Hash, Scale, Minus, ListOrdered, ArrowUpNarrowWide, Shapes, Divide } from 'lucide-react';
+import { Plus, Hash, Scale, Minus, ListOrdered, ArrowUpNarrowWide, Shapes, Divide, ArrowLeftRight } from 'lucide-react';
 import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
   generateCompareQuestions,
   generateMathQuestions,
+  generateNeighborQuestions,
   generateNumberQuantityQuestions,
   generateOrderSizeQuestions,
   generateSequenceQuestions,
@@ -13,6 +14,7 @@ import {
   pickRandom,
   type CompareQuestion,
   type MathQuestion,
+  type NeighborQuestion,
   type NumberQuantityQuestion,
   type OrderSizeQuestion,
   type SequenceQuestion,
@@ -30,14 +32,15 @@ interface Props {
   onBack: () => void;
 }
 
-type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence' | 'order' | 'quantity' | 'share';
+type MathMode = 'count' | 'addition' | 'compare' | 'subtract' | 'sequence' | 'order' | 'quantity' | 'share' | 'neighbors';
 
-/** Atividade de Matemática: Contar, Somar, Comparar, Subtrair, Sequência, Ordem, Quantidades e Dividir. */
+/** Atividade de Matemática: Contar, Somar, Comparar, Subtrair, Sequência, Ordem, Quantidades, Dividir e Vizinhos. */
 export const MathActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('math');
   const [mode, setMode] = useState<MathMode>('count');
   const [questions, setQuestions] = useState<MathQuestion[]>(() =>
-    generateMathQuestions(activeProfile.ageLevel, 5, 'count')
+    generateMathQuestions(activeProfile.ageLevel, 5, 'count', challengeMode)
   );
   const [compareQs, setCompareQs] = useState<CompareQuestion[]>(() =>
     generateCompareQuestions(activeProfile.ageLevel, 4)
@@ -56,6 +59,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   );
   const [shareQs, setShareQs] = useState<ShareQuestion[]>(() =>
     generateShareQuestions(activeProfile.ageLevel, 4)
+  );
+  const [neighborQs, setNeighborQs] = useState<NeighborQuestion[]>(() =>
+    generateNeighborQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [pickedOrderIds, setPickedOrderIds] = useState<string[]>([]);
 
@@ -83,7 +89,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               ? quantityQs.length
               : mode === 'share'
                 ? shareQs.length
-                : questions.length;
+                : mode === 'neighbors'
+                  ? neighborQs.length
+                  : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'compare') return compareQs[step]?.spokenPrompt || '';
@@ -92,6 +100,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'order') return orderQs[step]?.spokenPrompt || '';
     if (mode === 'quantity') return quantityQs[step]?.spokenPrompt || '';
     if (mode === 'share') return shareQs[step]?.spokenPrompt || '';
+    if (mode === 'neighbors') return neighborQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
 
@@ -102,6 +111,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'order') return orderQs[step]?.promptText || '';
     if (mode === 'quantity') return quantityQs[step]?.promptText || '';
     if (mode === 'share') return shareQs[step]?.promptText || '';
+    if (mode === 'neighbors') return neighborQs[step]?.promptText || '';
     return questions[step]?.promptText || '';
   };
 
@@ -111,7 +121,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, compareQs, subQs, seqQs, orderQs, quantityQs, shareQs]);
+  }, [mode, step, questions, compareQs, subQs, seqQs, orderQs, quantityQs, shareQs, neighborQs]);
 
   const resetMode = (nextMode: MathMode) => {
     clearAll();
@@ -126,7 +136,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     setReward(null);
     setPickedOrderIds([]);
     if (nextMode === 'count' || nextMode === 'addition') {
-      setQuestions(generateMathQuestions(activeProfile.ageLevel, 5, nextMode));
+      setQuestions(generateMathQuestions(activeProfile.ageLevel, 5, nextMode, challengeMode));
     } else if (nextMode === 'compare') {
       setCompareQs(generateCompareQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'subtract') {
@@ -137,6 +147,8 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
       setQuantityQs(generateNumberQuantityQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'share') {
       setShareQs(generateShareQuestions(activeProfile.ageLevel, 4));
+    } else if (nextMode === 'neighbors') {
+      setNeighborQs(generateNeighborQuestions(activeProfile.ageLevel, 4, challengeMode));
     } else {
       setOrderQs(generateOrderSizeQuestions(activeProfile.ageLevel, 4));
     }
@@ -185,6 +197,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const currentOrder = orderQs[step];
   const currentQty = quantityQs[step];
   const currentShare = shareQs[step];
+  const currentNeighbor = neighborQs[step];
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#EDF6FF] to-[#FFF9F0]">
@@ -214,6 +227,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'order' as MathMode, label: 'Ordem', icon: ArrowUpNarrowWide },
           { id: 'quantity' as MathMode, label: 'Quantidades', icon: Shapes },
           { id: 'share' as MathMode, label: 'Dividir', icon: Divide },
+          { id: 'neighbors' as MathMode, label: 'Vizinhos', icon: ArrowLeftRight },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -681,6 +695,73 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     onClick={() => {
                       if (num === currentShare.answer) {
                         triggerSuccess(`Cada amigo ganha ${currentShare.answer}!`);
+                      } else {
+                        triggerWrong(String(num));
+                      }
+                    }}
+                    className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-4xl sm:text-5xl font-bold border-4 cursor-pointer ${
+                      isRight
+                        ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    {num}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {mode === 'neighbors' && currentNeighbor && (
+          <div className="activity-split">
+            <div className="rounded-[28px] sm:rounded-[32px] bg-white border-4 border-blue-100 p-5 sm:p-7 card-3d flex items-center justify-center gap-3 sm:gap-5">
+              {currentNeighbor.direction === 'before' ? (
+                <>
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-amber-50 border-4 border-dashed border-[#FFCA3A] font-display text-4xl sm:text-5xl font-bold text-amber-600">
+                    {locked ? currentNeighbor.answer : '?'}
+                  </div>
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-[#4D96FF] border-4 border-white shadow-lg font-display text-4xl sm:text-5xl font-bold text-white">
+                    {currentNeighbor.anchor}
+                  </div>
+                  <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-slate-100 border-2 border-slate-200 font-display text-2xl sm:text-3xl font-bold text-slate-400">
+                    {currentNeighbor.anchor + 1}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-slate-100 border-2 border-slate-200 font-display text-2xl sm:text-3xl font-bold text-slate-400">
+                    {currentNeighbor.anchor - 1}
+                  </div>
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-[#4D96FF] border-4 border-white shadow-lg font-display text-4xl sm:text-5xl font-bold text-white">
+                    {currentNeighbor.anchor}
+                  </div>
+                  <div className="flex h-20 w-20 sm:h-24 sm:w-24 items-center justify-center rounded-3xl bg-amber-50 border-4 border-dashed border-[#FFCA3A] font-display text-4xl sm:text-5xl font-bold text-amber-600">
+                    {locked ? currentNeighbor.answer : '?'}
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div
+              className={`grid w-full max-w-md gap-3 ${
+                currentNeighbor.options.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+              }`}
+            >
+              {currentNeighbor.options.map((num) => {
+                const isShaking = wrongOpt === String(num);
+                const isRight = locked && num === currentNeighbor.answer;
+                const isHinted = showHint && num === currentNeighbor.answer;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (num === currentNeighbor.answer) {
+                        triggerSuccess(`O número ${currentNeighbor.answer}!`);
                       } else {
                         triggerWrong(String(num));
                       }

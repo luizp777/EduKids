@@ -1,7 +1,7 @@
 /** Faixas etárias suportadas pelo EduKids (3–4: Exploradores, 5–6: Descobridores). */
 export type AgeLevel = '3-4' | '5-6';
 
-/** Identificadores dos 9 pilares pedagógicos do aplicativo. */
+/** Identificadores dos 10 pilares pedagógicos do aplicativo. */
 export type PillarId =
   | 'literacy'
   | 'math'
@@ -11,7 +11,8 @@ export type PillarId =
   | 'music-sounds'
   | 'emotions-routine'
   | 'nature-habitats'
-  | 'languages';
+  | 'languages'
+  | 'stories';
 
 /** Idiomas estrangeiros suportados no pilar de Idiomas (`en`: Inglês, `es`: Espanhol). */
 export type ForeignLanguage = 'en' | 'es';

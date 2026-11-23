@@ -14,11 +14,11 @@ import {
   Recycle,
   Package,
 } from 'lucide-react';
-import { useApp, type RoundReward } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
+import { useApp } from '../../state/AppContext';
+import { CELEBRATE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
-import { useTimers } from '../../utils/useTimers';
-import type { FigureId, MascotMood } from '../../types';
+import { useActivityFeedback } from '../../utils/useActivityFeedback';
+import type { FigureId } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
 import { LumiPromptBanner } from '../ui/LumiPromptBanner';
@@ -269,24 +269,33 @@ function createWeatherQuestions(): WeatherQuestion[] {
 
 /** Atividade de Natureza e Habitats: moradia dos animais, clima, cuidar da natureza, elementos e cuidar do parque. */
 export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('nature-habitats');
   const [mode, setMode] = useState<NatureMode>('habitat');
   const [step, setStep] = useState(0);
-  const [mood, setMood] = useState<MascotMood>('happy');
-  const [feedback, setFeedback] = useState('');
-  const [wrongId, setWrongId] = useState<string | null>(null);
-  const [wrongAttempts, setWrongAttempts] = useState(0);
-  const [manualHint, setManualHint] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<RoundReward | null>(null);
-  const { schedule, clearAll } = useTimers();
-  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
+  const {
+    mood,
+    setMood,
+    feedback,
+    setFeedback,
+    wrongId,
+    locked,
+    setLocked,
+    reward,
+    setReward,
+    showHint,
+    schedule,
+    resetFeedbackState,
+    clearStepFeedback,
+    requestManualHint,
+    triggerWrongFeedback: handleWrong,
+  } = useActivityFeedback({ say, sfx });
 
-  const [habitatQs, setHabitatQs] = useState(() => shuffle(HABITAT_QUESTIONS).slice(0, 5));
-  const [weatherQs, setWeatherQs] = useState(() => createWeatherQuestions().slice(0, 4));
+  const [habitatQs, setHabitatQs] = useState(() => shuffle(HABITAT_QUESTIONS).slice(0, challengeMode ? 6 : 5));
+  const [weatherQs, setWeatherQs] = useState(() => createWeatherQuestions().slice(0, challengeMode ? 5 : 4));
   const [plantQs, setPlantQs] = useState(() => createPlantCareQuestions());
-  const [elementQs, setElementQs] = useState(() => shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, 5));
-  const [parkQs, setParkQs] = useState(() => shuffle(PARK_CARE_ITEMS).slice(0, 5));
+  const [elementQs, setElementQs] = useState(() => shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, challengeMode ? 6 : 5));
+  const [parkQs, setParkQs] = useState(() => shuffle(PARK_CARE_ITEMS).slice(0, challengeMode ? 6 : 5));
 
   const totalSteps =
     mode === 'habitat'
@@ -332,21 +341,14 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
   }, [mode, step]);
 
   const resetMode = (nextMode: NatureMode) => {
-    clearAll();
+    resetFeedbackState();
     setMode(nextMode);
     setStep(0);
-    setMood('happy');
-    setFeedback('');
-    setWrongId(null);
-    setWrongAttempts(0);
-    setManualHint(false);
-    setLocked(false);
-    setReward(null);
-    setHabitatQs(shuffle(HABITAT_QUESTIONS).slice(0, 5));
-    setWeatherQs(createWeatherQuestions().slice(0, 4));
+    setHabitatQs(shuffle(HABITAT_QUESTIONS).slice(0, challengeMode ? 6 : 5));
+    setWeatherQs(createWeatherQuestions().slice(0, challengeMode ? 5 : 4));
     setPlantQs(createPlantCareQuestions());
-    setElementQs(shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, 5));
-    setParkQs(shuffle(PARK_CARE_ITEMS).slice(0, 5));
+    setElementQs(shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, challengeMode ? 6 : 5));
+    setParkQs(shuffle(PARK_CARE_ITEMS).slice(0, challengeMode ? 6 : 5));
   };
 
   const handleSuccess = (spokenFigureId?: FigureId) => {
@@ -366,24 +368,9 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         setReward(completeRound('nature-habitats', 3));
       } else {
         setStep((s) => s + 1);
-        setMood('happy');
-        setFeedback('');
-        setWrongAttempts(0);
-        setManualHint(false);
-        setLocked(false);
+        clearStepFeedback();
       }
     }, 1150);
-  };
-
-  const handleWrong = (id: string) => {
-    sfx('encourage');
-    setMood('encouraging');
-    setWrongId(id);
-    setWrongAttempts((c) => c + 1);
-    const phrase = pickRandom(ENCOURAGE_PHRASES);
-    setFeedback(phrase);
-    say(phrase);
-    schedule(() => setWrongId(null), 480);
   };
 
   const currentHab = habitatQs[step];
@@ -401,10 +388,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
-        onRequestHint={() => {
-          sfx('pop');
-          setManualHint(true);
-        }}
+        onRequestHint={requestManualHint}
         hintActive={showHint}
         accentColor="#10B981"
       />

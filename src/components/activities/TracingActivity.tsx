@@ -25,12 +25,13 @@ const CRAYON_COLORS = [
 
 /** Atividade de Traçado Mágico: Caminhos motores, formas geométricas, letras e números guiados por checkpoints. */
 export const TracingActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, calmMode, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, calmMode, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('tracing');
   const [tab, setTab] = useState<TracingTab>('caminho-forma');
 
   const templates = useMemo(() => {
     const byAge =
-      activeProfile.ageLevel === '3-4'
+      activeProfile.ageLevel === '3-4' && !challengeMode
         ? TRACING_TEMPLATES.filter((t) => t.minLevel === '3-4')
         : TRACING_TEMPLATES;
     return byAge.filter((t) =>
@@ -38,7 +39,7 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
         ? t.category === 'caminho' || t.category === 'forma'
         : t.category === tab
     );
-  }, [activeProfile.ageLevel, tab]);
+  }, [activeProfile.ageLevel, challengeMode, tab]);
 
   const [templateIdx, setTemplateIdx] = useState(0);
   const [crayonColor, setCrayonColor] = useState(CRAYON_COLORS[0].hex);
@@ -176,6 +177,42 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
   const handlePointerUp = () => {
     isDrawingRef.current = false;
     lastPointRef.current = null;
+  };
+
+  /** Alternativa acessível via teclado (Enter/Espaço) para avançar e desenhar até o próximo checkpoint. */
+  const handleCanvasKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
+    if (completedRef.current) return;
+    const nextIdx = current.checkpoints.findIndex((_, i) => !hitRef.current.has(i));
+    if (nextIdx === -1) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    const targetCp = current.checkpoints[nextIdx];
+    if (canvas && ctx) {
+      const toX = (targetCp.x / 100) * canvas.width;
+      const toY = (targetCp.y / 100) * canvas.height;
+      if (nextIdx > 0) {
+        const prevCp = current.checkpoints[nextIdx - 1];
+        const fromX = (prevCp.x / 100) * canvas.width;
+        const fromY = (prevCp.y / 100) * canvas.height;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.strokeStyle = crayonColor;
+        ctx.lineWidth = 33;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(toX, toY, 16.5, 0, Math.PI * 2);
+        ctx.fillStyle = crayonColor;
+        ctx.fill();
+      }
+    }
+    checkCheckpoints(targetCp.x, targetCp.y);
   };
 
   const handlePrevTemplate = () => {
@@ -365,33 +402,44 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
               ref={canvasRef}
               width={600}
               height={600}
+              tabIndex={0}
+              role="application"
+              aria-label={`Área de traçado para ${current.spokenName}. Pressione Espaço ou Enter para traçar ponto a ponto (${hitCheckpoints.length} de ${current.checkpoints.length}).`}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
+              onKeyDown={handleCanvasKeyDown}
               style={{ touchAction: 'none' }}
-              className="relative z-10 h-full w-full cursor-crosshair"
+              className="relative z-10 h-full w-full cursor-crosshair focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-[#FF9F43]"
             />
           </div>
 
           {/* Crayon Palette + Actions */}
           <div className="flex flex-wrap lg:flex-col items-center justify-center gap-2.5 sm:gap-3">
             <div className="flex items-center gap-2 rounded-3xl bg-white p-2 sm:p-2.5 border-2 border-amber-100 shadow-sm">
-              {CRAYON_COLORS.map((c) => (
-                <button
-                  key={c.hex}
-                  type="button"
-                  onClick={() => {
-                    sfx('pop');
-                    setCrayonColor(c.hex);
-                  }}
-                  aria-label={`Cor ${c.name}`}
-                  className={`h-11 w-11 sm:h-12 sm:w-12 rounded-full border-4 transition-transform cursor-pointer ${
-                    crayonColor === c.hex ? 'scale-110 border-slate-800 shadow-md' : 'border-white'
-                  }`}
-                  style={{ backgroundColor: c.hex }}
-                />
-              ))}
+              {CRAYON_COLORS.map((c) => {
+                const selected = crayonColor === c.hex;
+                return (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => {
+                      sfx('pop');
+                      setCrayonColor(c.hex);
+                    }}
+                    aria-label={`Cor ${c.name}`}
+                    aria-pressed={selected}
+                    title={c.name}
+                    className={`flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full border-4 transition-transform cursor-pointer ${
+                      selected ? 'scale-110 border-slate-800 shadow-md ring-2 ring-white' : 'border-white'
+                    }`}
+                    style={{ backgroundColor: c.hex }}
+                  >
+                    {selected && <span className="h-3 w-3 rounded-full bg-white shadow-xs" />}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex items-center gap-2">

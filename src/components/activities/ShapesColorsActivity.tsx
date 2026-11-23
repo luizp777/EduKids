@@ -16,7 +16,7 @@ import {
   type ShapeObjectQuestion,
 } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
-import type { MascotMood, ShapeId, ShapeInfo } from '../../types';
+import type { FigureId, MascotMood, ShapeId, ShapeInfo } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
 import { LumiPromptBanner } from '../ui/LumiPromptBanner';
@@ -29,9 +29,23 @@ interface Props {
 
 type SubMode = 'shapes' | 'colors' | 'mix' | 'pattern' | 'paint' | 'shape-objects';
 
+const PAINT_ICON_MAP: Record<string, FigureId> = {
+  casa: 'casa',
+  foguete: 'foguete',
+  borboleta: 'borboleta',
+  carro: 'carro',
+  flor: 'flor',
+  barco: 'ilha',
+  sol: 'sol',
+  peixe: 'peixe',
+  arvore: 'arvore',
+  sorvete: 'morango',
+};
+
 /** Atividade de Formas e Cores: Encaixar, Caça às Cores, Misturar, Padrões, Formas no Mundo e Pintar. */
 export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, savePainting, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, savePainting, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('shapes-colors');
   const [subMode, setSubMode] = useState<SubMode>('shapes');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
@@ -39,7 +53,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const { schedule, clearAll } = useTimers();
 
   // Shapes matching state
-  const [shapes, setShapes] = useState<ShapeInfo[]>(() => generateShapeRound(activeProfile.ageLevel));
+  const [shapes, setShapes] = useState<ShapeInfo[]>(() => generateShapeRound(activeProfile.ageLevel, challengeMode));
   const [shuffledPieces, setShuffledPieces] = useState<ShapeInfo[]>(() => shuffle(shapes));
   const [matchedShapes, setMatchedShapes] = useState<ShapeId[]>([]);
   const [selectedShape, setSelectedShape] = useState<ShapeId | null>(null);
@@ -51,7 +65,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
 
   // Color hunting state
   const [colorRound, setColorRound] = useState<ColorSortRound>(() =>
-    generateColorRound(activeProfile.ageLevel)
+    generateColorRound(activeProfile.ageLevel, challengeMode)
   );
   const [foundColorIds, setFoundColorIds] = useState<string[]>([]);
 
@@ -68,7 +82,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
 
   // Shape objects state
   const [shapeObjQs, setShapeObjQs] = useState<ShapeObjectQuestion[]>(() =>
-    generateShapeObjectQuestions(activeProfile.ageLevel, 4)
+    generateShapeObjectQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [shapeObjStep, setShapeObjStep] = useState(0);
 
@@ -138,13 +152,13 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
     setSavedNotice(false);
 
     if (next === 'shapes') {
-      const s = generateShapeRound(activeProfile.ageLevel);
+      const s = generateShapeRound(activeProfile.ageLevel, challengeMode);
       setShapes(s);
       setShuffledPieces(shuffle(s));
       setMatchedShapes([]);
       setSelectedShape(null);
     } else if (next === 'colors') {
-      setColorRound(generateColorRound(activeProfile.ageLevel));
+      setColorRound(generateColorRound(activeProfile.ageLevel, challengeMode));
       setFoundColorIds([]);
     } else if (next === 'mix') {
       setMixRounds(generateColorMixRounds());
@@ -155,7 +169,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         setPaintIdx((i) => (i + 1) % PAINT_DRAWINGS.length);
       }
     } else if (next === 'shape-objects') {
-      setShapeObjQs(generateShapeObjectQuestions(activeProfile.ageLevel, 4));
+      setShapeObjQs(generateShapeObjectQuestions(activeProfile.ageLevel, 4, challengeMode));
       setShapeObjStep(0);
     } else {
       setPatternQs(generatePatternQuestions(activeProfile.ageLevel, 4));
@@ -781,14 +795,15 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     setFeedback('');
                     setMood('happy');
                   }}
-                  className={`snap-start shrink-0 rounded-xl px-2.5 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
-                    idx === paintIdx % PAINT_DRAWINGS.length
-                      ? 'bg-[#D3F9D8] border-[#52B788] text-[#1B4332]'
-                      : 'bg-white/80 border-emerald-100 text-slate-600 hover:bg-white'
-                  }`}
-                >
-                  {d.label}
-                </button>
+                    className={`snap-start shrink-0 inline-flex items-center gap-1.5 rounded-xl pl-2 pr-2.5 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
+                      idx === paintIdx % PAINT_DRAWINGS.length
+                        ? 'bg-[#D3F9D8] border-[#52B788] text-[#1B4332]'
+                        : 'bg-white/80 border-emerald-100 text-slate-600 hover:bg-white'
+                    }`}
+                  >
+                    <FigureSvg figureId={PAINT_ICON_MAP[d.id] || 'flor'} size={18} />
+                    {d.label}
+                  </button>
               ))}
             </div>
 
@@ -835,21 +850,28 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
 
               <div className="flex flex-wrap lg:flex-col items-center justify-center gap-2.5">
                 <div className="flex flex-wrap items-center justify-center gap-2 rounded-3xl bg-white p-2.5 sm:p-3 border-2 border-emerald-100 shadow-sm">
-                  {COLORS.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => {
-                        sfx('pop');
-                        setBrushColor(c.hex);
-                      }}
-                      aria-label={`Cor ${c.name}`}
-                      className={`h-10 w-10 sm:h-12 sm:w-12 rounded-full border-4 transition-transform cursor-pointer ${
-                        brushColor === c.hex ? 'scale-110 border-slate-800 shadow-md' : 'border-white'
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                    />
-                  ))}
+                  {COLORS.map((c) => {
+                    const selected = brushColor === c.hex;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          sfx('pop');
+                          setBrushColor(c.hex);
+                        }}
+                        aria-label={`Cor ${c.name}`}
+                        aria-pressed={selected}
+                        title={c.name}
+                        className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full border-4 transition-transform cursor-pointer ${
+                          selected ? 'scale-110 border-slate-800 shadow-md ring-2 ring-white' : 'border-white'
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      >
+                        {selected && <span className="h-3 w-3 rounded-full bg-white shadow-xs" />}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="flex items-center gap-2">

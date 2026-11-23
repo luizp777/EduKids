@@ -29,7 +29,7 @@ export interface PillarMeta {
   badgeColor: string;
 }
 
-/** Catálogo dos 9 pilares pedagógicos do EduKids. */
+/** Catálogo dos 10 pilares pedagógicos do EduKids. */
 export const PILLARS: PillarMeta[] = [
   {
     id: 'literacy',
@@ -54,8 +54,8 @@ export const PILLARS: PillarMeta[] = [
     title: 'Formas e Cores',
     subtitle: 'Encaixar, misturar cores e padrões',
     spokenIntro: 'Vamos descobrir cores, misturas e formas!',
-    bgGradient: 'from-[#6BCB77] to-[#4ADE80]',
-    borderColor: '#3D9E49',
+    bgGradient: 'from-[#16A34A] to-[#22C55E]',
+    borderColor: '#15803D',
     badgeColor: '#E3FCE8',
   },
   {
@@ -72,8 +72,8 @@ export const PILLARS: PillarMeta[] = [
     title: 'Traçado Mágico',
     subtitle: 'Caminhos, formas, letras e números',
     spokenIntro: 'Use o dedinho para desenhar no traçado mágico!',
-    bgGradient: 'from-[#FF9F43] to-[#FFC048]',
-    borderColor: '#D67B1F',
+    bgGradient: 'from-[#EA580C] to-[#F59E0B]',
+    borderColor: '#C2410C',
     badgeColor: '#FFF3DC',
   },
   {
@@ -111,6 +111,15 @@ export const PILLARS: PillarMeta[] = [
     bgGradient: 'from-[#0EA5E9] to-[#6366F1]',
     borderColor: '#4F46E5',
     badgeColor: '#E0E7FF',
+  },
+  {
+    id: 'stories',
+    title: 'Hora da História',
+    subtitle: 'Contos narrados, compreensão e criação',
+    spokenIntro: 'Hora da história! Vamos ouvir e imaginar com a Lumi!',
+    bgGradient: 'from-[#EC4899] to-[#8B5CF6]',
+    borderColor: '#9333EA',
+    badgeColor: '#FCE7F3',
   },
 ];
 

@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Moon, LockOpen } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 import { LumiMascot } from '../illustrations/LumiMascot';
 
 /** Propriedades do modal `ScreenTimeBreakModal`. */
@@ -14,6 +15,8 @@ export const ScreenTimeBreakModal: React.FC<ScreenTimeBreakModalProps> = ({
   onRequestParentUnlock,
 }) => {
   const { activeProfile, say } = useApp();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(dialogRef);
 
   useEffect(() => {
     say('Hora da pausa! Você brincou muito bem hoje! Vamos descansar um pouquinho?');
@@ -27,7 +30,11 @@ export const ScreenTimeBreakModal: React.FC<ScreenTimeBreakModalProps> = ({
       aria-label="Hora da Pausa com a Lumi"
       className="fixed inset-0 z-50 flex items-center justify-center bg-indigo-950/75 backdrop-blur-md p-4"
     >
-      <div className="animate-pop-in w-full max-w-md rounded-[32px] bg-gradient-to-b from-[#EDE9FE] to-[#FFF9F0] border-4 border-purple-200 p-6 sm:p-7 text-center shadow-2xl">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="animate-pop-in w-full max-w-md rounded-[32px] bg-gradient-to-b from-[#EDE9FE] to-[#FFF9F0] border-4 border-purple-200 p-6 sm:p-7 text-center shadow-2xl outline-none"
+      >
         <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-100 px-3.5 py-1 text-xs font-extrabold uppercase tracking-wider text-indigo-700">
           <Moon className="h-3.5 w-3.5" />
           Hora da Pausa

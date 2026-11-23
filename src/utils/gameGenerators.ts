@@ -5,7 +5,9 @@ import {
   FIGURE_TRANSLATIONS,
   GREETINGS,
   NUMBER_TRANSLATIONS,
+  SHORT_PHRASES,
   type GreetingItem,
+  type ShortPhraseItem,
 } from '../data/languagesCatalog';
 
 /** Embaralha uma cópia do array usando Fisher-Yates. */
@@ -43,13 +45,15 @@ const ALL_LETTERS = 'ABCDEFGHIJLMNOPRSTUV'.split('');
  * @param ageLevel - Faixa etária (`'3-4'` usa apenas vogais; `'5-6'` inclui todo o catálogo).
  * @param count - Quantidade de questões da rodada.
  * @param forcedMode - Opcionalmente força `'initial-letter'` ou `'complete-word'`.
+ * @param challengeMode - Se `true` (Modo Desafio Estrela), amplia o catálogo e alternativas no nível `'3-4'`.
  */
 export function generateLiteracyQuestions(
   ageLevel: AgeLevel,
   count = 5,
-  forcedMode?: 'initial-letter' | 'complete-word'
+  forcedMode?: 'initial-letter' | 'complete-word',
+  challengeMode = false
 ): LiteracyQuestion[] {
-  const pool = ageLevel === '3-4' ? FIGURES.filter((f) => f.isVowel) : FIGURES;
+  const pool = ageLevel === '3-4' && !challengeMode ? FIGURES.filter((f) => f.isVowel) : FIGURES;
   const selected = shuffle(pool).slice(0, count);
 
   return selected.map((target, idx) => {
@@ -77,7 +81,7 @@ export function generateLiteracyQuestions(
       };
     }
 
-    const optionCount = ageLevel === '3-4' ? 3 : 4;
+    const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
     const distractors = shuffle(
       FIGURES.filter((f) => f.letter !== target.letter && f.id !== target.id)
     ).slice(0, optionCount - 1);
@@ -104,8 +108,12 @@ export interface RhymeQuestion {
 }
 
 /** Gera rodadas de associação de rimas fonéticas entre figuras do catálogo. */
-export function generateRhymeQuestions(ageLevel: AgeLevel, count = 4): RhymeQuestion[] {
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+export function generateRhymeQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): RhymeQuestion[] {
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   const pairs = shuffle(RHYME_PAIRS).slice(0, count);
   const byId = new Map<FigureId, FigureItem>(FIGURES.map((f) => [f.id, f]));
 
@@ -183,10 +191,11 @@ const COUNTABLE_FIGURES = FIGURES.filter((f) =>
 export function generateMathQuestions(
   ageLevel: AgeLevel,
   count = 5,
-  forcedMode?: 'count' | 'addition'
+  forcedMode?: 'count' | 'addition',
+  challengeMode = false
 ): MathQuestion[] {
   const questions: MathQuestion[] = [];
-  const maxNum = ageLevel === '3-4' ? 5 : 9;
+  const maxNum = ageLevel === '3-4' ? (challengeMode ? 7 : 5) : 9;
 
   for (let i = 0; i < count; i++) {
     const figure = pickRandom(COUNTABLE_FIGURES);
@@ -368,25 +377,26 @@ export interface ColorSortRound {
   items: { figure: FigureItem; isMatch: boolean }[];
 }
 
-/** Seleciona as formas geométricas de uma rodada de encaixe (`3` para `3-4`; `4` para `5-6`). */
-export function generateShapeRound(ageLevel: AgeLevel): ShapeInfo[] {
-  const count = ageLevel === '3-4' ? 3 : 4;
+/** Seleciona as formas geométricas de uma rodada de encaixe (`3` para `3-4`; `4` para `5-6` ou Desafio Estrela). */
+export function generateShapeRound(ageLevel: AgeLevel, challengeMode = false): ShapeInfo[] {
+  const count = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   return shuffle(SHAPES).slice(0, count);
 }
 
 /** Gera uma rodada de caça às figuras da cor alvo selecionada. */
-export function generateColorRound(ageLevel: AgeLevel): ColorSortRound {
+export function generateColorRound(ageLevel: AgeLevel, challengeMode = false): ColorSortRound {
   const availableColors = COLORS.filter(
     (c) => FIGURES.filter((f) => f.colorId === c.id).length >= 2
   );
   const targetColor = pickRandom(availableColors);
+  const perGroup = ageLevel === '3-4' && !challengeMode ? 2 : 3;
   const matching = shuffle(FIGURES.filter((f) => f.colorId === targetColor.id)).slice(
     0,
-    ageLevel === '3-4' ? 2 : 3
+    perGroup
   );
   const others = shuffle(FIGURES.filter((f) => f.colorId !== targetColor.id)).slice(
     0,
-    ageLevel === '3-4' ? 2 : 3
+    perGroup
   );
   return {
     targetColor,
@@ -476,8 +486,12 @@ export interface ShadowQuestion {
 }
 
 /** Gera desafios de correspondência entre silhuetas e figuras coloridas. */
-export function generateShadowQuestions(ageLevel: AgeLevel, count = 4): ShadowQuestion[] {
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+export function generateShadowQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): ShadowQuestion[] {
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   const targets = shuffle(FIGURES).slice(0, count);
   return targets.map((target) => {
     const distractors = shuffle(FIGURES.filter((f) => f.id !== target.id)).slice(
@@ -596,7 +610,7 @@ export function generateWordBuilderQuestions(ageLevel: AgeLevel, count = 4): Wor
       uid: `${target.id}-${idx}-${char}`,
       char,
     }));
-    let scrambled = shuffle(chars);
+    const scrambled = shuffle(chars);
     if (scrambled.every((c, i) => c.char === chars[i].char) && chars.length > 1) {
       [scrambled[0], scrambled[1]] = [scrambled[1], scrambled[0]];
     }
@@ -684,9 +698,13 @@ const ASSOCIATION_PAIRS: [FigureId, FigureId][] = [
 ];
 
 /** Gera pares de associação lógica entre figuras do catálogo. */
-export function generateAssociationQuestions(ageLevel: AgeLevel, count = 4): AssociationQuestion[] {
+export function generateAssociationQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): AssociationQuestion[] {
   const byId = new Map<FigureId, FigureItem>(FIGURES.map((f) => [f.id, f]));
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   const pairs = shuffle(ASSOCIATION_PAIRS).slice(0, count);
 
   return pairs.map(([aId, bId]) => {
@@ -726,9 +744,13 @@ const ANIMAL_SOUNDS: { id: FigureId; sound: string; prompt: string }[] = [
 ];
 
 /** Gera rodadas de reconhecimento de sons de animais (onomatopeias faladas). */
-export function generateAnimalSoundQuestions(ageLevel: AgeLevel, count = 4): AnimalSoundQuestion[] {
+export function generateAnimalSoundQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): AnimalSoundQuestion[] {
   const byId = new Map<FigureId, FigureItem>(FIGURES.map((f) => [f.id, f]));
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   return shuffle(ANIMAL_SOUNDS)
     .slice(0, count)
     .map((entry) => {
@@ -850,11 +872,12 @@ const SHAPE_OBJECT_PAIRS: { figureId: FigureId; shapeId: ShapeInfo['id'] }[] = [
 /** Gera rodadas associando objetos do cotidiano às suas formas geométricas. */
 export function generateShapeObjectQuestions(
   ageLevel: AgeLevel,
-  count = 4
+  count = 4,
+  challengeMode = false
 ): ShapeObjectQuestion[] {
   const figMap = new Map(FIGURES.map((f) => [f.id, f]));
   const shapeMap = new Map(SHAPES.map((s) => [s.id, s]));
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
 
   return shuffle(SHAPE_OBJECT_PAIRS)
     .slice(0, count)
@@ -1040,13 +1063,14 @@ export interface LangVocabQuestion {
   promptText: string;
 }
 
-/** Gera rodadas de vocabulário bilíngue (3 opções para `3-4`; 4 opções para `5-6`). */
+/** Gera rodadas de vocabulário bilíngue (3 opções para `3-4`; 4 opções para `5-6` ou Desafio Estrela). */
 export function generateLangVocabQuestions(
   lang: ForeignLanguage,
   ageLevel: AgeLevel,
-  count = 5
+  count = 5,
+  challengeMode = false
 ): LangVocabQuestion[] {
-  const optionCount = ageLevel === '3-4' ? 3 : 4;
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
   const targets = shuffle(FIGURES).slice(0, count);
   const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
 
@@ -1177,6 +1201,121 @@ export function generateLangGreetingQuestions(
       promptClips: [`p-lang-greet-${lang}-${target.id}`, nativeClipId],
       nativeClipId,
       promptText: `Em ${langLabel}: "${word}" (${target.ptLabel})`,
+    };
+  });
+}
+
+// --- New Sub-modes: Vowel Hunt, Number Neighbors, Short Language Phrases ---
+
+const VOWELS = ['A', 'E', 'I', 'O', 'U'] as const;
+
+/** Questão do modo "Caça às Vogais" em Alfabetização. */
+export interface VowelHuntQuestion {
+  vowel: string;
+  target: FigureItem;
+  options: FigureItem[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera rodadas de reconhecimento de vogais iniciais em figuras ilustradas. */
+export function generateVowelHuntQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): VowelHuntQuestion[] {
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
+  const vowels = shuffle([...VOWELS]).slice(0, Math.min(count, VOWELS.length));
+
+  return vowels.map((vowel) => {
+    const matches = FIGURES.filter((f) => f.letter === vowel);
+    const target = pickRandom(matches);
+    const distractors = shuffle(FIGURES.filter((f) => f.letter !== vowel)).slice(
+      0,
+      optionCount - 1
+    );
+    return {
+      vowel,
+      target,
+      options: shuffle([target, ...distractors]),
+      promptText: `Encontre a figura da vogal ${vowel}!`,
+      spokenPrompt: `Qual figura começa com a letra ${vowel}?`,
+    };
+  });
+}
+
+/** Questão do modo "Vizinhos (Antes e Depois)" em Matemática. */
+export interface NeighborQuestion {
+  anchor: number;
+  direction: 'before' | 'after';
+  answer: number;
+  options: number[];
+  promptText: string;
+  spokenPrompt: string;
+}
+
+/** Gera rodadas de antecessor e sucessor (Vizinhos dos Números). */
+export function generateNeighborQuestions(
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): NeighborQuestion[] {
+  const maxAnchor = ageLevel === '3-4' ? (challengeMode ? 7 : 5) : 9;
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
+  const anchors = shuffle(Array.from({ length: maxAnchor - 1 }, (_, i) => i + 2)).slice(0, count);
+
+  return anchors.map((anchor, idx) => {
+    const direction: 'before' | 'after' = idx % 2 === 0 ? 'after' : 'before';
+    const answer = direction === 'after' ? anchor + 1 : anchor - 1;
+    const pool = Array.from({ length: maxAnchor + 1 }, (_, i) => i + 1).filter((n) => n !== answer);
+    const distractors = shuffle(pool).slice(0, optionCount - 1);
+    const dirLabel = direction === 'after' ? 'depois' : 'antes';
+    return {
+      anchor,
+      direction,
+      answer,
+      options: shuffle([answer, ...distractors]),
+      promptText: `Qual número vem ${dirLabel} do ${anchor}?`,
+      spokenPrompt: `Qual número vem ${dirLabel} do ${anchor}?`,
+    };
+  });
+}
+
+/** Questão de frases curtas (Listening) em Inglês ou Espanhol. */
+export interface LangPhraseQuestion {
+  target: ShortPhraseItem;
+  phrase: string;
+  options: ShortPhraseItem[];
+  promptClips: string[];
+  nativeClipId: string;
+  promptText: string;
+}
+
+/** Gera rodadas de frases curtas (cor + figura) com áudio nativo em Inglês ou Espanhol. */
+export function generateLangPhraseQuestions(
+  lang: ForeignLanguage,
+  ageLevel: AgeLevel,
+  count = 4,
+  challengeMode = false
+): LangPhraseQuestion[] {
+  const optionCount = ageLevel === '3-4' && !challengeMode ? 3 : 4;
+  const targets = shuffle(SHORT_PHRASES).slice(0, Math.min(count, SHORT_PHRASES.length));
+  const langLabel = lang === 'en' ? 'inglês' : 'espanhol';
+
+  return targets.map((target) => {
+    const distractors = shuffle(SHORT_PHRASES.filter((p) => p.id !== target.id)).slice(
+      0,
+      optionCount - 1
+    );
+    const phrase = target.translations[lang];
+    const nativeClipId = `lang-${lang}-phrase-${target.id}`;
+    return {
+      target,
+      phrase,
+      options: shuffle([target, ...distractors]),
+      promptClips: [`p-lang-frase-${lang}`, nativeClipId],
+      nativeClipId,
+      promptText: `Em ${langLabel}: "${phrase}"`,
     };
   });
 }

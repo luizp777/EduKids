@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Star,
   Sparkles,
@@ -20,6 +20,8 @@ import {
   Crown,
   Lock,
   Globe,
+  BookHeart,
+  Rocket,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { getPillarTier } from '../state/storage';
@@ -27,10 +29,11 @@ import { LUMI_ACCESSORIES, PILLARS, STICKERS } from '../data/catalog';
 import type { PillarId } from '../types';
 import { LumiMascot } from '../components/illustrations/LumiMascot';
 import { AvatarSvg } from '../components/illustrations/AvatarSvg';
+import { prefetchPillar } from '../utils/activityLoaders';
 
 /** Propriedades da tela inicial `HomePage`. */
 interface HomePageProps {
-  /** Callback ao selecionar um dos 9 pilares pedagógicos. */
+  /** Callback ao selecionar um dos 10 pilares pedagógicos. */
   onSelectPillar: (pillar: PillarId) => void;
   /** Callback para abrir o Álbum de Figurinhas. */
   onOpenAlbum: () => void;
@@ -48,9 +51,10 @@ const PILLAR_ICONS: Record<PillarId, React.ComponentType<{ className?: string }>
   'emotions-routine': Smile,
   'nature-habitats': Trees,
   languages: Globe,
+  stories: BookHeart,
 };
 
-/** Tela inicial do EduKids com troca rápida de perfil/idade, acesso ao Álbum, Área dos Pais e os 9 pilares. */
+/** Tela inicial do EduKids com troca rápida de perfil/idade, acesso ao Álbum, Área dos Pais e os 10 pilares. */
 export const HomePage: React.FC<HomePageProps> = ({
   onSelectPillar,
   onOpenAlbum,
@@ -61,6 +65,7 @@ export const HomePage: React.FC<HomePageProps> = ({
     activeProfile,
     recommendedPillar,
     dailyBonusClaimed,
+    suggestAgeUpgrade,
     setActiveProfile,
     updateProfile,
     setLumiAccessory,
@@ -72,6 +77,22 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const dailyPillarMeta = PILLARS.find((p) => p.id === recommendedPillar) || PILLARS[0];
   const DailyIcon = PILLAR_ICONS[dailyPillarMeta.id];
+
+  // Pré-carrega o chunk da Aventura do Dia em tempo ocioso para abertura instantânea
+  useEffect(() => {
+    const win = window as Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    if (typeof win.requestIdleCallback === 'function') {
+      const id = win.requestIdleCallback(() => prefetchPillar(recommendedPillar), {
+        timeout: 2000,
+      });
+      return () => win.cancelIdleCallback?.(id);
+    }
+    const timer = window.setTimeout(() => prefetchPillar(recommendedPillar), 900);
+    return () => window.clearTimeout(timer);
+  }, [recommendedPillar]);
 
   const handleSwitchProfile = () => {
     if (state.profiles.length <= 1) return;
@@ -118,8 +139,9 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={handleToggleAgeLevel}
-            className="shrink-0 rounded-full bg-purple-100 hover:bg-purple-200 px-2 sm:px-2.5 py-0.5 text-[10px] sm:text-xs font-extrabold text-[#6C5CE7] cursor-pointer transition-colors"
+            className="shrink-0 min-h-9 rounded-full bg-purple-100 hover:bg-purple-200 border border-purple-200 px-3 py-1 text-xs font-extrabold text-[#6C5CE7] cursor-pointer transition-colors"
             title="Alternar faixa etária (3–4 ou 5–6 anos)"
+            aria-label={`Alternar faixa etária (atual: ${activeProfile.ageLevel} anos)`}
           >
             {activeProfile.ageLevel === '3-4' ? '3–4a' : '5–6a'}
           </button>
@@ -155,21 +177,21 @@ export const HomePage: React.FC<HomePageProps> = ({
               updateAudio({ voiceEnabled: next });
               if (next) say('Som ligado!');
             }}
-            className="btn-3d flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-2xl bg-white border-2 border-slate-200 text-slate-600 cursor-pointer"
+            className="btn-3d flex h-11 w-11 items-center justify-center rounded-2xl bg-white border-2 border-slate-200 text-slate-600 cursor-pointer"
             aria-label={state.audio.voiceEnabled ? 'Silenciar voz' : 'Ativar voz'}
             title={state.audio.voiceEnabled ? 'Voz ativa' : 'Voz desligada'}
           >
             {state.audio.voiceEnabled ? (
-              <Volume2 className="h-4 w-4 sm:h-5 sm:w-5 text-[#6C5CE7]" />
+              <Volume2 className="h-5 w-5 text-[#6C5CE7]" />
             ) : (
-              <VolumeX className="h-4 w-4 sm:h-5 sm:w-5 text-slate-400" />
+              <VolumeX className="h-5 w-5 text-slate-400" />
             )}
           </button>
 
           <button
             type="button"
             onClick={onRequestParents}
-            className="flex h-9 sm:h-auto items-center gap-1.5 rounded-2xl bg-white/80 border border-slate-300 px-2 sm:px-3 py-2 text-xs font-extrabold text-slate-500 hover:bg-white hover:text-slate-700 cursor-pointer"
+            className="flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-2xl bg-white/80 border border-slate-300 px-2.5 sm:px-3 py-2 text-xs font-extrabold text-slate-500 hover:bg-white hover:text-slate-700 cursor-pointer"
             aria-label="Área dos Pais"
           >
             <Settings className="h-4 w-4" />
@@ -308,9 +330,40 @@ export const HomePage: React.FC<HomePageProps> = ({
         </button>
       </section>
 
-      {/* 9 Activity Pillar Cards (symmetric 3x3 on md+) */}
+      {/* Adaptive Level-Up Suggestion Banner (3–4 -> 5–6) */}
+      {suggestAgeUpgrade && (
+        <section className="max-w-6xl mx-auto px-3 sm:px-6 pb-4">
+          <div className="rounded-3xl bg-gradient-to-r from-[#EDE9FE] via-[#FCE7F3] to-[#FEF3C7] border-2 border-purple-200 p-3.5 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3 text-center sm:text-left">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6C5CE7] text-white shrink-0">
+                <Rocket className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="font-display text-base sm:text-lg font-bold text-slate-800">
+                  Uau, {activeProfile.name}! Você já domina o nível 3–4 anos!
+                </div>
+                <p className="text-xs sm:text-sm font-bold text-slate-600">
+                  Que tal experimentar novos desafios no nível Descobridores (5–6 anos)?
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                sfx('celebration');
+                updateProfile(activeProfile.id, { ageLevel: '5-6' });
+              }}
+              className="btn-3d shrink-0 rounded-2xl bg-[#6C5CE7] hover:bg-[#5a4bd1] px-4 py-2.5 font-display text-sm font-bold text-white cursor-pointer"
+            >
+              Ativar 5–6 anos!
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* 10 Activity Pillar Cards (symmetric 2x5 on mobile & 5x2 on lg+) */}
       <main className="max-w-6xl mx-auto px-3 sm:px-6">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {PILLARS.map((pillar) => {
             const Icon = PILLAR_ICONS[pillar.id];
             const stats = activeProfile.stats[pillar.id];
@@ -334,9 +387,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   sfx('pop');
                   onSelectPillar(pillar.id);
                 }}
-                className={`btn-3d group relative overflow-hidden rounded-[24px] sm:rounded-[32px] bg-gradient-to-br ${pillar.bgGradient} p-4 sm:p-6 text-left text-white border-4 ${
+                className={`btn-3d group relative overflow-hidden rounded-[24px] sm:rounded-[28px] bg-gradient-to-br ${pillar.bgGradient} p-4 sm:p-5 text-left text-white border-4 ${
                   isDaily ? 'border-[#FFCA3A] ring-4 ring-[#FFCA3A]/40' : 'border-white/80'
-                } cursor-pointer flex flex-col justify-between min-h-[148px] sm:min-h-[184px] last:col-span-2 md:last:col-span-1`}
+                } cursor-pointer flex flex-col justify-between min-h-[148px] sm:min-h-[176px]`}
               >
                 {/* Decorative bubble */}
                 <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-white/15 transition-transform group-hover:scale-110" />
@@ -367,7 +420,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <h2 className="font-display text-lg sm:text-2xl font-bold drop-shadow-xs leading-tight">
                     {pillar.title}
                   </h2>
-                  <p className="mt-0.5 text-xs sm:text-sm font-bold text-white/90 line-clamp-2">
+                  <p className="mt-0.5 text-xs sm:text-sm font-bold text-white/95 drop-shadow-xs line-clamp-2">
                     {pillar.subtitle}
                   </p>
                   {stats.completedRounds > 0 && (

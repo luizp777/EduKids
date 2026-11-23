@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, PenLine, Music, Hand, Blocks, Sparkles, Flag } from 'lucide-react';
+import { BookOpen, PenLine, Music, Hand, Blocks, Sparkles, Flag, Search } from 'lucide-react';
 import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
@@ -8,6 +8,7 @@ import {
   generateLiteracyQuestions,
   generateRhymeQuestions,
   generateSyllableQuestions,
+  generateVowelHuntQuestions,
   generateWordBuilderQuestions,
   pickRandom,
   type FinalLetterQuestion,
@@ -15,6 +16,7 @@ import {
   type LiteracyQuestion,
   type RhymeQuestion,
   type SyllableQuestion,
+  type VowelHuntQuestion,
   type WordBuilderQuestion,
 } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -30,6 +32,7 @@ interface Props {
 
 type LiteracyMode =
   | 'initial'
+  | 'vowels'
   | 'complete'
   | 'rhyme'
   | 'syllable'
@@ -37,15 +40,19 @@ type LiteracyMode =
   | 'final-letter'
   | 'build';
 
-/** Atividade de Alfabetização: Som Inicial, Completar, Rimas, Sílabas, Sílaba Inicial, Letra Final e Montar. */
+/** Atividade de Alfabetização: Som Inicial, Caça às Vogais, Completar, Rimas, Sílabas, Sílaba Inicial, Letra Final e Montar. */
 export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('literacy');
   const [mode, setMode] = useState<LiteracyMode>('initial');
   const [questions, setQuestions] = useState<LiteracyQuestion[]>(() =>
-    generateLiteracyQuestions(activeProfile.ageLevel, 5, 'initial-letter')
+    generateLiteracyQuestions(activeProfile.ageLevel, 5, 'initial-letter', challengeMode)
+  );
+  const [vowelQs, setVowelQs] = useState<VowelHuntQuestion[]>(() =>
+    generateVowelHuntQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [rhymeQs, setRhymeQs] = useState<RhymeQuestion[]>(() =>
-    generateRhymeQuestions(activeProfile.ageLevel, 4)
+    generateRhymeQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [syllableQs, setSyllableQs] = useState<SyllableQuestion[]>(() =>
     generateSyllableQuestions(activeProfile.ageLevel, 4)
@@ -83,7 +90,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
             ? finalLetterQs.length
             : mode === 'build'
               ? builderQs.length
-              : questions.length;
+              : mode === 'vowels'
+                ? vowelQs.length
+                : questions.length;
 
   const getSpokenPrompt = () => {
     if (mode === 'rhyme') return rhymeQs[step]?.spokenPrompt || '';
@@ -91,6 +100,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'syllable-start') return initSylQs[step]?.spokenPrompt || '';
     if (mode === 'final-letter') return finalLetterQs[step]?.spokenPrompt || '';
     if (mode === 'build') return builderQs[step]?.spokenPrompt || '';
+    if (mode === 'vowels') return vowelQs[step]?.spokenPrompt || '';
     return questions[step]?.spokenPrompt || '';
   };
 
@@ -100,6 +110,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'syllable-start') return initSylQs[step]?.promptText || '';
     if (mode === 'final-letter') return finalLetterQs[step]?.promptText || '';
     if (mode === 'build') return 'Toque nas letras na ordem certa!';
+    if (mode === 'vowels') return vowelQs[step]?.promptText || '';
     return questions[step]?.promptText || '';
   };
 
@@ -109,7 +120,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
       say(prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, step, questions, rhymeQs, syllableQs, initSylQs, finalLetterQs, builderQs]);
+  }, [mode, step, questions, vowelQs, rhymeQs, syllableQs, initSylQs, finalLetterQs, builderQs]);
 
   const resetMode = (nextMode: LiteracyMode) => {
     clearAll();
@@ -124,11 +135,13 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     setReward(null);
     setUsedLetterUids([]);
     if (nextMode === 'initial') {
-      setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'initial-letter'));
+      setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'initial-letter', challengeMode));
+    } else if (nextMode === 'vowels') {
+      setVowelQs(generateVowelHuntQuestions(activeProfile.ageLevel, 4, challengeMode));
     } else if (nextMode === 'complete') {
-      setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'complete-word'));
+      setQuestions(generateLiteracyQuestions(activeProfile.ageLevel, 5, 'complete-word', challengeMode));
     } else if (nextMode === 'rhyme') {
-      setRhymeQs(generateRhymeQuestions(activeProfile.ageLevel, 4));
+      setRhymeQs(generateRhymeQuestions(activeProfile.ageLevel, 4, challengeMode));
     } else if (nextMode === 'syllable') {
       setSyllableQs(generateSyllableQuestions(activeProfile.ageLevel, 4));
     } else if (nextMode === 'syllable-start') {
@@ -177,6 +190,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   };
 
   const currentLit = questions[step];
+  const currentVowel = vowelQs[step];
   const currentRhyme = rhymeQs[step];
   const currentSyllable = syllableQs[step];
   const currentInitSyl = initSylQs[step];
@@ -204,6 +218,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
       <div className="activity-tabs activity-tabs-fade no-scrollbar snap-x">
         {[
           { id: 'initial' as LiteracyMode, label: 'Som Inicial', icon: BookOpen },
+          { id: 'vowels' as LiteracyMode, label: 'Vogais', icon: Search },
           { id: 'complete' as LiteracyMode, label: 'Completar', icon: PenLine },
           { id: 'rhyme' as LiteracyMode, label: 'Rimas', icon: Music },
           { id: 'syllable' as LiteracyMode, label: 'Sílabas', icon: Hand },
@@ -686,6 +701,59 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {item.char}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {mode === 'vowels' && currentVowel && (
+          <div className="activity-split">
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="flex h-24 w-24 sm:h-32 sm:w-32 items-center justify-center rounded-[24px] sm:rounded-[28px] bg-gradient-to-br from-[#FF6B6B] to-[#FF9F43] border-4 border-white shadow-xl">
+                <span className="font-display text-5xl sm:text-7xl font-bold text-white drop-shadow">
+                  {currentVowel.vowel}
+                </span>
+              </div>
+              <span className="rounded-full bg-rose-100 px-3 py-0.5 text-xs font-extrabold uppercase text-rose-700">
+                Vogal
+              </span>
+            </div>
+
+            <div
+              className={`grid w-full max-w-2xl gap-2.5 sm:gap-4 ${
+                currentVowel.options.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+              }`}
+            >
+              {currentVowel.options.map((fig) => {
+                const isShaking = wrongId === fig.id;
+                const isRevealedCorrect = locked && fig.id === currentVowel.target.id;
+                const isHinted = showHint && fig.id === currentVowel.target.id;
+                return (
+                  <button
+                    key={fig.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (fig.id === currentVowel.target.id) {
+                        handleCorrect(`${currentVowel.vowel} de ${fig.name.toLowerCase()}!`);
+                      } else {
+                        handleWrong(fig.id);
+                      }
+                    }}
+                    className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 border-4 cursor-pointer ${
+                      isRevealedCorrect
+                        ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-100 hover:border-rose-300'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                  >
+                    <FigureSvg figureId={fig.id} size={74} />
+                    <span className="font-display text-sm sm:text-base font-bold text-slate-700">
+                      {fig.name}
+                    </span>
                   </button>
                 );
               })}

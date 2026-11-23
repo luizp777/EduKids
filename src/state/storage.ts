@@ -72,6 +72,24 @@ export function getPillarTier(completedRounds: number): 'none' | 'bronze' | 'sil
   return 'none';
 }
 
+/** Indica se o Modo Desafio Estrela adaptativo está ativo em um pilar (medalha Prata ou Ouro). */
+export function isPillarChallengeActive(stats?: PillarStats): boolean {
+  return (stats?.completedRounds ?? 0) >= 3;
+}
+
+/**
+ * Indica se devemos sugerir gentilmente a transição de 3–4 anos para 5–6 anos
+ * quando a criança já demonstra domínio consolidado no nível Exploradores.
+ */
+export function shouldSuggestAgeUpgrade(profile: ChildProfile): boolean {
+  if (profile.ageLevel !== '3-4') return false;
+  if (profile.stars >= 30) return true;
+  const pillarsWithMedal = PILLARS.filter(
+    (p) => (profile.stats[p.id]?.completedRounds ?? 0) >= 1
+  ).length;
+  return pillarsWithMedal >= 4;
+}
+
 /**
  * Seleciona a "Aventura do Dia" recomendada para o perfil:
  * prioriza o pilar com menos rodadas concluídas, usando a data do dia para desempate consistente.
@@ -224,7 +242,7 @@ export function validateAndNormalizeState(raw: unknown): AppState | null {
   };
 }
 
-/** Cria um mapa inicial zerado de estatísticas para todos os 9 pilares. */
+/** Cria um mapa inicial zerado de estatísticas para todos os 10 pilares. */
 export function createEmptyStats(): Record<PillarId, PillarStats> {
   return {
     literacy: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
@@ -236,6 +254,7 @@ export function createEmptyStats(): Record<PillarId, PillarStats> {
     'emotions-routine': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     'nature-habitats': { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
     languages: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
+    stories: { completedRounds: 0, correctAnswers: 0, starsEarned: 0 },
   };
 }
 

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Smile, Sun, Moon, HeartHandshake, ListOrdered, Heart } from 'lucide-react';
-import { useApp, type RoundReward } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
+import { useApp } from '../../state/AppContext';
+import { CELEBRATE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
-import { useTimers } from '../../utils/useTimers';
-import type { FigureId, MascotMood } from '../../types';
+import { useActivityFeedback } from '../../utils/useActivityFeedback';
+import type { FigureId } from '../../types';
 import { ActivityHeader } from '../ui/ActivityHeader';
 import { CelebrationModal } from '../ui/CelebrationModal';
 import { LumiPromptBanner } from '../ui/LumiPromptBanner';
@@ -314,24 +314,37 @@ const FeelingFaceSvg: React.FC<{ id: FeelingId; size?: number }> = ({ id, size =
 
 /** Atividade de Emoções e Rotina: sentimentos, dia/noite, hábitos saudáveis, ordem da rotina e empatia. */
 export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('emotions-routine');
+  const feelingCount = challengeMode ? 6 : 5;
+  const dayNightCount = challengeMode ? 6 : 5;
   const [mode, setMode] = useState<EmotionMode>('feelings');
   const [step, setStep] = useState(0);
-  const [mood, setMood] = useState<MascotMood>('happy');
-  const [feedback, setFeedback] = useState('');
-  const [wrongId, setWrongId] = useState<string | null>(null);
-  const [wrongAttempts, setWrongAttempts] = useState(0);
-  const [manualHint, setManualHint] = useState(false);
-  const [locked, setLocked] = useState(false);
-  const [reward, setReward] = useState<RoundReward | null>(null);
-  const { schedule, clearAll } = useTimers();
-  const showHint = (wrongAttempts >= 2 || manualHint) && !locked;
+  const {
+    mood,
+    setMood,
+    feedback,
+    setFeedback,
+    wrongId,
+    setWrongAttempts,
+    setManualHint,
+    locked,
+    setLocked,
+    reward,
+    setReward,
+    showHint,
+    schedule,
+    resetFeedbackState,
+    clearStepFeedback,
+    requestManualHint,
+    triggerWrongFeedback: handleWrong,
+  } = useActivityFeedback({ say, sfx });
 
-  const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS).slice(0, 5));
-  const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
-  const [habitQs, setHabitQs] = useState(() => createHabitQuestions().slice(0, 4));
+  const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS).slice(0, feelingCount));
+  const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, dayNightCount));
+  const [habitQs, setHabitQs] = useState(() => createHabitQuestions().slice(0, challengeMode ? 5 : 4));
   const [routineQs, setRoutineQs] = useState(() => createRoutineOrderQuestions());
-  const [empathyQs, setEmpathyQs] = useState(() => createEmpathyQuestions().slice(0, 4));
+  const [empathyQs, setEmpathyQs] = useState(() => createEmpathyQuestions().slice(0, challengeMode ? 5 : 4));
   const [pickedRoutineIds, setPickedRoutineIds] = useState<string[]>([]);
 
   const totalSteps =
@@ -378,22 +391,15 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   }, [mode, step]);
 
   const resetMode = (nextMode: EmotionMode) => {
-    clearAll();
+    resetFeedbackState();
     setMode(nextMode);
     setStep(0);
-    setMood('happy');
-    setFeedback('');
-    setWrongId(null);
-    setWrongAttempts(0);
-    setManualHint(false);
-    setLocked(false);
-    setReward(null);
     setPickedRoutineIds([]);
-    setFeelingQs(shuffle(FEELING_QUESTIONS).slice(0, 5));
-    setDayNightQs(shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
-    setHabitQs(createHabitQuestions().slice(0, 4));
+    setFeelingQs(shuffle(FEELING_QUESTIONS).slice(0, feelingCount));
+    setDayNightQs(shuffle(DAY_NIGHT_ITEMS).slice(0, dayNightCount));
+    setHabitQs(createHabitQuestions().slice(0, challengeMode ? 5 : 4));
     setRoutineQs(createRoutineOrderQuestions());
-    setEmpathyQs(createEmpathyQuestions().slice(0, 4));
+    setEmpathyQs(createEmpathyQuestions().slice(0, challengeMode ? 5 : 4));
   };
 
   const handleSuccess = (spokenFigureId?: FigureId) => {
@@ -413,25 +419,10 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         setReward(completeRound('emotions-routine', 3));
       } else {
         setStep((s) => s + 1);
-        setMood('happy');
-        setFeedback('');
-        setWrongAttempts(0);
-        setManualHint(false);
-        setLocked(false);
+        clearStepFeedback();
         setPickedRoutineIds([]);
       }
     }, 1150);
-  };
-
-  const handleWrong = (id: string) => {
-    sfx('encourage');
-    setMood('encouraging');
-    setWrongId(id);
-    setWrongAttempts((c) => c + 1);
-    const phrase = pickRandom(ENCOURAGE_PHRASES);
-    setFeedback(phrase);
-    say(phrase);
-    schedule(() => setWrongId(null), 480);
   };
 
   const currentFeeling = feelingQs[step];
@@ -449,10 +440,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         stars={activeProfile.stars}
         onBack={onBack}
         onRepeatVoice={() => say(getSpokenPrompt())}
-        onRequestHint={() => {
-          sfx('pop');
-          setManualHint(true);
-        }}
+        onRequestHint={requestManualHint}
         hintActive={showHint}
         accentColor="#00BBF9"
       />

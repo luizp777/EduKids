@@ -1,7 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Star, RotateCcw, Home, Sparkles, Crown } from 'lucide-react';
 import { STICKERS } from '../../data/catalog';
 import { useApp } from '../../state/AppContext';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 import { FigureSvg } from '../illustrations/FigureSvg';
 import { LumiMascot } from '../illustrations/LumiMascot';
 
@@ -30,6 +31,8 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
   onGoHome,
 }) => {
   const { activeProfile, calmMode } = useApp();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(dialogRef);
   const sticker = STICKERS.find((s) => s.id === (newStickerId || newGoldenStickerId)) || null;
   const isGoldenUpgrade = !newStickerId && Boolean(newGoldenStickerId);
 
@@ -81,7 +84,11 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
         </div>
       )}
 
-      <div className="animate-pop-in relative w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-[28px] sm:rounded-[32px] bg-[#FFF9F0] border-4 border-[#FFCA3A] p-5 sm:p-6 text-center shadow-2xl">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="animate-pop-in relative w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-[28px] sm:rounded-[32px] bg-[#FFF9F0] border-4 border-[#FFCA3A] p-5 sm:p-6 text-center shadow-2xl outline-none"
+      >
         <div className="flex justify-center -mt-2 sm:-mt-4 mb-1">
           <LumiMascot mood="excited" accessory={activeProfile.lumiAccessory} size={92} />
         </div>

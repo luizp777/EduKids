@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 /**
- * Manages setTimeout handles and clears all pending timers on unmount or explicit reset.
+ * Gerencia handles de `setTimeout` e limpa automaticamente todos os timers pendentes
+ * ao desmontar o componente ou ao chamar `clearAll()`.
  */
 export function useTimers() {
   const timersRef = useRef<number[]>([]);

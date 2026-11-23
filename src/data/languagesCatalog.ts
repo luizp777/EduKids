@@ -132,3 +132,71 @@ export const GREETINGS: GreetingItem[] = [
     bgHex: '#D3F9D8',
   },
 ];
+
+/** Frase curta ilustrada para prática auditiva (Listening) em Inglês e Espanhol. */
+export interface ShortPhraseItem {
+  /** Identificador único da frase curta. */
+  id: string;
+  /** Figura SVG principal da frase. */
+  figureId: FigureId;
+  /** Cor associada à figura na frase. */
+  colorId: ColorId;
+  /** Tradução/legenda em português exibida no cartão. */
+  ptLabel: string;
+  /** Texto da frase em inglês (`en`) e espanhol (`es`). */
+  translations: Record<ForeignLanguage, string>;
+  /** Cor hexadecimal de fundo do cartão ilustrado. */
+  bgHex: string;
+}
+
+/** Catálogo de 6 frases curtas (cor + figura) para o modo Listening em EN e ES. */
+export const SHORT_PHRASES: ShortPhraseItem[] = [
+  {
+    id: 'red-apple',
+    figureId: 'maca',
+    colorId: 'vermelho',
+    ptLabel: 'A maçã vermelha',
+    translations: { en: 'The red apple', es: 'La manzana roja' },
+    bgHex: '#FFE3E3',
+  },
+  {
+    id: 'yellow-sun',
+    figureId: 'sol',
+    colorId: 'amarelo',
+    ptLabel: 'O sol amarelo',
+    translations: { en: 'The yellow sun', es: 'El sol amarillo' },
+    bgHex: '#FFF3BF',
+  },
+  {
+    id: 'blue-bird',
+    figureId: 'passaro',
+    colorId: 'azul',
+    ptLabel: 'O pássaro azul',
+    translations: { en: 'The blue bird', es: 'El pájaro azul' },
+    bgHex: '#D0EBFF',
+  },
+  {
+    id: 'green-frog',
+    figureId: 'sapo',
+    colorId: 'verde',
+    ptLabel: 'O sapo verde',
+    translations: { en: 'The green frog', es: 'La rana verde' },
+    bgHex: '#D3F9D8',
+  },
+  {
+    id: 'orange-cat',
+    figureId: 'gato',
+    colorId: 'laranja',
+    ptLabel: 'O gato laranja',
+    translations: { en: 'The orange cat', es: 'El gato naranja' },
+    bgHex: '#FFE8CC',
+  },
+  {
+    id: 'purple-flower',
+    figureId: 'flor',
+    colorId: 'roxo',
+    ptLabel: 'A flor roxa',
+    translations: { en: 'The purple flower', es: 'La flor morada' },
+    bgHex: '#F3D9FA',
+  },
+];

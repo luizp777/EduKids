@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Sparkles,
@@ -13,9 +13,186 @@ import {
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { FIGURES, LUMI_ACCESSORIES, PAINT_DRAWINGS, PILLARS, STICKERS } from '../data/catalog';
-import type { StickerItem, StickerTheme } from '../types';
+import type { FigureItem, StickerItem, StickerTheme } from '../types';
+import { useModalFocusTrap } from '../utils/useModalFocusTrap';
+import { useTimers } from '../utils/useTimers';
 import { FigureSvg } from '../components/illustrations/FigureSvg';
 import { LumiMascot } from '../components/illustrations/LumiMascot';
+
+interface StickerDetailModalProps {
+  sticker: StickerItem;
+  figure: FigureItem;
+  isGolden: boolean;
+  onClose: () => void;
+  onSay: (text: string) => void;
+  onPop: () => void;
+}
+
+const StickerDetailModal: React.FC<StickerDetailModalProps> = ({
+  sticker,
+  figure,
+  isGolden,
+  onClose,
+  onSay,
+  onPop,
+}) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [activeSyllableIdx, setActiveSyllableIdx] = useState<number | null>(null);
+  const { schedule, clearAll } = useTimers();
+  useModalFocusTrap(dialogRef);
+
+  const highlightSyllablesSequentially = () => {
+    clearAll();
+    figure.syllables.forEach((_, idx) => {
+      schedule(() => setActiveSyllableIdx(idx), idx * 320);
+    });
+    schedule(() => setActiveSyllableIdx(null), figure.syllables.length * 320 + 380);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Detalhes da figurinha ${sticker.name}`}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className={`animate-pop-in relative w-full max-w-sm rounded-[32px] bg-[#FFF9F0] border-4 p-6 text-center shadow-2xl outline-none ${
+          isGolden ? 'border-[#FFCA3A] golden-shimmer' : 'border-[#FFCA3A]'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-amber-100 hover:text-slate-700 cursor-pointer"
+          aria-label="Fechar"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
+        <div className="flex items-center justify-center gap-1.5">
+          <span className="inline-block rounded-full bg-purple-100 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
+            {sticker.theme}
+          </span>
+          {isGolden && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCA3A] px-2.5 py-0.5 text-xs font-extrabold uppercase text-[#5C4100]">
+              <Crown className="h-3 w-3" />
+              Dourada
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              onPop();
+              onSay(sticker.name);
+            }}
+            className={`btn-3d flex h-36 w-36 items-center justify-center rounded-[32px] border-4 shadow-lg cursor-pointer ${
+              isGolden ? 'border-[#FFCA3A]' : 'border-white'
+            }`}
+            style={{ backgroundColor: sticker.bgHex }}
+            aria-label={`Ouvir ${sticker.name}`}
+          >
+            <FigureSvg figureId={sticker.figureId} size={112} />
+          </button>
+        </div>
+
+        <h2 className="mt-3 font-display text-2xl font-bold text-slate-800">{sticker.name}</h2>
+
+        {/* Initial Letter + Interactive Syllables */}
+        <div className="mt-4 rounded-2xl bg-white border-2 border-amber-100 p-3.5 flex flex-col items-center gap-2.5">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onPop();
+                onSay(`${figure.letter} de ${figure.name.toLowerCase()}!`);
+              }}
+              className="btn-3d flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF6B6B] font-display text-2xl font-bold text-white cursor-pointer"
+              aria-label={`Letra ${figure.letter}`}
+            >
+              {figure.letter}
+            </button>
+            <span className="font-display text-xl font-bold text-slate-700">{figure.name}</span>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-center gap-1.5">
+            {figure.syllables.map((syl, idx) => {
+              const isHighlighted = activeSyllableIdx === idx;
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    clearAll();
+                    onPop();
+                    setActiveSyllableIdx(idx);
+                    onSay(figure.name);
+                    schedule(() => setActiveSyllableIdx(null), 500);
+                  }}
+                  className={`rounded-xl border-2 px-3 py-1 font-display text-base font-bold cursor-pointer transition-all active:scale-95 ${
+                    isHighlighted
+                      ? 'bg-[#FFCA3A] border-[#E0A800] text-[#5C4100] scale-110 shadow-sm'
+                      : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+                  }`}
+                >
+                  {syl}
+                </button>
+              );
+            })}
+          </div>
+          <span className="text-xs font-bold text-slate-400">
+            {figure.syllables.length} {figure.syllables.length === 1 ? 'sílaba' : 'sílabas'}
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              onPop();
+              onSay(sticker.name);
+            }}
+            className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#6C5CE7] py-3 px-3 font-display text-sm font-bold text-white cursor-pointer"
+          >
+            <Volume2 className="h-4 w-4" />
+            Ouvir Nome
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onPop();
+              highlightSyllablesSequentially();
+              onSay(
+                `${figure.name.toLowerCase()} tem ${figure.syllables.length} ${
+                  figure.syllables.length === 1 ? 'sílaba' : 'sílabas'
+                }!`
+              );
+            }}
+            className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#FFCA3A] py-3 px-3 font-display text-sm font-bold text-[#5C4100] cursor-pointer"
+          >
+            <Sparkles className="h-4 w-4" />
+            Sílabas
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   onBack: () => void;
@@ -95,15 +272,6 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
       done: goldenIds.length >= 1,
     },
   ];
-
-  useEffect(() => {
-    if (!selectedSticker) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedSticker(null);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedSticker]);
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-[#FFF6D6] to-[#FFF9F0] pb-10">
@@ -378,9 +546,9 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
                           deletePainting(painting.id);
                         }}
                         aria-label="Remover pintura"
-                        className="absolute top-2 right-2 rounded-full p-1 text-slate-400 hover:bg-rose-100 hover:text-rose-600 cursor-pointer"
+                        className="absolute top-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 border border-slate-200 text-slate-400 hover:bg-rose-100 hover:text-rose-600 hover:border-rose-200 cursor-pointer transition-colors"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                       <svg viewBox="0 0 100 100" className="h-24 w-24">
                         {template.parts.map((part) => (
@@ -408,131 +576,14 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
 
       {/* Interactive Sticker Pop-up Card */}
       {selectedSticker && selectedFigure && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Detalhes da figurinha ${selectedSticker.name}`}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
-          onClick={() => setSelectedSticker(null)}
-        >
-          <div
-            className={`animate-pop-in relative w-full max-w-sm rounded-[32px] bg-[#FFF9F0] border-4 p-6 text-center shadow-2xl ${
-              selectedIsGolden ? 'border-[#FFCA3A] golden-shimmer' : 'border-[#FFCA3A]'
-            }`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setSelectedSticker(null)}
-              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-amber-100 hover:text-slate-700 cursor-pointer"
-              aria-label="Fechar"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            <div className="flex items-center justify-center gap-1.5">
-              <span className="inline-block rounded-full bg-purple-100 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
-                {selectedSticker.theme}
-              </span>
-              {selectedIsGolden && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#FFCA3A] px-2.5 py-0.5 text-xs font-extrabold uppercase text-[#5C4100]">
-                  <Crown className="h-3 w-3" />
-                  Dourada
-                </span>
-              )}
-            </div>
-
-            <div className="mt-3 flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  sfx('pop');
-                  say(selectedSticker.name);
-                }}
-                className={`btn-3d flex h-36 w-36 items-center justify-center rounded-[32px] border-4 shadow-lg cursor-pointer ${
-                  selectedIsGolden ? 'border-[#FFCA3A]' : 'border-white'
-                }`}
-                style={{ backgroundColor: selectedSticker.bgHex }}
-                aria-label={`Ouvir ${selectedSticker.name}`}
-              >
-                <FigureSvg figureId={selectedSticker.figureId} size={112} />
-              </button>
-            </div>
-
-            <h2 className="mt-3 font-display text-2xl font-bold text-slate-800">
-              {selectedSticker.name}
-            </h2>
-
-            {/* Initial Letter + Interactive Syllables */}
-            <div className="mt-4 rounded-2xl bg-white border-2 border-amber-100 p-3.5 flex flex-col items-center gap-2.5">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    sfx('pop');
-                    say(`${selectedFigure.letter} de ${selectedFigure.name.toLowerCase()}!`);
-                  }}
-                  className="btn-3d flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF6B6B] font-display text-2xl font-bold text-white cursor-pointer"
-                  aria-label={`Letra ${selectedFigure.letter}`}
-                >
-                  {selectedFigure.letter}
-                </button>
-                <span className="font-display text-xl font-bold text-slate-700">
-                  {selectedFigure.name}
-                </span>
-              </div>
-
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                {selectedFigure.syllables.map((syl, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      sfx('pop');
-                      say(selectedFigure.name);
-                    }}
-                    className="rounded-xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-200 px-2.5 py-0.5 font-display text-base font-bold text-amber-800 cursor-pointer"
-                  >
-                    {syl}
-                  </button>
-                ))}
-              </div>
-              <span className="text-xs font-bold text-slate-400">
-                {selectedFigure.syllables.length}{' '}
-                {selectedFigure.syllables.length === 1 ? 'sílaba' : 'sílabas'}
-              </span>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  sfx('pop');
-                  say(selectedSticker.name);
-                }}
-                className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#6C5CE7] py-3 px-3 font-display text-sm font-bold text-white cursor-pointer"
-              >
-                <Volume2 className="h-4 w-4" />
-                Ouvir Nome
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  sfx('pop');
-                  say(
-                    `${selectedFigure.name.toLowerCase()} tem ${selectedFigure.syllables.length} ${
-                      selectedFigure.syllables.length === 1 ? 'sílaba' : 'sílabas'
-                    }!`
-                  );
-                }}
-                className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#FFCA3A] py-3 px-3 font-display text-sm font-bold text-[#5C4100] cursor-pointer"
-              >
-                <Sparkles className="h-4 w-4" />
-                Sílabas
-              </button>
-            </div>
-          </div>
-        </div>
+        <StickerDetailModal
+          sticker={selectedSticker}
+          figure={selectedFigure}
+          isGolden={selectedIsGolden}
+          onClose={() => setSelectedSticker(null)}
+          onSay={say}
+          onPop={() => sfx('pop')}
+        />
       )}
     </div>
   );

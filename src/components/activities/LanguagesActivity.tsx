@@ -8,6 +8,7 @@ import {
   Volume2,
   ChevronLeft,
   ChevronRight,
+  Headphones,
 } from 'lucide-react';
 import { useApp, type RoundReward } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, COLORS, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
@@ -21,11 +22,13 @@ import {
   generateLangColorQuestions,
   generateLangGreetingQuestions,
   generateLangNumberQuestions,
+  generateLangPhraseQuestions,
   generateLangVocabQuestions,
   pickRandom,
   type LangColorQuestion,
   type LangGreetingQuestion,
   type LangNumberQuestion,
+  type LangPhraseQuestion,
   type LangVocabQuestion,
 } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
@@ -39,15 +42,16 @@ interface Props {
   onBack: () => void;
 }
 
-type LangMode = 'vocab' | 'colors' | 'numbers' | 'greetings' | 'explore';
+type LangMode = 'vocab' | 'colors' | 'numbers' | 'greetings' | 'phrases' | 'explore';
 type ExploreCategory = 'figures' | 'colors' | 'numbers' | 'greetings';
 
 const EXPLORE_TARGET = 6;
 
-/** Atividade de Idiomas (Inglês e Espanhol): Vocabulário, Cores, Números, Cumprimentos e Cartões de Descoberta. */
+/** Atividade de Idiomas (Inglês e Espanhol): Vocabulário, Cores, Números, Cumprimentos, Frases Curtas e Explorar. */
 export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
   const {
     activeProfile,
+    isChallengeActive,
     setPreferredLanguage,
     recordCorrectAnswer,
     completeRound,
@@ -55,6 +59,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     sayClips,
     sfx,
   } = useApp();
+  const challengeMode = isChallengeActive('languages');
 
   const [lang, setLang] = useState<ForeignLanguage>(activeProfile.preferredLanguage || 'en');
   const [mode, setMode] = useState<LangMode>('vocab');
@@ -65,7 +70,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
   const [activeExploreClipId, setActiveExploreClipId] = useState<string>('');
 
   const [vocabQs, setVocabQs] = useState<LangVocabQuestion[]>(() =>
-    generateLangVocabQuestions(activeProfile.preferredLanguage || 'en', activeProfile.ageLevel, 5)
+    generateLangVocabQuestions(activeProfile.preferredLanguage || 'en', activeProfile.ageLevel, 5, challengeMode)
   );
   const [colorQs, setColorQs] = useState<LangColorQuestion[]>(() =>
     generateLangColorQuestions(activeProfile.preferredLanguage || 'en', activeProfile.ageLevel, 4)
@@ -75,6 +80,9 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
   );
   const [greetingQs, setGreetingQs] = useState<LangGreetingQuestion[]>(() =>
     generateLangGreetingQuestions(activeProfile.preferredLanguage || 'en', activeProfile.ageLevel, 4)
+  );
+  const [phraseQs, setPhraseQs] = useState<LangPhraseQuestion[]>(() =>
+    generateLangPhraseQuestions(activeProfile.preferredLanguage || 'en', activeProfile.ageLevel, 4, challengeMode)
   );
 
   const [step, setStep] = useState(0);
@@ -100,7 +108,9 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
           ? numberQs.length
           : mode === 'greetings'
             ? greetingQs.length
-            : EXPLORE_TARGET;
+            : mode === 'phrases'
+              ? phraseQs.length
+              : EXPLORE_TARGET;
 
   const currentStepProgress = mode === 'explore' ? exploredKeys.length : step;
 
@@ -109,6 +119,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'colors') return colorQs[step]?.promptClips || [];
     if (mode === 'numbers') return numberQs[step]?.promptClips || [];
     if (mode === 'greetings') return greetingQs[step]?.promptClips || [];
+    if (mode === 'phrases') return phraseQs[step]?.promptClips || [];
     return activeExploreClipId ? [activeExploreClipId] : ['p-lang-explorar'];
   };
 
@@ -117,6 +128,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'colors') return colorQs[step]?.nativeClipId || '';
     if (mode === 'numbers') return numberQs[step]?.nativeClipId || '';
     if (mode === 'greetings') return greetingQs[step]?.nativeClipId || '';
+    if (mode === 'phrases') return phraseQs[step]?.nativeClipId || '';
     return '';
   };
 
@@ -125,6 +137,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     if (mode === 'colors') return colorQs[step]?.promptText || '';
     if (mode === 'numbers') return numberQs[step]?.promptText || '';
     if (mode === 'greetings') return greetingQs[step]?.promptText || '';
+    if (mode === 'phrases') return phraseQs[step]?.promptText || '';
     return activeExploreLabel || 'Toque em qualquer cartão para ouvir a pronúncia!';
   };
 
@@ -135,7 +148,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
       sayClips(clips);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang, mode, step, roundSeq, vocabQs, colorQs, numberQs, greetingQs]);
+  }, [lang, mode, step, roundSeq, vocabQs, colorQs, numberQs, greetingQs, phraseQs]);
 
   const regenerateMode = (nextLang: ForeignLanguage, nextMode: LangMode) => {
     clearAll();
@@ -156,13 +169,15 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     setRoundSeq((r) => r + 1);
 
     if (nextMode === 'vocab') {
-      setVocabQs(generateLangVocabQuestions(nextLang, activeProfile.ageLevel, 5));
+      setVocabQs(generateLangVocabQuestions(nextLang, activeProfile.ageLevel, 5, challengeMode));
     } else if (nextMode === 'colors') {
       setColorQs(generateLangColorQuestions(nextLang, activeProfile.ageLevel, 4));
     } else if (nextMode === 'numbers') {
       setNumberQs(generateLangNumberQuestions(nextLang, activeProfile.ageLevel, 5));
     } else if (nextMode === 'greetings') {
       setGreetingQs(generateLangGreetingQuestions(nextLang, activeProfile.ageLevel, 4));
+    } else if (nextMode === 'phrases') {
+      setPhraseQs(generateLangPhraseQuestions(nextLang, activeProfile.ageLevel, 4, challengeMode));
     }
   };
 
@@ -177,7 +192,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
     setLocked(true);
     setMood('excited');
     sfx('success');
-    const praiseIdx = Math.floor(Math.random() * CELEBRATE_PHRASES.length);
+    const praiseIdx = (step + activeProfile.stars) % CELEBRATE_PHRASES.length;
     const praiseText = CELEBRATE_PHRASES[praiseIdx];
     setFeedback(`${praiseText} ${wordLabel}`);
     sayClips([`cel-${praiseIdx}`, nativeClipId]);
@@ -235,6 +250,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
   const currentColor = colorQs[step];
   const currentNumber = numberQs[step];
   const currentGreeting = greetingQs[step];
+  const currentPhrase = phraseQs[step];
   const exploreNumbers = isOlder ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] : [1, 2, 3, 4, 5];
 
   return (
@@ -293,6 +309,7 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
           { id: 'colors' as LangMode, label: 'Cores', icon: Palette },
           { id: 'numbers' as LangMode, label: 'Números', icon: Hash },
           { id: 'greetings' as LangMode, label: 'Cumprimentos', icon: MessageCircleHeart },
+          { id: 'phrases' as LangMode, label: 'Frases', icon: Headphones },
           { id: 'explore' as LangMode, label: 'Explorar', icon: Compass },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -442,11 +459,9 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
                       className="h-14 w-14 sm:h-18 sm:w-18 rounded-full border-4 border-white ring-1 ring-slate-200 shadow-md"
                       style={{ backgroundColor: col.hex }}
                     />
-                    {(isRight || isOlder) && (
-                      <span className="font-display text-xs sm:text-base font-bold text-slate-700">
-                        {isRight ? currentColor.word : col.name}
-                      </span>
-                    )}
+                    <span className="font-display text-xs sm:text-base font-bold text-slate-700">
+                      {isRight ? currentColor.word : col.name}
+                    </span>
                   </button>
                 );
               })}
@@ -788,6 +803,63 @@ export const LanguagesActivity: React.FC<Props> = ({ onBack }) => {
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* MODE: SHORT PHRASES (LISTENING) */}
+        {mode === 'phrases' && currentPhrase && (
+          <div className="w-full max-w-2xl flex flex-col items-center gap-4">
+            <button
+              type="button"
+              onClick={() => sayClips([currentPhrase.nativeClipId])}
+              className="btn-3d flex items-center gap-3 rounded-3xl bg-[#4F46E5] px-6 py-3.5 text-white shadow-lg cursor-pointer"
+            >
+              <Volume2 className="h-6 w-6 shrink-0" />
+              <span className="font-display text-xl sm:text-2xl font-bold">
+                {currentPhrase.phrase}
+              </span>
+            </button>
+
+            <div
+              className={`grid w-full gap-3 sm:gap-4 ${
+                currentPhrase.options.length === 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
+              }`}
+            >
+              {currentPhrase.options.map((opt) => {
+                const isShaking = wrongId === opt.id;
+                const isRevealedCorrect = locked && opt.id === currentPhrase.target.id;
+                const isHinted = showHint && opt.id === currentPhrase.target.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => {
+                      if (opt.id === currentPhrase.target.id) {
+                        handleCorrect(`${currentPhrase.phrase} (${opt.ptLabel})`, currentPhrase.nativeClipId);
+                      } else {
+                        handleWrong(opt.id);
+                      }
+                    }}
+                    className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
+                      isRevealedCorrect
+                        ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'border-white hover:scale-[1.02]'
+                    } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
+                    style={
+                      !isRevealedCorrect && !isHinted ? { backgroundColor: opt.bgHex } : undefined
+                    }
+                  >
+                    <FigureSvg figureId={opt.figureId} size={74} />
+                    <span className="font-display text-xs sm:text-sm font-bold text-slate-700 text-center">
+                      {opt.ptLabel}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </main>

@@ -5,6 +5,7 @@ import {
   FIGURE_TRANSLATIONS,
   GREETINGS,
   NUMBER_TRANSLATIONS,
+  SHORT_PHRASES,
 } from '../data/languagesCatalog';
 
 const LANG_FIG_CLIP_MAP: Record<ForeignLanguage, Record<string, string>> = { en: {}, es: {} };
@@ -34,6 +35,18 @@ for (const g of GREETINGS) {
   LANG_GREET_CLIP_MAP.es[g.translations.es.toLowerCase()] = [
     `p-lang-greet-es-${g.id}`,
     `lang-es-greet-${g.id}`,
+  ];
+}
+
+const LANG_PHRASE_CLIP_MAP: Record<ForeignLanguage, Record<string, string[]>> = { en: {}, es: {} };
+for (const p of SHORT_PHRASES) {
+  LANG_PHRASE_CLIP_MAP.en[p.translations.en.toLowerCase()] = [
+    'p-lang-frase-en',
+    `lang-en-phrase-${p.id}`,
+  ];
+  LANG_PHRASE_CLIP_MAP.es[p.translations.es.toLowerCase()] = [
+    'p-lang-frase-es',
+    `lang-es-phrase-${p.id}`,
   ];
 }
 
@@ -353,9 +366,9 @@ export function playAnimalSynthSound(animalId: string, enabled = true): void {
 }
 
 /** Calcula o `playbackRate` dos clipes MP3 neurais por idade e velocidade selecionada. */
-export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', _ageLevel: AgeLevel = '3-4'): number {
-  if (speed === 'slow') return 0.9;
-  if (speed === 'fast') return 1.12;
+export function getAudioPlaybackRate(speed: VoiceSpeed = 'normal', ageLevel: AgeLevel = '3-4'): number {
+  if (speed === 'slow') return ageLevel === '3-4' ? 0.88 : 0.92;
+  if (speed === 'fast') return ageLevel === '3-4' ? 1.08 : 1.12;
   return 1.0;
 }
 
@@ -668,9 +681,15 @@ export function resolveAudioClips(rawText: string): string[] | null {
     if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
-  m = trimmed.match(/^Toque no grupo que tem (\d+) figuras?\!?$/i);
+  m = trimmed.match(/^Toque no grupo que tem (\d+) figuras?!?$/i);
   if (m) {
     const id = `q-grupo-tem-${m[1]}`;
+    if (AUDIO_CLIP_IDS.has(id)) return [id];
+  }
+
+  m = trimmed.match(/^Qual número vem (antes|depois) do (\d+)\??$/i);
+  if (m) {
+    const id = `q-vizinho-${m[1].toLowerCase()}-${m[2]}`;
     if (AUDIO_CLIP_IDS.has(id)) return [id];
   }
 
@@ -821,6 +840,15 @@ export function resolveAudioClips(rawText: string): string[] | null {
   if (m) {
     const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
     const clips = LANG_GREET_CLIP_MAP[lang][m[2].trim().toLowerCase()];
+    if (clips && clips.every((id) => AUDIO_CLIP_IDS.has(id))) {
+      return clips;
+    }
+  }
+
+  m = trimmed.match(/^Em (inglês|espanhol):\s*"(.+?)"$/i);
+  if (m) {
+    const lang: ForeignLanguage = m[1].toLowerCase() === 'inglês' ? 'en' : 'es';
+    const clips = LANG_PHRASE_CLIP_MAP[lang][m[2].trim().toLowerCase()];
     if (clips && clips.every((id) => AUDIO_CLIP_IDS.has(id))) {
       return clips;
     }

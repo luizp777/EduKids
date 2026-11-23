@@ -89,6 +89,41 @@ PHRASES: dict[str, str] = {
     "p-lang-cor-es": "Qual é a cor em espanhol:",
     "p-lang-num-en": "Toque no número em inglês:",
     "p-lang-num-es": "Toque no número em espanhol:",
+    "p-lang-frase-en": "Ouça a frase em inglês:",
+    "p-lang-frase-es": "Ouça a frase em espanhol:",
+    # Stories pillar (10th pillar: Hora da História)
+    "st-foguete-1": "O foguete curioso acordou animado e quis visitar o céu brilhante!",
+    "st-foguete-2": "No espaço, ele encontrou a lua soneca descansando perto das estrelas.",
+    "st-foguete-3": "A estrela guia iluminou o caminho de volta para casa com muito carinho!",
+    "st-jardim-1": "No jardim encantado, uma florzinha acordou pedindo água fresquinha.",
+    "st-jardim-2": "Depois da chuva, o sol quentinho apareceu para ajudar a flor a crescer.",
+    "st-jardim-3": "A abelha feliz chegou dançando e agradeceu pela flor tão cheirosa!",
+    "st-piquenique-1": "O urso gentil preparou uma cesta cheia de frutas docinhas no parque.",
+    "st-piquenique-2": "O cachorrinho amigo chegou abanando o rabo para brincar junto!",
+    "st-piquenique-3": "Eles dividiram uma melancia refrescante porque partilhar deixa tudo mais gostoso!",
+    "st-tartaruga-1": "A tartaruga passeava devagarinho olhando cada detalhe do caminho.",
+    "st-tartaruga-2": "Lá no alto, o avião veloz passou voando bem rápido pelas nuvens.",
+    "st-tartaruga-3": "No final, os dois se encontraram na ilha para admirar um lindo arco-íris!",
+    "st-q-1": "Quem viajou pelo espaço para visitar a Lua?",
+    "st-q-2": "Quem iluminou o caminho de volta do foguete?",
+    "st-q-3": "O que trouxe chuva fresquinha para a florzinha?",
+    "st-q-4": "Qual bichinho chegou dançando para agradecer à flor?",
+    "st-q-5": "Qual fruta refrescante os amigos dividiram no piquenique?",
+    "st-q-6": "O que a tartaruga e o avião admiraram juntos na ilha?",
+    "st-seq-prompt": "Toque nas cenas da história do começo até o fim!",
+    "st-builder-prompt": "Escolha um personagem, um lugar e uma surpresa, e toque em Ouvir História!",
+    "st-b-hero-gato": "O gatinho",
+    "st-b-hero-urso": "O ursinho",
+    "st-b-hero-sapo": "O sapinho",
+    "st-b-hero-pato": "O patinho",
+    "st-b-place-ilha": "foi até a ilha",
+    "st-b-place-lua": "viajou até a lua",
+    "st-b-place-casa": "chegou na casinha",
+    "st-b-place-arvore": "brincou na floresta",
+    "st-b-obj-estrela": "e achou uma estrela mágica!",
+    "st-b-obj-bola": "e jogou com uma bola colorida!",
+    "st-b-obj-livro": "e leu um livro encantado!",
+    "st-b-obj-arcoiris": "e viu um lindo arco-íris!",
     "p-lang-greet-en-hello": "Como dizemos Olá em inglês?",
     "p-lang-greet-en-good-morning": "Como dizemos Bom dia em inglês?",
     "p-lang-greet-en-good-night": "Como dizemos Boa noite em inglês?",
@@ -190,6 +225,10 @@ for each in range(1, 6):
     total = each * 2
     PHRASES[f"q-dividir-{total}"] = f"Vamos dividir {total} figuras entre dois amigos! Quantas cada um ganha?"
     PHRASES[f"ans-dividir-{each}"] = f"Cada amigo ganha {each}!"
+
+for n in range(2, 10):
+    PHRASES[f"q-vizinho-antes-{n}"] = f"Qual número vem antes do {n}?"
+    PHRASES[f"q-vizinho-depois-{n}"] = f"Qual número vem depois do {n}?"
 
 # Figures (36 items) -> full natural phrases for every figure
 FIGURES = [
@@ -470,6 +509,18 @@ LANG_GREETINGS = [
 for gid, en_word, es_word in LANG_GREETINGS:
     FOREIGN_CLIPS[f"lang-en-greet-{gid}"] = (en_word, VOICE_EN)
     FOREIGN_CLIPS[f"lang-es-greet-{gid}"] = (es_word, VOICE_ES)
+
+LANG_PHRASES = [
+    ("red-apple", "The red apple!", "¡La manzana roja!"),
+    ("yellow-sun", "The yellow sun!", "¡El sol amarillo!"),
+    ("blue-bird", "The blue bird!", "¡El pájaro azul!"),
+    ("green-frog", "The green frog!", "¡La rana verde!"),
+    ("orange-cat", "The orange cat!", "¡El gato naranja!"),
+    ("purple-flower", "The purple flower!", "¡La flor morada!"),
+]
+for pid, en_phrase, es_phrase in LANG_PHRASES:
+    FOREIGN_CLIPS[f"lang-en-phrase-{pid}"] = (en_phrase, VOICE_EN)
+    FOREIGN_CLIPS[f"lang-es-phrase-{pid}"] = (es_phrase, VOICE_ES)
 
 
 async def synth_one(sem: asyncio.Semaphore, clip_id: str, text: str, voice: str = VOICE) -> None:

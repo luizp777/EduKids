@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Lock, X, Delete, Check } from 'lucide-react';
+import { useModalFocusTrap } from '../../utils/useModalFocusTrap';
 
 /** Propriedades do modal `ParentalGateModal`. */
 interface ParentalGateModalProps {
@@ -14,14 +15,16 @@ export const ParentalGateModal: React.FC<ParentalGateModalProps> = ({
   onSuccess,
   onCancel,
 }) => {
-  const challenge = useMemo(() => {
+  const [challenge] = useState(() => {
     const a = 3 + Math.floor(Math.random() * 6); // 3..8
     const b = 4 + Math.floor(Math.random() * 5); // 4..8
     return { a, b, answer: a * b };
-  }, []);
+  });
 
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(dialogRef);
 
   const handleDigit = useCallback((digit: string) => {
     setError(false);
@@ -67,11 +70,15 @@ export const ParentalGateModal: React.FC<ParentalGateModalProps> = ({
       aria-label="Verificação da Área dos Pais"
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
     >
-      <div className="animate-pop-in relative w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border-2 border-slate-200">
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="animate-pop-in relative w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border-2 border-slate-200 outline-none"
+      >
         <button
           type="button"
           onClick={onCancel}
-          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
           aria-label="Fechar"
         >
           <X className="h-6 w-6" />

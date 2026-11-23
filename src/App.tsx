@@ -1,21 +1,17 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useState } from 'react';
 import { AppProvider, useApp } from './state/AppContext';
 import type { PillarId } from './types';
 import { stopSpeaking } from './utils/audio';
+import {
+  LazyActivityByPillar,
+  LazyParentsDashboardPage,
+  LazyStickerAlbumPage,
+} from './utils/activityLoaders';
 import { HomePage } from './pages/HomePage';
-import { StickerAlbumPage } from './pages/StickerAlbumPage';
-import { ParentsDashboardPage } from './pages/ParentsDashboardPage';
 import { ParentalGateModal } from './components/ui/ParentalGateModal';
 import { ScreenTimeBreakModal } from './components/ui/ScreenTimeBreakModal';
-import { LiteracyActivity } from './components/activities/LiteracyActivity';
-import { MathActivity } from './components/activities/MathActivity';
-import { ShapesColorsActivity } from './components/activities/ShapesColorsActivity';
-import { FiguresLogicActivity } from './components/activities/FiguresLogicActivity';
-import { TracingActivity } from './components/activities/TracingActivity';
-import { MusicSoundsActivity } from './components/activities/MusicSoundsActivity';
-import { EmotionsRoutineActivity } from './components/activities/EmotionsRoutineActivity';
-import { NatureHabitatsActivity } from './components/activities/NatureHabitatsActivity';
-import { LanguagesActivity } from './components/activities/LanguagesActivity';
+import { ActivityLoadingFallback } from './components/ui/ActivityLoadingFallback';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 
 type View =
   | { type: 'home' }
@@ -28,6 +24,8 @@ const AppContent: React.FC = () => {
   const [view, setView] = useState<View>({ type: 'home' });
   const [gateReason, setGateReason] = useState<'parents' | 'screen-time' | null>(null);
   const activityKey = `${activeProfile.id}-${activeProfile.ageLevel}`;
+  const viewResetKey =
+    view.type === 'activity' ? `activity-${view.pillar}-${activityKey}` : `${view.type}-${activityKey}`;
 
   // Track active play time when in an activity
   useEffect(() => {
@@ -72,6 +70,8 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const ActiveActivity = view.type === 'activity' ? LazyActivityByPillar[view.pillar] : null;
+
   return (
     <div className={calmMode ? 'calm-mode' : undefined}>
       {view.type === 'home' && (
@@ -82,36 +82,16 @@ const AppContent: React.FC = () => {
         />
       )}
 
-      {view.type === 'album' && <StickerAlbumPage onBack={goHome} />}
-
-      {view.type === 'parents' && <ParentsDashboardPage onBack={goHome} />}
-
-      {view.type === 'activity' && view.pillar === 'literacy' && (
-        <LiteracyActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'math' && (
-        <MathActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'shapes-colors' && (
-        <ShapesColorsActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'figures-logic' && (
-        <FiguresLogicActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'tracing' && (
-        <TracingActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'music-sounds' && (
-        <MusicSoundsActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'emotions-routine' && (
-        <EmotionsRoutineActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'nature-habitats' && (
-        <NatureHabitatsActivity key={activityKey} onBack={goHome} />
-      )}
-      {view.type === 'activity' && view.pillar === 'languages' && (
-        <LanguagesActivity key={activityKey} onBack={goHome} />
+      {view.type !== 'home' && (
+        <ErrorBoundary scope="activity" resetKey={viewResetKey} onGoHome={goHome}>
+          <Suspense fallback={<ActivityLoadingFallback />}>
+            {view.type === 'album' && <LazyStickerAlbumPage onBack={goHome} />}
+            {view.type === 'parents' && <LazyParentsDashboardPage onBack={goHome} />}
+            {view.type === 'activity' && ActiveActivity && (
+              <ActiveActivity key={activityKey} onBack={goHome} />
+            )}
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {screenTimeReached && view.type !== 'parents' && !gateReason && (
@@ -137,9 +117,11 @@ const AppContent: React.FC = () => {
 };
 
 export const App: React.FC = () => (
-  <AppProvider>
-    <AppContent />
-  </AppProvider>
+  <ErrorBoundary scope="root">
+    <AppProvider>
+      <AppContent />
+    </AppProvider>
+  </ErrorBoundary>
 );
 
 export default App;

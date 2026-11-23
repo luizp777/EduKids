@@ -15,10 +15,12 @@ import {
   createProfile,
   getLocalDateKey,
   getRecommendedPillar,
+  isPillarChallengeActive,
   loadAppState,
   pickNextGoldenSticker,
   pickNextSticker,
   saveAppState,
+  shouldSuggestAgeUpgrade,
   validateAndNormalizeState,
 } from './storage';
 import {
@@ -58,6 +60,10 @@ interface AppContextValue {
   calmMode: boolean;
   /** Indica se o limite diário de tempo de tela foi atingido. */
   screenTimeReached: boolean;
+  /** Indica se é recomendado sugerir a transição do nível 3–4 para 5–6 anos. */
+  suggestAgeUpgrade: boolean;
+  /** Indica se o Modo Desafio Estrela adaptativo está ativo para um pilar. */
+  isChallengeActive: (pillar: PillarId) => boolean;
   /** Seleciona outro perfil infantil pelo seu ID. */
   setActiveProfile: (id: string) => void;
   /** Cria e ativa um novo perfil infantil. */
@@ -146,9 +152,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [state.screenTime, todayKey]);
 
   const unlockedStickersRef = useRef<string[]>(activeProfile.unlockedStickers);
-  unlockedStickersRef.current = activeProfile.unlockedStickers;
   const goldenStickersRef = useRef<string[]>(activeProfile.goldenStickers || []);
-  goldenStickersRef.current = activeProfile.goldenStickers || [];
+
+  useEffect(() => {
+    unlockedStickersRef.current = activeProfile.unlockedStickers;
+    goldenStickersRef.current = activeProfile.goldenStickers || [];
+  }, [activeProfile.unlockedStickers, activeProfile.goldenStickers]);
 
   const setActiveProfile = (id: string) => {
     setState((prev) => ({ ...prev, activeProfileId: id }));
@@ -357,7 +366,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const completeRound = (pillar: PillarId, starsAwarded = 3): RoundReward => {
     const isDailyBonus = pillar === recommendedPillar && !dailyBonusClaimed;
-    const totalStars = starsAwarded + (isDailyBonus ? 2 : 0);
+    const isChallengeBonus = isPillarChallengeActive(activeProfile.stats[pillar]);
+    const totalStars = starsAwarded + (isDailyBonus ? 2 : 0) + (isChallengeBonus ? 1 : 0);
     const newStickerId = pickNextSticker(unlockedStickersRef.current);
     let newGoldenStickerId: string | null = null;
 
@@ -436,6 +446,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   const sfx = (type: SfxType) => playSfx(type, state.audio.sfxEnabled);
 
+  const suggestAgeUpgrade = useMemo(
+    () => shouldSuggestAgeUpgrade(activeProfile),
+    [activeProfile]
+  );
+
+  const isChallengeActive = useCallback(
+    (pillar: PillarId) => isPillarChallengeActive(activeProfile.stats[pillar]),
+    [activeProfile.stats]
+  );
+
   return (
     <AppContext.Provider
       value={{
@@ -446,6 +466,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isSpeaking,
         calmMode,
         screenTimeReached,
+        suggestAgeUpgrade,
+        isChallengeActive,
         setActiveProfile,
         addProfile,
         updateProfile,

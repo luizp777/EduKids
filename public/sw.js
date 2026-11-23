@@ -1,4 +1,4 @@
-const CACHE_NAME = 'edukids-cache-v4';
+const CACHE_NAME = 'edukids-cache-v5';
 const CORE_ASSETS = ['/', '/index.html', '/manifest.webmanifest', '/icon.svg'];
 const ESSENTIAL_AUDIO_PREFIXES = [
   '/audio/pt-br/lumi-',
@@ -62,6 +62,42 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+
+  // Cache Google Fonts stylesheets (stale-while-revalidate) and woff2 font files (cache-first) for offline typography
+  if (url.origin === 'https://fonts.googleapis.com') {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        const networkFetch = fetch(event.request)
+          .then((response) => {
+            if (response && (response.status === 200 || response.type === 'opaque')) {
+              const copy = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || networkFetch;
+      })
+    );
+    return;
+  }
+
+  if (url.origin === 'https://fonts.gstatic.com') {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && (response.status === 200 || response.type === 'opaque')) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
   if (url.origin !== self.location.origin) return;
 
   // Network-first for HTML navigations and manifests so new deployments appear immediately
@@ -86,6 +122,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Cache-first for immutable audio clips and hashed Vite assets (avoids redundant network re-fetches)
+  if (url.pathname.startsWith('/audio/') || url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for remaining same-origin static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)

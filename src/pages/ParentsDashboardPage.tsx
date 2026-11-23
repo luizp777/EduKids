@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Volume2,
@@ -25,6 +25,7 @@ import {
 import { useApp } from '../state/AppContext';
 import { PILLARS } from '../data/catalog';
 import { playMusicalNote } from '../utils/audio';
+import { SW_CACHE_NAME } from '../utils/swCache';
 import { useTimers } from '../utils/useTimers';
 import type { AgeLevel, AvatarId, VoiceSpeed } from '../types';
 import { AVATAR_OPTIONS, AvatarSvg } from '../components/illustrations/AvatarSvg';
@@ -33,11 +34,12 @@ interface Props {
   onBack: () => void;
 }
 
-/** Painel administrativo dos pais para controle de áudio/volume global, perfis infantis, backup e métricas por pilar. */
+/** Painel administrativo dos pais para controle de áudio/volume global, perfis infantis, tempo de tela, modo offline total, backup JSON e métricas por pilar. */
 export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
   const {
     state,
     activeProfile,
+    suggestAgeUpgrade,
     setActiveProfile,
     addProfile,
     updateProfile,
@@ -55,6 +57,27 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
     total: number;
     status: string;
   } | null>(null);
+  const offlineAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      offlineAbortRef.current?.abort();
+    };
+  }, []);
+
+  const handleCancelOfflineDownload = () => {
+    offlineAbortRef.current?.abort();
+    offlineAbortRef.current = null;
+    setOfflineProgress((prev) =>
+      prev
+        ? {
+            ...prev,
+            running: false,
+            status: `Download cancelado (${prev.done} de ${prev.total} áudios salvos até o momento).`,
+          }
+        : null
+    );
+  };
 
   const handleDownloadAllOfflineAudio = async () => {
     if (typeof window === 'undefined' || !('caches' in window)) {
@@ -66,12 +89,18 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
       });
       return;
     }
+    offlineAbortRef.current?.abort();
+    const controller = new AbortController();
+    offlineAbortRef.current = controller;
+    const { signal } = controller;
+
     try {
       setOfflineProgress({ running: true, done: 0, total: 0, status: 'Carregando lista de áudios...' });
-      const res = await fetch('/audio/pt-br/manifest.json');
+      const res = await fetch('/audio/pt-br/manifest.json', { signal });
       if (!res.ok) throw new Error('Manifest unavailable');
       const urls = (await res.json()) as string[];
-      const cache = await caches.open('edukids-cache-v4');
+      if (signal.aborted) return;
+      const cache = await caches.open(SW_CACHE_NAME);
       let completed = 0;
       setOfflineProgress({
         running: true,
@@ -81,16 +110,22 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
       });
       const batchSize = 12;
       for (let i = 0; i < urls.length; i += batchSize) {
+        if (signal.aborted) return;
         const batch = urls.slice(i, i + batchSize);
         await Promise.all(
           batch.map(async (url) => {
+            if (signal.aborted) return;
             const existing = await cache.match(url);
             if (!existing) {
-              await cache.add(url);
+              const audioRes = await fetch(url, { signal });
+              if (audioRes.ok) {
+                await cache.put(url, audioRes);
+              }
             }
             completed += 1;
           })
         );
+        if (signal.aborted) return;
         setOfflineProgress({
           running: true,
           done: completed,
@@ -98,13 +133,19 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
           status: `Baixando ${completed} de ${urls.length} áudios...`,
         });
       }
+      if (signal.aborted) return;
+      offlineAbortRef.current = null;
       setOfflineProgress({
         running: false,
         done: urls.length,
         total: urls.length,
         status: `Pronto! Todos os ${urls.length} áudios estão salvos para uso 100% offline!`,
       });
-    } catch {
+    } catch (err) {
+      if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) {
+        return;
+      }
+      offlineAbortRef.current = null;
       setOfflineProgress({
         running: false,
         done: 0,
@@ -122,6 +163,10 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState<AvatarId>('owl');
+  const [confirmAction, setConfirmAction] = useState<{
+    profileId: string;
+    kind: 'reset' | 'delete';
+  } | null>(null);
   const [backupMessage, setBackupMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(
     null
   );
@@ -196,7 +241,7 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
   )[0];
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-12">
+    <div className="min-h-dvh bg-slate-50 pb-12">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <button
@@ -591,43 +636,93 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                       </span>
                     )}
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleStartEdit(prof.id, prof.name, prof.avatar)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                        onClick={() => {
+                          setConfirmAction(null);
+                          handleStartEdit(prof.id, prof.name, prof.avatar);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 cursor-pointer transition-colors"
                         title="Editar nome e avatar"
+                        aria-label={`Editar perfil ${prof.name}`}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => {
-                          if (window.confirm(`Zerar o progresso de ${prof.name}?`)) {
-                            resetProfileProgress(prof.id);
-                          }
-                        }}
-                        className="p-1.5 rounded-lg text-slate-400 hover:bg-amber-50 hover:text-amber-600 cursor-pointer"
+                        onClick={() =>
+                          setConfirmAction({ profileId: prof.id, kind: 'reset' })
+                        }
+                        className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200 cursor-pointer transition-colors"
                         title="Resetar progresso"
+                        aria-label={`Zerar progresso de ${prof.name}`}
                       >
                         <RotateCcw className="h-4 w-4" />
                       </button>
                       {state.profiles.length > 1 && (
                         <button
                           type="button"
-                          onClick={() => {
-                            if (window.confirm(`Excluir o perfil ${prof.name}?`)) {
-                              deleteProfile(prof.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 cursor-pointer"
+                          onClick={() =>
+                            setConfirmAction({ profileId: prof.id, kind: 'delete' })
+                          }
+                          className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 cursor-pointer transition-colors"
                           title="Excluir perfil"
+                          aria-label={`Excluir perfil ${prof.name}`}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       )}
                     </div>
                   </div>
+
+                  {confirmAction?.profileId === prof.id && (
+                    <div
+                      role="alert"
+                      className={`rounded-xl border-2 p-3 flex flex-col gap-2 ${
+                        confirmAction.kind === 'delete'
+                          ? 'bg-rose-50 border-rose-200'
+                          : 'bg-amber-50 border-amber-200'
+                      }`}
+                    >
+                      <p
+                        className={`text-xs font-extrabold ${
+                          confirmAction.kind === 'delete' ? 'text-rose-800' : 'text-amber-900'
+                        }`}
+                      >
+                        {confirmAction.kind === 'delete'
+                          ? `Excluir o perfil de ${prof.name}? Esta ação não pode ser desfeita.`
+                          : `Zerar estrelas e figurinhas de ${prof.name}?`}
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setConfirmAction(null)}
+                          className="rounded-lg bg-white border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirmAction.kind === 'delete') {
+                              deleteProfile(prof.id);
+                            } else {
+                              resetProfileProgress(prof.id);
+                            }
+                            setConfirmAction(null);
+                          }}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-extrabold text-white cursor-pointer ${
+                            confirmAction.kind === 'delete'
+                              ? 'bg-rose-600 hover:bg-rose-700'
+                              : 'bg-amber-600 hover:bg-amber-700'
+                          }`}
+                        >
+                          {confirmAction.kind === 'delete' ? 'Confirmar Exclusão' : 'Confirmar Reset'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {editingProfileId === prof.id && (
                     <form
@@ -691,6 +786,21 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
             Idioma:{' '}
             {(activeProfile.preferredLanguage || 'en') === 'en' ? 'Inglês (EN)' : 'Espanhol (ES)'}
           </p>
+
+          {suggestAgeUpgrade && (
+            <div className="mb-4 rounded-2xl bg-purple-50 border-2 border-purple-200 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="text-sm font-bold text-purple-900">
+                Sugestão pedagógica: <strong>{activeProfile.name}</strong> já tem ótimo domínio no nível 3–4 anos e está pronto para experimentar <strong>5–6 anos (Descobridores)</strong>!
+              </div>
+              <button
+                type="button"
+                onClick={() => updateProfile(activeProfile.id, { ageLevel: '5-6' })}
+                className="shrink-0 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-indigo-700 cursor-pointer"
+              >
+                Mudar para 5–6 anos
+              </button>
+            </div>
+          )}
 
           {/* Pedagogical Summary */}
           <div className="grid sm:grid-cols-3 gap-3 mb-4">
@@ -873,15 +983,26 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
           <p className="text-sm text-slate-500 mb-4">
             Baixe todos os clipes de voz neural da Lumi de uma só vez para usar o EduKids sem Wi-Fi ou 4G.
           </p>
-          <button
-            type="button"
-            disabled={offlineProgress?.running}
-            onClick={handleDownloadAllOfflineAudio}
-            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            {offlineProgress?.running ? 'Baixando áudios...' : 'Baixar Todos os Áudios Offline'}
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              disabled={offlineProgress?.running}
+              onClick={handleDownloadAllOfflineAudio}
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-60 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              {offlineProgress?.running ? 'Baixando áudios...' : 'Baixar Todos os Áudios Offline'}
+            </button>
+            {offlineProgress?.running && (
+              <button
+                type="button"
+                onClick={handleCancelOfflineDownload}
+                className="rounded-xl bg-slate-100 border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
           {offlineProgress && (
             <div className="mt-3">
               {offlineProgress.total > 0 && (

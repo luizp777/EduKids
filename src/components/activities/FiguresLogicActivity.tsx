@@ -67,7 +67,7 @@ function createPuzzleState(ageLevel: AgeLevel): PuzzleState {
   const rows = 2;
   const total = cols * rows;
   const solved = Array.from({ length: total }, (_, i) => i);
-  let order = shuffle(solved);
+  const order = shuffle(solved);
   if (order.every((v, i) => v === i)) {
     [order[0], order[1]] = [order[1], order[0]];
   }
@@ -85,7 +85,8 @@ function getPuzzleViewBox(pieceIdx: number, cols: number, rows: number): string 
 
 /** Atividade de Figuras e Lógica: Memória, Sombras, Diferente, Grupos, Intruso, Quebra-Cabeça, Combinar e Matriz. */
 export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
-  const { activeProfile, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const { activeProfile, isChallengeActive, recordCorrectAnswer, completeRound, say, sfx } = useApp();
+  const challengeMode = isChallengeActive('figures-logic');
   const [mode, setMode] = useState<LogicMode>('memory');
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
@@ -93,7 +94,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   const { schedule, clearAll } = useTimers();
 
   // Memory state
-  const pairCount = activeProfile.ageLevel === '3-4' ? 3 : 6;
+  const pairCount = activeProfile.ageLevel === '3-4' ? (challengeMode ? 4 : 3) : 6;
   const [deck, setDeck] = useState<MemoryCard[]>(() => createMemoryDeck(pairCount));
   const [flipped, setFlipped] = useState<string[]>([]);
   const [matchedPairs, setMatchedPairs] = useState<FigureId[]>([]);
@@ -101,7 +102,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
 
   // Shadow state
   const [shadowQs, setShadowQs] = useState<ShadowQuestion[]>(() =>
-    generateShadowQuestions(activeProfile.ageLevel, 4)
+    generateShadowQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [shadowStep, setShadowStep] = useState(0);
   const [wrongId, setWrongId] = useState<string | null>(null);
@@ -136,7 +137,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
 
   // Association match state
   const [assocQs, setAssocQs] = useState<AssociationQuestion[]>(() =>
-    generateAssociationQuestions(activeProfile.ageLevel, 4)
+    generateAssociationQuestions(activeProfile.ageLevel, 4, challengeMode)
   );
   const [assocStep, setAssocStep] = useState(0);
 
@@ -183,7 +184,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
       setMatchedPairs([]);
       setMemoryLocked(false);
     } else if (nextMode === 'shadow') {
-      setShadowQs(generateShadowQuestions(activeProfile.ageLevel, 4));
+      setShadowQs(generateShadowQuestions(activeProfile.ageLevel, 4, challengeMode));
       setShadowStep(0);
     } else if (nextMode === 'odd') {
       setOddQs(generateOddOneOutQuestions(activeProfile.ageLevel, 4));
@@ -195,7 +196,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
       setIntruderQs(generateCategoryIntruderQuestions(activeProfile.ageLevel, 4));
       setIntruderStep(0);
     } else if (nextMode === 'match') {
-      setAssocQs(generateAssociationQuestions(activeProfile.ageLevel, 4));
+      setAssocQs(generateAssociationQuestions(activeProfile.ageLevel, 4, challengeMode));
       setAssocStep(0);
     } else if (nextMode === 'matrix') {
       setMatrixQs(generateMatrixLogicQuestions(activeProfile.ageLevel, 4));

@@ -8,7 +8,14 @@ import {
 } from './audio';
 import { FIGURES, COLORS, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
 import { AUDIO_CLIP_IDS } from '../data/audioClips';
-import { GREETINGS } from '../data/languagesCatalog';
+import { GREETINGS, SHORT_PHRASES } from '../data/languagesCatalog';
+import {
+  INTERACTIVE_STORIES,
+  STORY_BUILDER_HEROES,
+  STORY_BUILDER_OBJECTS,
+  STORY_BUILDER_PLACES,
+  STORY_COMPREHENSION,
+} from '../data/storiesCatalog';
 import {
   generateAnimalSoundQuestions,
   generateAssociationQuestions,
@@ -18,6 +25,7 @@ import {
   generateLangColorQuestions,
   generateLangGreetingQuestions,
   generateLangNumberQuestions,
+  generateLangPhraseQuestions,
   generateLangVocabQuestions,
   generateLiteracyQuestions,
   generateMathQuestions,
@@ -31,11 +39,13 @@ import {
 } from './gameGenerators';
 
 describe('audio speech helpers', () => {
-  it('computes neural MP3 playback rates for slow, normal, and fast speeds', () => {
-    expect(getAudioPlaybackRate('slow', '3-4')).toBeLessThan(1);
+  it('computes neural MP3 playback rates for slow, normal, and fast speeds across age levels', () => {
+    expect(getAudioPlaybackRate('slow', '3-4')).toBeLessThan(getAudioPlaybackRate('slow', '5-6'));
+    expect(getAudioPlaybackRate('slow', '5-6')).toBeLessThan(1);
     expect(getAudioPlaybackRate('normal', '3-4')).toBe(1);
     expect(getAudioPlaybackRate('normal', '5-6')).toBe(1);
-    expect(getAudioPlaybackRate('fast', '5-6')).toBeGreaterThan(1);
+    expect(getAudioPlaybackRate('fast', '3-4')).toBeGreaterThan(1);
+    expect(getAudioPlaybackRate('fast', '5-6')).toBeGreaterThan(getAudioPlaybackRate('fast', '3-4'));
   });
 
   it('resolves exercise prompts to complete natural neural MP3 clips', () => {
@@ -197,6 +207,30 @@ describe('audio speech helpers', () => {
         expect(AUDIO_CLIP_IDS.has(`p-lang-greet-${lang}-${g.id}`)).toBe(true);
         expect(AUDIO_CLIP_IDS.has(`lang-${lang}-greet-${g.id}`)).toBe(true);
       }
+      expect(AUDIO_CLIP_IDS.has(`p-lang-frase-${lang}`)).toBe(true);
+      for (const p of SHORT_PHRASES) {
+        expect(AUDIO_CLIP_IDS.has(`lang-${lang}-phrase-${p.id}`)).toBe(true);
+      }
+    }
+  });
+
+  it('includes 100% of Stories pillar and Number Neighbors neural clips', () => {
+    expect(AUDIO_CLIP_IDS.has('st-seq-prompt')).toBe(true);
+    expect(AUDIO_CLIP_IDS.has('st-builder-prompt')).toBe(true);
+    for (const st of INTERACTIVE_STORIES) {
+      for (const page of st.pages) {
+        expect(AUDIO_CLIP_IDS.has(page.clipId)).toBe(true);
+      }
+    }
+    for (const q of STORY_COMPREHENSION) {
+      expect(AUDIO_CLIP_IDS.has(q.clipId)).toBe(true);
+    }
+    for (const tok of [...STORY_BUILDER_HEROES, ...STORY_BUILDER_PLACES, ...STORY_BUILDER_OBJECTS]) {
+      expect(AUDIO_CLIP_IDS.has(tok.clipId)).toBe(true);
+    }
+    for (let n = 2; n <= 9; n++) {
+      expect(resolveAudioClips(`Qual número vem antes do ${n}?`)).toEqual([`q-vizinho-antes-${n}`]);
+      expect(resolveAudioClips(`Qual número vem depois do ${n}?`)).toEqual([`q-vizinho-depois-${n}`]);
     }
   });
 
@@ -211,6 +245,7 @@ describe('audio speech helpers', () => {
         ...generateLangColorQuestions(lang, '5-6', 6),
         ...generateLangNumberQuestions(lang, '5-6', 10),
         ...generateLangGreetingQuestions(lang, '5-6', 6),
+        ...generateLangPhraseQuestions(lang, '5-6', 6),
       ];
 
       for (const q of langPrompts) {
