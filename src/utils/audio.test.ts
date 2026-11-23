@@ -98,6 +98,14 @@ describe('audio speech helpers', () => {
     expect(resolveAudioClips('Dia de Chuva! O que devemos usar neste clima?')).toEqual([
       'cli-full-chuva',
     ]);
+    expect(resolveAudioClips('Muito bem! Você acertou! Isso! maçã!')).toEqual([
+      'cel-0',
+      'ans-isso-maca',
+    ]);
+    expect(resolveAudioClips('Parabéns! Incrível! Isso! peixe!')).toEqual([
+      'cel-1',
+      'ans-isso-peixe',
+    ]);
   });
 
   it('covers 100% of figures, stickers, tracing templates, rhymes, and generators without robotic fallback', () => {

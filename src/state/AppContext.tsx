@@ -3,9 +3,12 @@ import type { AgeLevel, AppState, AudioSettings, AvatarId, ChildProfile, PillarI
 import {
   createEmptyStats,
   createProfile,
+  getLocalDateKey,
+  getRecommendedPillar,
   loadAppState,
   pickNextSticker,
   saveAppState,
+  validateAndNormalizeState,
 } from './storage';
 import { playSfx, setMasterVolume, speak, subscribeSpeaking, type SpeakOptions, type SfxType } from '../utils/audio';
 
@@ -23,6 +26,10 @@ interface AppContextValue {
   state: AppState;
   /** Perfil infantil atualmente ativo. */
   activeProfile: ChildProfile;
+  /** Pilar recomendado para a "Aventura do Dia" do perfil ativo. */
+  recommendedPillar: PillarId;
+  /** Indica se o bônus diário da Aventura do Dia já foi conquistado hoje. */
+  dailyBonusClaimed: boolean;
   /** Indica se a narração da Lumi está em reprodução no momento. */
   isSpeaking: boolean;
   /** Seleciona outro perfil infantil pelo seu ID. */
@@ -35,6 +42,8 @@ interface AppContextValue {
   deleteProfile: (id: string) => void;
   /** Zera estrelas, estatísticas e figurinhas de um perfil para o estado inicial. */
   resetProfileProgress: (id: string) => void;
+  /** Importa e valida um backup JSON de perfis e configurações. Retorna `true` se bem-sucedido. */
+  importBackupState: (raw: unknown) => boolean;
   /** Atualiza as preferências globais de áudio e volume. */
   updateAudio: (patch: Partial<AudioSettings>) => void;
   /** Registra um acerto individual e soma 1 estrela no pilar informado. */
@@ -67,6 +76,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const activeProfile = useMemo(() => {
     return state.profiles.find((p) => p.id === state.activeProfileId) || state.profiles[0];
   }, [state.profiles, state.activeProfileId]);
+
+  const todayKey = getLocalDateKey();
+  const dailyBonusClaimed = activeProfile.dailyBonusDate === todayKey;
+  const recommendedPillar = useMemo(() => {
+    if (dailyBonusClaimed && activeProfile.dailyBonusPillar) {
+      return activeProfile.dailyBonusPillar;
+    }
+    return getRecommendedPillar(activeProfile);
+  }, [activeProfile, dailyBonusClaimed]);
 
   const unlockedStickersRef = useRef<string[]>(activeProfile.unlockedStickers);
   unlockedStickersRef.current = activeProfile.unlockedStickers;
@@ -117,10 +135,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               stars: 0,
               unlockedStickers: ['stk-abelha'],
               stats: createEmptyStats(),
+              dailyBonusDate: undefined,
+              dailyBonusPillar: undefined,
             }
           : p
       ),
     }));
+  };
+
+  const importBackupState = (raw: unknown): boolean => {
+    const normalized = validateAndNormalizeState(raw);
+    if (!normalized) return false;
+    setState(normalized);
+    return true;
   };
 
   const updateAudio = (patch: Partial<AudioSettings>) => {
@@ -154,6 +181,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeRound = (pillar: PillarId, starsAwarded = 3): RoundReward => {
+    const isDailyBonus = pillar === recommendedPillar && !dailyBonusClaimed;
+    const totalStars = starsAwarded + (isDailyBonus ? 2 : 0);
     const newStickerId = pickNextSticker(unlockedStickersRef.current);
     if (newStickerId && !unlockedStickersRef.current.includes(newStickerId)) {
       unlockedStickersRef.current = [...unlockedStickersRef.current, newStickerId];
@@ -169,21 +198,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             : p.unlockedStickers;
         return {
           ...p,
-          stars: p.stars + starsAwarded,
+          stars: p.stars + totalStars,
           unlockedStickers: nextStickers,
+          ...(isDailyBonus ? { dailyBonusDate: todayKey, dailyBonusPillar: pillar } : {}),
           stats: {
             ...p.stats,
             [pillar]: {
               ...current,
               completedRounds: current.completedRounds + 1,
-              starsEarned: current.starsEarned + starsAwarded,
+              starsEarned: current.starsEarned + totalStars,
               lastPlayedAt: new Date().toISOString(),
             },
           },
         };
       }),
     }));
-    return { starsAwarded, newStickerId };
+    return { starsAwarded: totalStars, newStickerId };
   };
 
   const say = (text: string, opts?: Pick<SpeakOptions, 'queue' | 'onEnd'>) =>
@@ -201,12 +231,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         state,
         activeProfile,
+        recommendedPillar,
+        dailyBonusClaimed,
         isSpeaking,
         setActiveProfile,
         addProfile,
         updateProfile,
         deleteProfile,
         resetProfileProgress,
+        importBackupState,
         updateAudio,
         recordCorrectAnswer,
         completeRound,

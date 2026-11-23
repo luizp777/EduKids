@@ -95,7 +95,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
   );
   const [shadowStep, setShadowStep] = useState(0);
   const [wrongId, setWrongId] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [stepLocked, setStepLocked] = useState(false);
+  const showHint = wrongAttempts >= 2 && !stepLocked;
 
   // Odd one out state
   const [oddQs, setOddQs] = useState<OddOneOutQuestion[]>(() =>
@@ -154,6 +156,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
     setFeedback('');
     setReward(null);
     setWrongId(null);
+    setWrongAttempts(0);
     setStepLocked(false);
     if (nextMode === 'memory') {
       setDeck(createMemoryDeck(pairCount));
@@ -241,6 +244,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setShadowStep((s) => s + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setStepLocked(false);
         }
       }, 1200);
@@ -248,6 +252,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongId(figId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -273,6 +278,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setOddStep((s) => s + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setStepLocked(false);
         }
       }, 1200);
@@ -280,6 +286,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongId(key);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -307,6 +314,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
           setCatIndex((i) => i + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setStepLocked(false);
         }
       }, 950);
@@ -314,6 +322,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongId(groupId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -494,6 +503,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
               {shadowQs[shadowStep].options.map((fig) => {
                 const isShaking = wrongId === fig.id;
                 const isRight = stepLocked && fig.id === shadowQs[shadowStep].target.id;
+                const isHinted = showHint && fig.id === shadowQs[shadowStep].target.id;
                 return (
                   <button
                     key={fig.id}
@@ -503,7 +513,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788]'
-                        : 'bg-white border-purple-100 hover:border-purple-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-purple-100 hover:border-purple-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={fig.id} size={66} className="sm:w-[82px] sm:h-[82px]" />
@@ -526,6 +538,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
             {oddQs[oddStep].items.map((item) => {
               const isShaking = wrongId === item.key;
               const isRight = stepLocked && item.isOdd;
+              const isHinted = showHint && item.isOdd;
               return (
                 <button
                   key={item.key}
@@ -535,7 +548,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                   className={`btn-3d flex items-center justify-center rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 border-4 cursor-pointer ${
                     isRight
                       ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                      : 'bg-white border-purple-100 hover:border-purple-300'
+                      : isHinted
+                        ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                        : 'bg-white border-purple-100 hover:border-purple-300'
                   } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                 >
                   <FigureSvg figureId={item.figure.id} size={68} className="sm:w-[90px] sm:h-[90px]" />
@@ -559,6 +574,8 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                 const isShaking = wrongId === group.id;
                 const isRight =
                   stepLocked && catRound.items[catIndex].category === group.id;
+                const isHinted =
+                  showHint && catRound.items[catIndex].category === group.id;
                 return (
                   <button
                     key={group.id}
@@ -566,7 +583,11 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                     disabled={stepLocked}
                     onClick={() => handleCategoryPick(group.id, group.label)}
                     className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[28px] py-4 sm:py-5 px-3 sm:px-4 border-4 text-white cursor-pointer ${
-                      isRight ? 'ring-4 ring-[#52B788] scale-105' : ''
+                      isRight
+                        ? 'ring-4 ring-[#52B788] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: group.colorHex, borderColor: '#FFFFFF' }}
                   >
@@ -653,6 +674,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
               {assocQs[assocStep].options.map((fig) => {
                 const isShaking = wrongId === fig.id;
                 const isRight = stepLocked && fig.id === assocQs[assocStep].match.id;
+                const isHinted = showHint && fig.id === assocQs[assocStep].match.id;
                 return (
                   <button
                     key={fig.id}
@@ -675,6 +697,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                             setAssocStep((s) => s + 1);
                             setMood('happy');
                             setFeedback('');
+                            setWrongAttempts(0);
                             setStepLocked(false);
                           }
                         }, 1150);
@@ -682,6 +705,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                         sfx('encourage');
                         setMood('encouraging');
                         setWrongId(fig.id);
+                        setWrongAttempts((c) => c + 1);
                         const phrase = pickRandom(ENCOURAGE_PHRASES);
                         setFeedback(phrase);
                         say(phrase);
@@ -691,7 +715,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-purple-100 hover:border-purple-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-purple-100 hover:border-purple-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={fig.id} size={66} className="sm:w-[82px] sm:h-[82px]" />
@@ -742,6 +768,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
               {matrixQs[matrixStep].options.map((fig) => {
                 const isShaking = wrongId === fig.id;
                 const isRight = stepLocked && fig.id === matrixQs[matrixStep].answer.id;
+                const isHinted = showHint && fig.id === matrixQs[matrixStep].answer.id;
                 return (
                   <button
                     key={fig.id}
@@ -764,6 +791,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                             setMatrixStep((s) => s + 1);
                             setMood('happy');
                             setFeedback('');
+                            setWrongAttempts(0);
                             setStepLocked(false);
                           }
                         }, 1150);
@@ -771,6 +799,7 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                         sfx('encourage');
                         setMood('encouraging');
                         setWrongId(fig.id);
+                        setWrongAttempts((c) => c + 1);
                         const phrase = pickRandom(ENCOURAGE_PHRASES);
                         setFeedback(phrase);
                         say(phrase);
@@ -780,7 +809,9 @@ export const FiguresLogicActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-purple-100 hover:border-purple-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-purple-100 hover:border-purple-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={fig.id} size={64} className="sm:w-[80px] sm:h-[80px]" />

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus, Paintbrush, Search } from 'lucide-react';
+import { Shapes, Palette, Check, FlaskConical, Sparkles, Plus, Paintbrush, Search, Eraser } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, COLORS, ENCOURAGE_PHRASES } from '../../data/catalog';
 import {
@@ -114,6 +114,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const [matchedShapes, setMatchedShapes] = useState<ShapeId[]>([]);
   const [selectedShape, setSelectedShape] = useState<ShapeId | null>(null);
   const [wrongTarget, setWrongTarget] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [dragPos, setDragPos] = useState<{ id: ShapeId; x: number; y: number } | null>(null);
   const slotRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -199,6 +200,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setReward(null);
     setWrongTarget(null);
+    setWrongAttempts(0);
     setStepLocked(false);
 
     if (next === 'shapes') {
@@ -233,6 +235,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       const nextMatched = [...matchedShapes, pieceId];
       setMatchedShapes(nextMatched);
       setSelectedShape(null);
+      setWrongAttempts(0);
       setMood('excited');
       sfx('success');
       recordCorrectAnswer('shapes-colors');
@@ -251,6 +254,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongTarget(targetSlotId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -299,6 +303,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
     if (isMatch) {
       const next = [...foundColorIds, figId];
       setFoundColorIds(next);
+      setWrongAttempts(0);
       setMood('excited');
       sfx('success');
       recordCorrectAnswer('shapes-colors');
@@ -314,6 +319,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongTarget(figId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -340,6 +346,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           setMixStep((s) => s + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setStepLocked(false);
         }
       }, 1300);
@@ -347,6 +354,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongTarget(colorId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -373,6 +381,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
           setPatternStep((s) => s + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setStepLocked(false);
         }
       }, 1200);
@@ -380,6 +389,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongTarget(shapeId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -390,6 +400,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
   const currentMix = mixRounds[mixStep];
   const currentPattern = patternQs[patternStep];
   const currentShapeObj = shapeObjQs[shapeObjStep];
+  const showHint = wrongAttempts >= 2 && !stepLocked;
 
   return (
     <div className="activity-shell bg-gradient-to-b from-[#EEFCF2] to-[#FFF9F0]">
@@ -458,6 +469,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                 {shapes.map((s) => {
                   const isMatched = matchedShapes.includes(s.id);
                   const isShaking = wrongTarget === s.id;
+                  const isHinted = showHint && !isMatched && selectedShape === s.id;
                   return (
                     <button
                       key={s.id}
@@ -473,9 +485,11 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                       className={`flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl p-2 sm:p-3 border-3 transition-all cursor-pointer ${
                         isMatched
                           ? 'bg-[#D3F9D8] border-[#52B788]'
-                          : selectedShape
-                            ? 'bg-emerald-50/70 border-dashed border-emerald-400 hover:bg-emerald-100'
-                            : 'bg-slate-50 border-dashed border-slate-300'
+                          : isHinted
+                            ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                            : selectedShape
+                              ? 'bg-emerald-50/70 border-dashed border-emerald-400 hover:bg-emerald-100'
+                              : 'bg-slate-50 border-dashed border-slate-300'
                       } ${isShaking ? 'animate-gentle-shake border-amber-400' : ''}`}
                     >
                       <ShapeSvg shapeId={s.id} size={58} className="sm:w-[76px] sm:h-[76px]" silhouette={!isMatched} />
@@ -554,6 +568,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
               {colorRound.items.map(({ figure, isMatch }) => {
                 const isFound = foundColorIds.includes(figure.id);
                 const isShaking = wrongTarget === figure.id;
+                const isHinted = showHint && isMatch && !isFound;
                 return (
                   <button
                     key={figure.id}
@@ -563,7 +578,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d relative flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border-4 cursor-pointer ${
                       isFound
                         ? 'bg-[#D3F9D8] border-[#52B788]'
-                        : 'bg-white border-emerald-100 hover:border-emerald-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-emerald-100 hover:border-emerald-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {isFound && (
@@ -628,6 +645,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
               {currentMix.options.map((col) => {
                 const isShaking = wrongTarget === col.id;
                 const isRight = stepLocked && col.id === currentMix.result.id;
+                const isHinted = showHint && col.id === currentMix.result.id;
                 return (
                   <button
                     key={col.id}
@@ -637,7 +655,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-emerald-100 hover:border-emerald-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-emerald-100 hover:border-emerald-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <div
@@ -688,6 +708,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
               {currentPattern.options.map((shape) => {
                 const isShaking = wrongTarget === shape.id;
                 const isRight = stepLocked && shape.id === currentPattern.answer.id;
+                const isHinted = showHint && shape.id === currentPattern.answer.id;
                 return (
                   <button
                     key={shape.id}
@@ -697,7 +718,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-emerald-100 hover:border-emerald-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-emerald-100 hover:border-emerald-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <ShapeSvg shapeId={shape.id} size={54} className="sm:w-[68px] sm:h-[68px]" />
@@ -728,6 +751,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
               {currentShapeObj.options.map((shape) => {
                 const isShaking = wrongTarget === shape.id;
                 const isRight = stepLocked && shape.id === currentShapeObj.shape.id;
+                const isHinted = showHint && shape.id === currentShapeObj.shape.id;
                 return (
                   <button
                     key={shape.id}
@@ -750,6 +774,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                             setShapeObjStep((s) => s + 1);
                             setMood('happy');
                             setFeedback('');
+                            setWrongAttempts(0);
                             setStepLocked(false);
                           }
                         }, 1200);
@@ -757,6 +782,7 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                         sfx('encourage');
                         setMood('encouraging');
                         setWrongTarget(shape.id);
+                        setWrongAttempts((c) => c + 1);
                         const phrase = pickRandom(ENCOURAGE_PHRASES);
                         setFeedback(phrase);
                         say(phrase);
@@ -766,7 +792,9 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl p-3 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-emerald-100 hover:border-emerald-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-emerald-100 hover:border-emerald-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <ShapeSvg shapeId={shape.id} size={54} className="sm:w-[68px] sm:h-[68px]" />
@@ -781,63 +809,109 @@ export const ShapesColorsActivity: React.FC<Props> = ({ onBack }) => {
         )}
 
         {subMode === 'paint' && (
-          <div className="activity-split">
-            <div className="board-fluid rounded-[32px] bg-white border-4 border-emerald-100 p-4 sm:p-6 card-3d flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 100 100" className="w-full h-full" aria-label={currentPaint.label}>
-                {currentPaint.parts.map((part) => {
-                  const isPainted = Boolean(paintedParts[part.id]);
-                  const fill = paintedParts[part.id] || '#E2E8F0';
-                  return (
-                    <path
-                      key={part.id}
-                      d={part.d}
-                      fill={fill}
-                      stroke={isPainted ? '#334155' : '#64748B'}
-                      strokeWidth="2.5"
-                      strokeDasharray={isPainted ? undefined : '3 2'}
-                      strokeLinejoin="round"
-                      className="cursor-pointer transition-colors hover:opacity-90"
-                      onClick={() => {
-                        if (stepLocked) return;
-                        sfx('pop');
-                        const next = { ...paintedParts, [part.id]: brushColor };
-                        setPaintedParts(next);
-                        if (Object.keys(next).length >= currentPaint.parts.length) {
-                          setStepLocked(true);
-                          setMood('excited');
-                          sfx('success');
-                          recordCorrectAnswer('shapes-colors');
-                          const praise = pickRandom(CELEBRATE_PHRASES);
-                          setFeedback(praise);
-                          say(praise);
-                          schedule(() => {
-                            sfx('celebration');
-                            setReward(completeRound('shapes-colors', 3));
-                          }, 850);
-                        }
-                      }}
-                    />
-                  );
-                })}
-              </svg>
+          <div className="w-full flex flex-col items-center gap-2.5 sm:gap-3">
+            {/* Quick Drawing Picker */}
+            <div className="activity-tabs-fade w-full max-w-2xl flex items-center sm:justify-center gap-1.5 px-2 overflow-x-auto no-scrollbar snap-x shrink-0">
+              {PAINT_DRAWINGS.map((d, idx) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  aria-pressed={idx === paintIdx % PAINT_DRAWINGS.length}
+                  onClick={() => {
+                    sfx('pop');
+                    clearAll();
+                    setPaintIdx(idx);
+                    setPaintedParts({});
+                    setStepLocked(false);
+                    setFeedback('');
+                    setMood('happy');
+                  }}
+                  className={`snap-start shrink-0 rounded-xl px-2.5 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
+                    idx === paintIdx % PAINT_DRAWINGS.length
+                      ? 'bg-[#D3F9D8] border-[#52B788] text-[#1B4332]'
+                      : 'bg-white/80 border-emerald-100 text-slate-600 hover:bg-white'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2 rounded-3xl bg-white p-2.5 sm:p-3 border-2 border-emerald-100 shadow-sm">
-              {COLORS.map((c) => (
+            <div className="activity-split">
+              <div className="board-fluid rounded-[32px] bg-white border-4 border-emerald-100 p-4 sm:p-6 card-3d flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full" aria-label={currentPaint.label}>
+                  {currentPaint.parts.map((part) => {
+                    const isPainted = Boolean(paintedParts[part.id]);
+                    const fill = paintedParts[part.id] || '#E2E8F0';
+                    return (
+                      <path
+                        key={part.id}
+                        d={part.d}
+                        fill={fill}
+                        stroke={isPainted ? '#334155' : '#64748B'}
+                        strokeWidth="2.5"
+                        strokeDasharray={isPainted ? undefined : '3 2'}
+                        strokeLinejoin="round"
+                        className="cursor-pointer transition-colors hover:opacity-90"
+                        onClick={() => {
+                          if (stepLocked) return;
+                          sfx('pop');
+                          const next = { ...paintedParts, [part.id]: brushColor };
+                          setPaintedParts(next);
+                          if (Object.keys(next).length >= currentPaint.parts.length) {
+                            setStepLocked(true);
+                            setMood('excited');
+                            sfx('success');
+                            recordCorrectAnswer('shapes-colors');
+                            const praise = pickRandom(CELEBRATE_PHRASES);
+                            setFeedback(praise);
+                            say(praise);
+                            schedule(() => {
+                              sfx('celebration');
+                              setReward(completeRound('shapes-colors', 3));
+                            }, 850);
+                          }
+                        }}
+                      />
+                    );
+                  })}
+                </svg>
+              </div>
+
+              <div className="flex flex-wrap lg:flex-col items-center justify-center gap-2.5">
+                <div className="flex flex-wrap items-center justify-center gap-2 rounded-3xl bg-white p-2.5 sm:p-3 border-2 border-emerald-100 shadow-sm">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => {
+                        sfx('pop');
+                        setBrushColor(c.hex);
+                      }}
+                      aria-label={`Cor ${c.name}`}
+                      className={`h-10 w-10 sm:h-12 sm:w-12 rounded-full border-4 transition-transform cursor-pointer ${
+                        brushColor === c.hex ? 'scale-110 border-slate-800 shadow-md' : 'border-white'
+                      }`}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  ))}
+                </div>
+
                 <button
-                  key={c.id}
                   type="button"
                   onClick={() => {
                     sfx('pop');
-                    setBrushColor(c.hex);
+                    setPaintedParts({});
+                    setStepLocked(false);
+                    setFeedback('');
+                    setMood('happy');
                   }}
-                  aria-label={`Cor ${c.name}`}
-                  className={`h-10 w-10 sm:h-12 sm:w-12 rounded-full border-4 transition-transform cursor-pointer ${
-                    brushColor === c.hex ? 'scale-110 border-slate-800 shadow-md' : 'border-white'
-                  }`}
-                  style={{ backgroundColor: c.hex }}
-                />
-              ))}
+                  className="btn-3d flex items-center gap-1.5 rounded-2xl bg-white border-2 border-slate-200 px-3.5 py-2 font-display text-sm font-bold text-slate-700 cursor-pointer"
+                >
+                  <Eraser className="h-4 w-4" />
+                  Limpar Desenho
+                </button>
+              </div>
             </div>
           </div>
         )}

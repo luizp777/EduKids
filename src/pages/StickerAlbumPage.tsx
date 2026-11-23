@@ -1,7 +1,8 @@
-import React from 'react';
-import { ArrowLeft, Sparkles, Lock } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Sparkles, Lock, Volume2, X } from 'lucide-react';
 import { useApp } from '../state/AppContext';
-import { STICKERS } from '../data/catalog';
+import { FIGURES, STICKERS } from '../data/catalog';
+import type { StickerItem } from '../types';
 import { FigureSvg } from '../components/illustrations/FigureSvg';
 
 interface Props {
@@ -15,10 +16,23 @@ const THEMES: Array<'Animais' | 'Espaço' | 'Natureza' | 'Frutas'> = [
   'Frutas',
 ];
 
-/** Álbum de Figurinhas organizado por temas, exibindo itens desbloqueados e bloqueados com narração ao toque. */
+/** Álbum de Figurinhas organizado por temas, exibindo itens desbloqueados com cartão interativo de sílabas e narração. */
 export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
   const { activeProfile, say, sfx } = useApp();
+  const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
   const unlockedCount = activeProfile.unlockedStickers.length;
+  const selectedFigure = selectedSticker
+    ? FIGURES.find((f) => f.id === selectedSticker.figureId) || null
+    : null;
+
+  useEffect(() => {
+    if (!selectedSticker) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedSticker(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedSticker]);
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-[#FFF6D6] to-[#FFF9F0] pb-10">
@@ -72,6 +86,7 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
                         if (unlocked) {
                           sfx('success');
                           say(sticker.name);
+                          setSelectedSticker(sticker);
                         } else {
                           sfx('pop');
                           say('Jogue mais atividades para ganhar esta figurinha!');
@@ -111,6 +126,118 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
           );
         })}
       </main>
+
+      {/* Interactive Sticker Pop-up Card */}
+      {selectedSticker && selectedFigure && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Detalhes da figurinha ${selectedSticker.name}`}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+          onClick={() => setSelectedSticker(null)}
+        >
+          <div
+            className="animate-pop-in relative w-full max-w-sm rounded-[32px] bg-[#FFF9F0] border-4 border-[#FFCA3A] p-6 text-center shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedSticker(null)}
+              className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-amber-100 hover:text-slate-700 cursor-pointer"
+              aria-label="Fechar"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            <span className="inline-block rounded-full bg-purple-100 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
+              {selectedSticker.theme}
+            </span>
+
+            <div className="mt-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx('pop');
+                  say(selectedSticker.name);
+                }}
+                className="btn-3d flex h-36 w-36 items-center justify-center rounded-[32px] border-4 border-white shadow-lg cursor-pointer"
+                style={{ backgroundColor: selectedSticker.bgHex }}
+                aria-label={`Ouvir ${selectedSticker.name}`}
+              >
+                <FigureSvg figureId={selectedSticker.figureId} size={112} />
+              </button>
+            </div>
+
+            <h2 className="mt-3 font-display text-2xl font-bold text-slate-800">
+              {selectedSticker.name}
+            </h2>
+
+            {/* Initial Letter + Syllables */}
+            <div className="mt-4 rounded-2xl bg-white border-2 border-amber-100 p-3.5 flex flex-col items-center gap-2.5">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    sfx('pop');
+                    say(`${selectedFigure.letter} de ${selectedFigure.name.toLowerCase()}!`);
+                  }}
+                  className="btn-3d flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FF6B6B] font-display text-2xl font-bold text-white cursor-pointer"
+                  aria-label={`Letra ${selectedFigure.letter}`}
+                >
+                  {selectedFigure.letter}
+                </button>
+                <span className="font-display text-xl font-bold text-slate-700">
+                  {selectedFigure.name}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {selectedFigure.syllables.map((syl, idx) => (
+                  <span
+                    key={idx}
+                    className="rounded-xl bg-amber-50 border-2 border-amber-200 px-2.5 py-0.5 font-display text-base font-bold text-amber-800"
+                  >
+                    {syl}
+                  </span>
+                ))}
+              </div>
+              <span className="text-xs font-bold text-slate-400">
+                {selectedFigure.syllables.length}{' '}
+                {selectedFigure.syllables.length === 1 ? 'sílaba' : 'sílabas'}
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx('pop');
+                  say(selectedSticker.name);
+                }}
+                className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#6C5CE7] py-3 px-3 font-display text-sm font-bold text-white cursor-pointer"
+              >
+                <Volume2 className="h-4 w-4" />
+                Ouvir Nome
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  sfx('pop');
+                  say(
+                    `${selectedFigure.name.toLowerCase()} tem ${selectedFigure.syllables.length} ${
+                      selectedFigure.syllables.length === 1 ? 'sílaba' : 'sílabas'
+                    }!`
+                  );
+                }}
+                className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#FFCA3A] py-3 px-3 font-display text-sm font-bold text-[#5C4100] cursor-pointer"
+              >
+                <Sparkles className="h-4 w-4" />
+                Sílabas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

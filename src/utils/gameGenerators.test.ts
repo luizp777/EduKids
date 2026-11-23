@@ -23,7 +23,14 @@ import {
   generateSyllableQuestions,
   generateWordBuilderQuestions,
 } from './gameGenerators';
-import { createProfile, pickNextSticker } from '../state/storage';
+import {
+  createDefaultState,
+  createProfile,
+  getPillarTier,
+  getRecommendedPillar,
+  pickNextSticker,
+  validateAndNormalizeState,
+} from '../state/storage';
 import { FIGURES, RHYME_PAIRS, STICKERS, TRACING_TEMPLATES } from '../data/catalog';
 
 describe('EduKids game generators', () => {
@@ -232,5 +239,51 @@ describe('EduKids game generators', () => {
       const validColMatch = m.topLeft.id === m.bottomLeft.id && m.topRight.id === m.answer.id;
       expect(validRowMatch || validColMatch).toBe(true);
     }
+  });
+
+  it('validates and normalizes backup state and rejects invalid payloads', () => {
+    expect(validateAndNormalizeState(null)).toBeNull();
+    expect(validateAndNormalizeState({ profiles: [] })).toBeNull();
+
+    const valid = createDefaultState();
+    valid.profiles[0].stars = 42;
+    valid.profiles[0].dailyBonusDate = '2026-11-23';
+    valid.profiles[0].dailyBonusPillar = 'math';
+    const normalized = validateAndNormalizeState({
+      ...valid,
+      audio: { voiceEnabled: true, sfxEnabled: false, voiceSpeed: 'fast', volume: 2 },
+    });
+    expect(normalized).not.toBeNull();
+    expect(normalized!.profiles[0].stars).toBe(42);
+    expect(normalized!.profiles[0].dailyBonusDate).toBe('2026-11-23');
+    expect(normalized!.profiles[0].dailyBonusPillar).toBe('math');
+    expect(normalized!.audio.volume).toBe(1);
+    expect(normalized!.audio.sfxEnabled).toBe(false);
+
+    const invalidPillarBackup = validateAndNormalizeState({
+      ...valid,
+      profiles: [{ ...valid.profiles[0], dailyBonusPillar: 'invalid-pillar' }],
+    });
+    expect(invalidPillarBackup).not.toBeNull();
+    expect(invalidPillarBackup!.profiles[0].dailyBonusPillar).toBeUndefined();
+  });
+
+  it('computes pillar tiers and recommends least-played pillar for Aventura do Dia', () => {
+    expect(getPillarTier(0)).toBe('none');
+    expect(getPillarTier(1)).toBe('bronze');
+    expect(getPillarTier(3)).toBe('silver');
+    expect(getPillarTier(6)).toBe('gold');
+
+    const profile = createProfile('Ana', 'cat', '3-4');
+    profile.stats.literacy.completedRounds = 3;
+    profile.stats.math.completedRounds = 2;
+    profile.stats['shapes-colors'].completedRounds = 2;
+    profile.stats['figures-logic'].completedRounds = 2;
+    profile.stats.tracing.completedRounds = 2;
+    profile.stats['music-sounds'].completedRounds = 2;
+    profile.stats['emotions-routine'].completedRounds = 2;
+    profile.stats['nature-habitats'].completedRounds = 0;
+
+    expect(getRecommendedPillar(profile)).toBe('nature-habitats');
   });
 });

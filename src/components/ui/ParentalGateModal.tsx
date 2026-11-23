@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Lock, X } from 'lucide-react';
 
 /** Propriedades do modal `ParentalGateModal`. */
@@ -23,6 +23,14 @@ export const ParentalGateModal: React.FC<ParentalGateModalProps> = ({
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (Number(input.trim()) === challenge.answer) {
@@ -34,7 +42,12 @@ export const ParentalGateModal: React.FC<ParentalGateModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Verificação da Área dos Pais"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+    >
       <div className="animate-pop-in relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border-2 border-slate-200">
         <button
           type="button"

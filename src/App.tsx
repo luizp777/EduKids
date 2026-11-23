@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AppProvider, useApp } from './state/AppContext';
 import type { PillarId } from './types';
 import { stopSpeaking } from './utils/audio';
@@ -27,17 +27,44 @@ const AppContent: React.FC = () => {
   const [showParentalGate, setShowParentalGate] = useState(false);
   const activityKey = `${activeProfile.id}-${activeProfile.ageLevel}`;
 
-  const goHome = () => {
+  const navigateTo = useCallback((nextView: View) => {
     stopSpeaking();
+    setView(nextView);
+    if (typeof window !== 'undefined' && nextView.type !== 'home') {
+      if (window.history.state?.edukidsView) {
+        window.history.replaceState({ edukidsView: nextView }, '');
+      } else {
+        window.history.pushState({ edukidsView: nextView }, '');
+      }
+    }
+  }, []);
+
+  const goHome = useCallback(() => {
+    stopSpeaking();
+    if (typeof window !== 'undefined' && window.history.state?.edukidsView) {
+      window.history.back();
+      return;
+    }
     setView({ type: 'home' });
-  };
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      stopSpeaking();
+      setShowParentalGate(false);
+      const next = e.state?.edukidsView as View | undefined;
+      setView(next ?? { type: 'home' });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   return (
     <>
       {view.type === 'home' && (
         <HomePage
-          onSelectPillar={(pillar) => setView({ type: 'activity', pillar })}
-          onOpenAlbum={() => setView({ type: 'album' })}
+          onSelectPillar={(pillar) => navigateTo({ type: 'activity', pillar })}
+          onOpenAlbum={() => navigateTo({ type: 'album' })}
           onRequestParents={() => setShowParentalGate(true)}
         />
       )}
@@ -75,7 +102,7 @@ const AppContent: React.FC = () => {
         <ParentalGateModal
           onSuccess={() => {
             setShowParentalGate(false);
-            setView({ type: 'parents' });
+            navigateTo({ type: 'parents' });
           }}
           onCancel={() => setShowParentalGate(false)}
         />

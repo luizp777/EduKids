@@ -13,8 +13,12 @@ import {
   Music,
   Smile,
   Trees,
+  Award,
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
+import { getPillarTier } from '../state/storage';
 import { PILLARS, STICKERS } from '../data/catalog';
 import type { PillarId } from '../types';
 import { LumiMascot } from '../components/illustrations/LumiMascot';
@@ -47,7 +51,20 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenAlbum,
   onRequestParents,
 }) => {
-  const { state, activeProfile, setActiveProfile, updateProfile, updateAudio, say, sfx } = useApp();
+  const {
+    state,
+    activeProfile,
+    recommendedPillar,
+    dailyBonusClaimed,
+    setActiveProfile,
+    updateProfile,
+    updateAudio,
+    say,
+    sfx,
+  } = useApp();
+
+  const dailyPillarMeta = PILLARS.find((p) => p.id === recommendedPillar) || PILLARS[0];
+  const DailyIcon = PILLAR_ICONS[dailyPillarMeta.id];
 
   const handleSwitchProfile = () => {
     if (state.profiles.length <= 1) return;
@@ -154,30 +171,72 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </header>
 
-      {/* Hero Greeting with Lumi */}
-      <section className="max-w-6xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-6">
+      {/* Hero Greeting with Lumi + Aventura do Dia */}
+      <section className="max-w-6xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-6 flex flex-col lg:flex-row gap-3 sm:gap-4">
         <button
           type="button"
           onClick={handleMascotTap}
-          className="w-full rounded-[28px] sm:rounded-[32px] bg-white border-4 border-purple-100 p-4 sm:p-6 card-3d flex items-center gap-3 sm:gap-6 text-left hover:border-purple-200 transition-colors cursor-pointer"
+          className="flex-1 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-purple-100 p-4 sm:p-6 card-3d flex items-center gap-3 sm:gap-5 text-left hover:border-purple-200 transition-colors cursor-pointer"
         >
           <div className="shrink-0 sm:hidden">
             <LumiMascot mood="happy" size={72} />
           </div>
           <div className="hidden sm:block shrink-0">
-            <LumiMascot mood="happy" size={96} />
+            <LumiMascot mood="happy" size={92} />
           </div>
           <div className="flex-1 min-w-0">
             <span className="inline-block rounded-full bg-purple-100 px-2.5 py-0.5 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
               EduKids • Brincar e Aprender
             </span>
-            <h1 className="mt-1 font-display text-xl sm:text-3xl lg:text-4xl font-bold text-slate-800 leading-tight">
+            <h1 className="mt-1 font-display text-xl sm:text-3xl font-bold text-slate-800 leading-tight">
               Oi, {activeProfile.name}! O que vamos aprender hoje?
             </h1>
             <p className="mt-1 text-xs sm:text-base font-bold text-slate-500">
               Toque em uma aventura abaixo ou toque na Lumi para ouvir!
             </p>
           </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            sfx('pop');
+            onSelectPillar(dailyPillarMeta.id);
+          }}
+          className={`btn-3d lg:w-80 rounded-[28px] sm:rounded-[32px] bg-gradient-to-br ${dailyPillarMeta.bgGradient} border-4 border-white p-4 sm:p-5 text-left text-white cursor-pointer flex items-center lg:flex-col lg:items-start justify-between gap-3 shrink-0`}
+        >
+          <div className="flex items-center gap-3 w-full">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/25 shrink-0">
+              <DailyIcon className="h-7 w-7 text-white stroke-[2.4]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider">
+                  <Sparkles className="h-3 w-3" />
+                  Aventura do Dia
+                </span>
+                {dailyBonusClaimed ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/80 px-2 py-0.5 text-[11px] font-extrabold">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Feito!
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-[#FFCA3A] text-[#5C4100] px-2 py-0.5 text-[11px] font-extrabold">
+                    +2 ★
+                  </span>
+                )}
+              </div>
+              <div className="mt-1 font-display text-lg sm:text-xl font-bold leading-tight truncate">
+                {dailyPillarMeta.title}
+              </div>
+            </div>
+            <ChevronRight className="h-6 w-6 shrink-0 opacity-90 lg:hidden" />
+          </div>
+          <p className="hidden lg:block text-xs font-bold text-white/90">
+            {dailyBonusClaimed
+              ? 'Você já ganhou o bônus de hoje! Continue brincando!'
+              : 'Complete uma rodada hoje para ganhar +2 estrelas bônus!'}
+          </p>
         </button>
       </section>
 
@@ -187,6 +246,18 @@ export const HomePage: React.FC<HomePageProps> = ({
           {PILLARS.map((pillar) => {
             const Icon = PILLAR_ICONS[pillar.id];
             const stats = activeProfile.stats[pillar.id];
+            const tier = getPillarTier(stats.completedRounds);
+            const isDaily = pillar.id === recommendedPillar && !dailyBonusClaimed;
+            const tierConfig =
+              tier === 'gold'
+                ? { label: 'Ouro', cls: 'bg-[#FFCA3A] text-[#5C4100]' }
+                : tier === 'silver'
+                  ? { label: 'Prata', cls: 'bg-slate-100 text-slate-700' }
+                  : tier === 'bronze'
+                    ? { label: 'Bronze', cls: 'bg-amber-700/80 text-amber-50' }
+                    : null;
+            const progressToNext = Math.min(100, Math.round((stats.completedRounds / 6) * 100));
+
             return (
               <button
                 key={pillar.id}
@@ -195,7 +266,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   sfx('pop');
                   onSelectPillar(pillar.id);
                 }}
-                className={`btn-3d group relative overflow-hidden rounded-[24px] sm:rounded-[32px] bg-gradient-to-br ${pillar.bgGradient} p-4 sm:p-6 text-left text-white border-4 border-white/80 cursor-pointer flex flex-col justify-between min-h-[142px] sm:min-h-[176px]`}
+                className={`btn-3d group relative overflow-hidden rounded-[24px] sm:rounded-[32px] bg-gradient-to-br ${pillar.bgGradient} p-4 sm:p-6 text-left text-white border-4 ${
+                  isDaily ? 'border-[#FFCA3A] ring-4 ring-[#FFCA3A]/40' : 'border-white/80'
+                } cursor-pointer flex flex-col justify-between min-h-[148px] sm:min-h-[184px]`}
               >
                 {/* Decorative bubble */}
                 <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 sm:h-28 sm:w-28 rounded-full bg-white/15 transition-transform group-hover:scale-110" />
@@ -204,12 +277,22 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-white/25 backdrop-blur-xs shadow-inner">
                     <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-white stroke-[2.4]" />
                   </div>
-                  {stats.starsEarned > 0 && (
-                    <div className="flex items-center gap-1 rounded-full bg-white/25 px-2.5 py-0.5 font-display text-xs sm:text-sm font-bold">
-                      <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-[#FFCA3A] text-[#FFCA3A]" />
-                      {stats.starsEarned}
-                    </div>
-                  )}
+                  <div className="flex flex-col items-end gap-1">
+                    {stats.starsEarned > 0 && (
+                      <div className="flex items-center gap-1 rounded-full bg-white/25 px-2.5 py-0.5 font-display text-xs sm:text-sm font-bold">
+                        <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 fill-[#FFCA3A] text-[#FFCA3A]" />
+                        {stats.starsEarned}
+                      </div>
+                    )}
+                    {tierConfig && (
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${tierConfig.cls}`}
+                      >
+                        <Award className="h-3 w-3" />
+                        {tierConfig.label}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-3 sm:mt-4 relative z-10">
@@ -219,6 +302,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                   <p className="mt-0.5 text-xs sm:text-sm font-bold text-white/90 line-clamp-2">
                     {pillar.subtitle}
                   </p>
+                  {stats.completedRounds > 0 && (
+                    <div className="mt-2 h-1.5 w-full rounded-full bg-white/25 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-white/90 transition-all duration-500"
+                        style={{ width: `${Math.max(16, progressToNext)}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
               </button>
             );

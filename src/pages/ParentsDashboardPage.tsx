@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ArrowLeft,
   Volume2,
@@ -10,6 +10,11 @@ import {
   Star,
   CheckCircle2,
   Play,
+  Pencil,
+  Download,
+  Upload,
+  Trophy,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
 import { PILLARS } from '../data/catalog';
@@ -22,7 +27,7 @@ interface Props {
   onBack: () => void;
 }
 
-/** Painel administrativo dos pais para controle de áudio/volume global, perfis infantis e métricas por pilar. */
+/** Painel administrativo dos pais para controle de áudio/volume global, perfis infantis, backup e métricas por pilar. */
 export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
   const {
     state,
@@ -32,6 +37,7 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
     updateProfile,
     deleteProfile,
     resetProfileProgress,
+    importBackupState,
     updateAudio,
     say,
   } = useApp();
@@ -40,6 +46,14 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
   const [newAvatar, setNewAvatar] = useState<AvatarId>('bear');
   const [newAge, setNewAge] = useState<AgeLevel>('3-4');
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAvatar, setEditAvatar] = useState<AvatarId>('owl');
+  const [backupMessage, setBackupMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(
+    null
+  );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { schedule, clearAll } = useTimers();
 
   const handleCreateProfile = (e: React.FormEvent) => {
@@ -49,6 +63,65 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
     setNewName('');
     setShowAddForm(false);
   };
+
+  const handleStartEdit = (id: string, name: string, avatar: AvatarId) => {
+    setEditingProfileId(id);
+    setEditName(name);
+    setEditAvatar(avatar);
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProfileId || !editName.trim()) return;
+    updateProfile(editingProfileId, { name: editName.trim(), avatar: editAvatar });
+    setEditingProfileId(null);
+  };
+
+  const handleExportBackup = () => {
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `edukids-backup-${dateStr}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setBackupMessage({ kind: 'ok', text: 'Backup exportado com sucesso!' });
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const ok = importBackupState(parsed);
+        setBackupMessage(
+          ok
+            ? { kind: 'ok', text: 'Perfis e progresso restaurados com sucesso!' }
+            : { kind: 'err', text: 'Arquivo inválido. Selecione um backup do EduKids.' }
+        );
+      } catch {
+        setBackupMessage({ kind: 'err', text: 'Não foi possível ler o arquivo JSON.' });
+      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsText(file);
+  };
+
+  const pillarRankings = PILLARS.map((p) => ({
+    pillar: p,
+    stat: activeProfile.stats[p.id],
+  }));
+  const maxRounds = Math.max(1, ...pillarRankings.map((r) => r.stat.completedRounds));
+  const favoritePillar = [...pillarRankings].sort(
+    (a, b) => b.stat.starsEarned - a.stat.starsEarned || b.stat.completedRounds - a.stat.completedRounds
+  )[0];
+  const practiceSuggestion = [...pillarRankings].sort(
+    (a, b) => a.stat.completedRounds - b.stat.completedRounds || a.stat.starsEarned - b.stat.starsEarned
+  )[0];
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">
@@ -388,7 +461,15 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                       </span>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleStartEdit(prof.id, prof.name, prof.avatar)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer"
+                        title="Editar nome e avatar"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -417,6 +498,51 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
                       )}
                     </div>
                   </div>
+
+                  {editingProfileId === prof.id && (
+                    <form
+                      onSubmit={handleSaveEdit}
+                      className="mt-1 rounded-xl bg-white border border-indigo-200 p-3 flex flex-col gap-2.5"
+                    >
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Nome da criança"
+                        required
+                        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-bold text-slate-800 focus:border-indigo-500 focus:outline-none"
+                      />
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {AVATAR_OPTIONS.map((av) => (
+                          <button
+                            key={av.id}
+                            type="button"
+                            onClick={() => setEditAvatar(av.id)}
+                            className={`rounded-full p-0.5 border-2 cursor-pointer ${
+                              editAvatar === av.id ? 'border-indigo-600 scale-105' : 'border-transparent'
+                            }`}
+                          >
+                            <AvatarSvg avatar={av.id} size={36} />
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingProfileId(null)}
+                          className="rounded-lg px-3 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="submit"
+                          className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white hover:bg-indigo-700 cursor-pointer"
+                        >
+                          Salvar
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               );
             })}
@@ -432,16 +558,66 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
             Nível atual: {activeProfile.ageLevel === '3-4' ? '3–4 anos (Exploradores)' : '5–6 anos (Descobridores)'}
           </p>
 
+          {/* Pedagogical Summary */}
+          <div className="grid sm:grid-cols-2 gap-3 mb-4">
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3.5 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200 text-amber-800 shrink-0">
+                <Trophy className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold uppercase tracking-wide text-amber-700">
+                  Pilar Favorito
+                </div>
+                <div className="font-display text-base font-bold text-slate-800 truncate">
+                  {favoritePillar.stat.starsEarned > 0
+                    ? `${favoritePillar.pillar.title} (${favoritePillar.stat.starsEarned} ★)`
+                    : 'Comece a jogar para descobrir!'}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-indigo-50 border border-indigo-200 p-3.5 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-200 text-indigo-800 shrink-0">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-extrabold uppercase tracking-wide text-indigo-700">
+                  Sugestão para Praticar
+                </div>
+                <div className="font-display text-base font-bold text-slate-800 truncate">
+                  {practiceSuggestion.pillar.title}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {PILLARS.map((pillar) => {
               const stat = activeProfile.stats[pillar.id];
+              const pct = Math.round((stat.completedRounds / maxRounds) * 100);
               return (
                 <div
                   key={pillar.id}
                   className="rounded-2xl border border-slate-200 p-4 flex flex-col gap-2"
                 >
-                  <div className="font-display text-base font-bold text-slate-800">
-                    {pillar.title}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-display text-base font-bold text-slate-800 truncate">
+                      {pillar.title}
+                    </div>
+                    {stat.lastPlayedAt && (
+                      <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                        {new Date(stat.lastPlayedAt).toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${stat.completedRounds > 0 ? Math.max(10, pct) : 0}%`,
+                        backgroundColor: pillar.borderColor,
+                      }}
+                    />
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="rounded-xl bg-slate-50 p-2">
@@ -467,6 +643,53 @@ export const ParentsDashboardPage: React.FC<Props> = ({ onBack }) => {
               );
             })}
           </div>
+        </section>
+
+        {/* Backup & Restore */}
+        <section className="rounded-3xl bg-white p-5 border border-slate-200 shadow-sm">
+          <h2 className="font-display text-lg font-bold text-slate-800 mb-1">
+            Backup de Perfis e Progresso
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Salve ou restaure estrelas, figurinhas e perfis em outro celular ou navegador.
+          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-700 cursor-pointer"
+            >
+              <Download className="h-4 w-4" />
+              Exportar Backup (.json)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-xl bg-slate-100 border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200 cursor-pointer"
+            >
+              <Upload className="h-4 w-4" />
+              Importar Backup
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={handleImportBackup}
+              className="hidden"
+            />
+          </div>
+
+          {backupMessage && (
+            <p
+              className={`mt-3 text-sm font-bold ${
+                backupMessage.kind === 'ok' ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+            >
+              {backupMessage.text}
+            </p>
+          )}
         </section>
       </main>
     </div>

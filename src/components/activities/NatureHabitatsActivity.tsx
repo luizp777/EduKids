@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Trees, CloudSun, Waves, Cloud, Sprout, Compass, Sun, Umbrella, Glasses, Shirt, Moon } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
+import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
 import type { FigureId, MascotMood } from '../../types';
@@ -249,9 +249,11 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
   const { schedule, clearAll } = useTimers();
+  const showHint = wrongAttempts >= 2 && !locked;
 
   const [habitatQs, setHabitatQs] = useState(() => shuffle(HABITAT_QUESTIONS).slice(0, 5));
   const [weatherQs, setWeatherQs] = useState(() => createWeatherQuestions().slice(0, 4));
@@ -302,6 +304,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setFeedback('');
     setWrongId(null);
+    setWrongAttempts(0);
     setLocked(false);
     setReward(null);
     setHabitatQs(shuffle(HABITAT_QUESTIONS).slice(0, 5));
@@ -310,14 +313,17 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
     setElementQs(shuffle(NATURE_ELEMENT_QUESTIONS).slice(0, 5));
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (spokenFigureId?: FigureId) => {
     setLocked(true);
     setMood('excited');
     sfx('success');
     recordCorrectAnswer('nature-habitats');
     const praise = pickRandom(CELEBRATE_PHRASES);
-    setFeedback(praise);
-    say(praise);
+    const figName = spokenFigureId
+      ? FIGURES.find((f) => f.id === spokenFigureId)?.name
+      : undefined;
+    setFeedback(figName ? `${praise} ${figName}!` : praise);
+    say(figName ? `${praise} Isso! ${figName.toLowerCase()}!` : praise);
     schedule(() => {
       if (step + 1 >= totalSteps) {
         sfx('celebration');
@@ -326,6 +332,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
         setStep((s) => s + 1);
         setMood('happy');
         setFeedback('');
+        setWrongAttempts(0);
         setLocked(false);
       }
     }, 1150);
@@ -335,6 +342,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
     sfx('encourage');
     setMood('encouraging');
     setWrongId(id);
+    setWrongAttempts((c) => c + 1);
     const phrase = pickRandom(ENCOURAGE_PHRASES);
     setFeedback(phrase);
     say(phrase);
@@ -407,14 +415,23 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
               {HABITATS.map(({ id, label, color, icon: Icon }) => {
                 const isShaking = wrongId === id;
                 const isRight = locked && id === currentHab.habitat;
+                const isHinted = showHint && id === currentHab.habitat;
                 return (
                   <button
                     key={id}
                     type="button"
                     disabled={locked}
-                    onClick={() => (id === currentHab.habitat ? handleSuccess() : handleWrong(id))}
+                    onClick={() =>
+                      id === currentHab.habitat
+                        ? handleSuccess(currentHab.figureId)
+                        : handleWrong(id)
+                    }
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] py-4 sm:py-6 px-2.5 sm:px-3 text-white border-4 border-white cursor-pointer ${
-                      isRight ? 'ring-4 ring-[#FFCA3A] scale-105' : ''
+                      isRight
+                        ? 'ring-4 ring-[#FFCA3A] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: color }}
                   >
@@ -446,6 +463,7 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
               {currentWeather.options.map((opt) => {
                 const isShaking = wrongId === opt.id;
                 const showRight = locked && opt.isRight;
+                const isHinted = showHint && opt.isRight;
                 const OptionIcon = opt.icon;
                 return (
                   <button
@@ -454,7 +472,11 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
                     disabled={locked}
                     onClick={() => (opt.isRight ? handleSuccess() : handleWrong(opt.id))}
                     className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[28px] py-5 sm:py-6 px-3 sm:px-4 text-white border-4 border-white cursor-pointer ${
-                      showRight ? 'ring-4 ring-[#52B788] scale-105' : ''
+                      showRight
+                        ? 'ring-4 ring-[#52B788] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: opt.color }}
                   >
@@ -478,16 +500,21 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
               {currentPlant.options.map((opt) => {
                 const isShaking = wrongId === opt.id;
                 const showRight = locked && opt.isRight;
+                const isHinted = showHint && opt.isRight;
                 return (
                   <button
                     key={opt.id}
                     type="button"
                     disabled={locked}
-                    onClick={() => (opt.isRight ? handleSuccess() : handleWrong(opt.id))}
+                    onClick={() =>
+                      opt.isRight ? handleSuccess(opt.figureId) : handleWrong(opt.id)
+                    }
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
                       showRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-emerald-100 hover:border-emerald-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-emerald-100 hover:border-emerald-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={opt.figureId} size={68} className="sm:w-[88px] sm:h-[88px]" />
@@ -514,14 +541,23 @@ export const NatureHabitatsActivity: React.FC<Props> = ({ onBack }) => {
               {HABITATS.map(({ id, label, color, icon: Icon }) => {
                 const isShaking = wrongId === id;
                 const isRight = locked && id === currentElement.place;
+                const isHinted = showHint && id === currentElement.place;
                 return (
                   <button
                     key={id}
                     type="button"
                     disabled={locked}
-                    onClick={() => (id === currentElement.place ? handleSuccess() : handleWrong(id))}
+                    onClick={() =>
+                      id === currentElement.place
+                        ? handleSuccess(currentElement.figureId)
+                        : handleWrong(id)
+                    }
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-[24px] sm:rounded-[28px] py-4 sm:py-6 px-2.5 sm:px-3 text-white border-4 border-white cursor-pointer ${
-                      isRight ? 'ring-4 ring-[#FFCA3A] scale-105' : ''
+                      isRight
+                        ? 'ring-4 ring-[#FFCA3A] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: color }}
                   >

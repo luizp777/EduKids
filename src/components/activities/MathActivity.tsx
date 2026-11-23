@@ -58,9 +58,11 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
   const [wrongOpt, setWrongOpt] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
   const { schedule, clearAll } = useTimers();
+  const showHint = wrongAttempts >= 2 && !locked;
 
   const totalSteps =
     mode === 'compare'
@@ -108,6 +110,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setFeedback('');
     setWrongOpt(null);
+    setWrongAttempts(0);
     setLocked(false);
     setReward(null);
     setPickedOrderIds([]);
@@ -143,6 +146,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
         setStep((s) => s + 1);
         setMood('happy');
         setFeedback('');
+        setWrongAttempts(0);
         setLocked(false);
         setPickedOrderIds([]);
       }
@@ -153,6 +157,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
     sfx('encourage');
     setMood('encouraging');
     setWrongOpt(key);
+    setWrongAttempts((c) => c + 1);
     const phrase = pickRandom(ENCOURAGE_PHRASES);
     setFeedback(phrase);
     say(phrase);
@@ -246,7 +251,18 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                 <div className="flex items-center justify-center gap-2 sm:gap-5 flex-wrap">
                   <div className="flex flex-wrap items-center justify-center gap-1 rounded-2xl bg-blue-50 p-2.5 sm:p-3 max-w-[150px] sm:max-w-[180px]">
                     {Array.from({ length: currentMath.countA }).map((_, idx) => (
-                      <FigureSvg key={`a-${idx}`} figureId={currentMath.figure.id} size={46} className="sm:w-[58px] sm:h-[58px]" />
+                      <button
+                        key={`a-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          sfx('pop');
+                          say(String(idx + 1));
+                        }}
+                        className="transition-transform active:scale-110 cursor-pointer"
+                        aria-label={`Contar ${idx + 1}`}
+                      >
+                        <FigureSvg figureId={currentMath.figure.id} size={46} className="sm:w-[58px] sm:h-[58px]" />
+                      </button>
                     ))}
                     <span className="w-full text-center font-display text-lg sm:text-xl font-bold text-blue-600">
                       {currentMath.countA}
@@ -259,7 +275,18 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
 
                   <div className="flex flex-wrap items-center justify-center gap-1 rounded-2xl bg-emerald-50 p-2.5 sm:p-3 max-w-[150px] sm:max-w-[180px]">
                     {Array.from({ length: currentMath.countB }).map((_, idx) => (
-                      <FigureSvg key={`b-${idx}`} figureId={currentMath.figure.id} size={46} className="sm:w-[58px] sm:h-[58px]" />
+                      <button
+                        key={`b-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          sfx('pop');
+                          say(String(currentMath.countA + idx + 1));
+                        }}
+                        className="transition-transform active:scale-110 cursor-pointer"
+                        aria-label={`Contar ${currentMath.countA + idx + 1}`}
+                      >
+                        <FigureSvg figureId={currentMath.figure.id} size={46} className="sm:w-[58px] sm:h-[58px]" />
+                      </button>
                     ))}
                     <span className="w-full text-center font-display text-lg sm:text-xl font-bold text-emerald-600">
                       {currentMath.countB}
@@ -277,6 +304,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               {currentMath.options.map((num) => {
                 const isShaking = wrongOpt === String(num);
                 const isRight = locked && num === currentMath.answer;
+                const isHinted = showHint && num === currentMath.answer;
                 return (
                   <button
                     key={num}
@@ -296,7 +324,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex h-16 sm:h-24 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-4xl sm:text-5xl font-bold border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
-                        : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {num}
@@ -313,6 +343,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               const count = side === 'left' ? currentCompare.leftCount : currentCompare.rightCount;
               const isShaking = wrongOpt === side;
               const isRight = locked && currentCompare.correctSide === side;
+              const isHinted = showHint && currentCompare.correctSide === side;
               return (
                 <button
                   key={side}
@@ -332,7 +363,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                   className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[32px] p-3.5 sm:p-6 border-4 min-h-[155px] sm:min-h-[200px] cursor-pointer ${
                     isRight
                       ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                      : 'bg-white border-blue-200 hover:border-blue-400'
+                      : isHinted
+                        ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                        : 'bg-white border-blue-200 hover:border-blue-400'
                   } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                 >
                   <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2">
@@ -360,9 +393,17 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               {Array.from({ length: currentSub.startCount }).map((_, idx) => {
                 const isLeaving = idx >= currentSub.answer;
                 return (
-                  <div
+                  <button
                     key={idx}
-                    className={`relative transition-all ${isLeaving ? 'opacity-30 scale-90' : ''}`}
+                    type="button"
+                    onClick={() => {
+                      if (!isLeaving) {
+                        sfx('pop');
+                        say(String(idx + 1));
+                      }
+                    }}
+                    className={`relative transition-all ${isLeaving ? 'opacity-30 scale-90 cursor-default' : 'cursor-pointer active:scale-110'}`}
+                    aria-label={isLeaving ? 'Item removido' : `Contar ${idx + 1}`}
                   >
                     <FigureSvg figureId={currentSub.figure.id} size={58} className="sm:w-[74px] sm:h-[74px]" />
                     {isLeaving && (
@@ -370,7 +411,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                         ✕
                       </span>
                     )}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -383,6 +424,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               {currentSub.options.map((num) => {
                 const isShaking = wrongOpt === String(num);
                 const isRight = locked && num === currentSub.answer;
+                const isHinted = showHint && num === currentSub.answer;
                 return (
                   <button
                     key={num}
@@ -398,7 +440,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-4xl sm:text-5xl font-bold border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
-                        : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {num}
@@ -439,6 +483,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               {currentSeq.options.map((num) => {
                 const isShaking = wrongOpt === String(num);
                 const isRight = locked && num === currentSeq.answer;
+                const isHinted = showHint && num === currentSeq.answer;
                 return (
                   <button
                     key={num}
@@ -454,7 +499,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-4xl sm:text-5xl font-bold border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
-                        : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 text-[#2B6FD9] hover:bg-blue-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {num}
@@ -474,6 +521,8 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
             {currentOrder.items.map((item) => {
               const isPicked = pickedOrderIds.includes(item.id);
               const isShaking = wrongOpt === item.id;
+              const expectedVal = currentOrder.expectedOrder[pickedOrderIds.length];
+              const isHinted = showHint && !isPicked && item.value === expectedVal;
               const figSize = item.value === 1 ? 44 : item.value === 2 ? 66 : 92;
               return (
                 <button
@@ -481,9 +530,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                   type="button"
                   disabled={locked || isPicked}
                   onClick={() => {
-                    const expectedVal = currentOrder.expectedOrder[pickedOrderIds.length];
                     if (item.value === expectedVal) {
                       sfx('pop');
+                      setWrongAttempts(0);
                       const next = [...pickedOrderIds, item.id];
                       setPickedOrderIds(next);
                       if (next.length >= currentOrder.expectedOrder.length) {
@@ -496,7 +545,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                   className={`btn-3d flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl p-3 sm:p-4 min-h-[118px] sm:min-h-[140px] border-4 cursor-pointer ${
                     isPicked
                       ? 'bg-[#D3F9D8] border-[#52B788] scale-95 opacity-75'
-                      : 'bg-white border-blue-200 hover:border-blue-400'
+                      : isHinted
+                        ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                        : 'bg-white border-blue-200 hover:border-blue-400'
                   } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                 >
                   {currentOrder.mode === 'sizes' && item.figure ? (
@@ -527,6 +578,7 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
               {currentQty.options.map((opt) => {
                 const isShaking = wrongOpt === opt.id;
                 const isRight = locked && opt.count === currentQty.targetNumber;
+                const isHinted = showHint && opt.count === currentQty.targetNumber;
                 return (
                   <button
                     key={opt.id}
@@ -542,7 +594,9 @@ export const MathActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 rounded-[22px] sm:rounded-[28px] p-3 sm:p-5 min-h-[115px] sm:min-h-[150px] border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-blue-200 hover:border-blue-400'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-blue-200 hover:border-blue-400'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {Array.from({ length: opt.count }).map((_, i) => (

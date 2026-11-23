@@ -53,9 +53,11 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
   const { schedule, clearAll } = useTimers();
+  const showHint = wrongAttempts >= 2 && !locked;
 
   const totalSteps =
     mode === 'rhyme'
@@ -99,6 +101,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setFeedback('');
     setWrongId(null);
+    setWrongAttempts(0);
     setLocked(false);
     setReward(null);
     setUsedLetterUids([]);
@@ -134,6 +137,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
         setStep((s) => s + 1);
         setMood('happy');
         setFeedback('');
+        setWrongAttempts(0);
         setLocked(false);
         setUsedLetterUids([]);
       }
@@ -144,6 +148,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
     sfx('encourage');
     setMood('encouraging');
     setWrongId(id);
+    setWrongAttempts((c) => c + 1);
     const phrase = pickRandom(ENCOURAGE_PHRASES);
     setFeedback(phrase);
     say(phrase);
@@ -224,6 +229,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                 {currentLit.options.map((fig) => {
                   const isShaking = wrongId === fig.id;
                   const isRevealedCorrect = locked && fig.id === currentLit.target.id;
+                  const isHinted = showHint && fig.id === currentLit.target.id;
                   return (
                     <button
                       key={fig.id}
@@ -239,7 +245,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                       className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 border-4 cursor-pointer ${
                         isRevealedCorrect
                           ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                          : 'bg-white border-rose-100 hover:border-rose-300'
+                          : isHinted
+                            ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                            : 'bg-white border-rose-100 hover:border-rose-300'
                       } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                     >
                       <FigureSvg figureId={fig.id} size={68} className="sm:w-[86px] sm:h-[86px]" />
@@ -253,7 +261,14 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
             </div>
           ) : (
             <div className="activity-split">
-              <div className="flex flex-col items-center gap-2.5 sm:gap-4 bg-white rounded-[28px] sm:rounded-[32px] p-4 sm:p-6 border-4 border-rose-100 card-3d w-full max-w-md">
+              <button
+                type="button"
+                onClick={() => {
+                  sfx('pop');
+                  say(currentLit.target.name);
+                }}
+                className="flex flex-col items-center gap-2.5 sm:gap-4 bg-white rounded-[28px] sm:rounded-[32px] p-4 sm:p-6 border-4 border-rose-100 hover:border-rose-300 card-3d w-full max-w-md cursor-pointer"
+              >
                 <FigureSvg figureId={currentLit.target.id} size={86} className="sm:w-[116px] sm:h-[116px]" />
                 <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
                   {currentLit.target.name.split('').map((ch, idx) => {
@@ -274,13 +289,14 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     );
                   })}
                 </div>
-              </div>
+              </button>
 
               <div className="grid grid-cols-4 lg:grid-cols-2 gap-2.5 sm:gap-4 w-full max-w-md">
                 {currentLit.letterOptions.map((letter) => {
                   const correctChar = currentLit.target.name[currentLit.missingIndex];
                   const isShaking = wrongId === letter;
                   const isRight = locked && letter === correctChar;
+                  const isHinted = showHint && letter === correctChar;
                   return (
                     <button
                       key={letter}
@@ -296,7 +312,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                       className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-3xl sm:text-4xl font-bold border-4 cursor-pointer ${
                         isRight
                           ? 'bg-[#6BCB77] border-[#3D9E49] text-white'
-                          : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                          : isHinted
+                            ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                            : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
                       } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                     >
                       {letter}
@@ -310,12 +328,19 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
 
         {mode === 'rhyme' && currentRhyme && (
           <div className="activity-split">
-            <div className="flex flex-col items-center gap-1.5 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-rose-200 px-6 py-3 sm:px-8 sm:py-5 card-3d shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                sfx('pop');
+                say(currentRhyme.anchor.name);
+              }}
+              className="flex flex-col items-center gap-1.5 rounded-[28px] sm:rounded-[32px] bg-white border-4 border-rose-200 hover:border-rose-300 px-6 py-3 sm:px-8 sm:py-5 card-3d shrink-0 cursor-pointer"
+            >
               <FigureSvg figureId={currentRhyme.anchor.id} size={76} className="sm:w-[98px] sm:h-[98px]" />
               <span className="font-display text-xl sm:text-2xl font-bold text-[#FF6B6B]">
                 {currentRhyme.anchor.name}
               </span>
-            </div>
+            </button>
 
             <div
               className={`grid w-full max-w-2xl gap-2.5 sm:gap-4 ${
@@ -325,6 +350,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
               {currentRhyme.options.map((fig) => {
                 const isShaking = wrongId === fig.id;
                 const isRight = locked && fig.id === currentRhyme.match.id;
+                const isHinted = showHint && fig.id === currentRhyme.match.id;
                 return (
                   <button
                     key={fig.id}
@@ -342,7 +368,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-5 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-rose-100 hover:border-rose-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-100 hover:border-rose-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={fig.id} size={66} className="sm:w-[84px] sm:h-[84px]" />
@@ -389,6 +417,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
               {currentSyllable.options.map((count) => {
                 const isShaking = wrongId === String(count);
                 const isRight = locked && count === currentSyllable.syllableCount;
+                const isHinted = showHint && count === currentSyllable.syllableCount;
                 return (
                   <button
                     key={count}
@@ -406,7 +435,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1 rounded-2xl sm:rounded-3xl py-3 sm:py-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
-                        : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <span className="font-display text-3xl sm:text-4xl font-bold">{count}</span>
@@ -451,6 +482,7 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
               {currentInitSyl.options.map((syl) => {
                 const isShaking = wrongId === syl;
                 const isRight = locked && syl === currentInitSyl.correctSyllable;
+                const isHinted = showHint && syl === currentInitSyl.correctSyllable;
                 return (
                   <button
                     key={syl}
@@ -466,7 +498,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex h-16 sm:h-20 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-2xl sm:text-3xl font-bold border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#6BCB77] border-[#3D9E49] text-white scale-105'
-                        : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {syl}
@@ -479,7 +513,14 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
 
         {mode === 'build' && currentBuilder && (
           <div className="activity-split">
-            <div className="flex flex-col items-center gap-2.5 sm:gap-4 bg-white rounded-[28px] sm:rounded-[32px] p-4 sm:p-6 border-4 border-rose-100 card-3d w-full max-w-md">
+            <button
+              type="button"
+              onClick={() => {
+                sfx('pop');
+                say(currentBuilder.target.name);
+              }}
+              className="flex flex-col items-center gap-2.5 sm:gap-4 bg-white rounded-[28px] sm:rounded-[32px] p-4 sm:p-6 border-4 border-rose-100 hover:border-rose-300 card-3d w-full max-w-md cursor-pointer"
+            >
               <FigureSvg figureId={currentBuilder.target.id} size={84} className="sm:w-[112px] sm:h-[112px]" />
               <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
                 {currentBuilder.target.name.split('').map((ch, idx) => {
@@ -498,21 +539,23 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                   );
                 })}
               </div>
-            </div>
+            </button>
 
             <div className="flex flex-wrap justify-center gap-2 sm:gap-3 w-full max-w-md">
               {currentBuilder.letters.map((item) => {
                 const isUsed = usedLetterUids.includes(item.uid);
                 const isShaking = wrongId === item.uid;
+                const expectedChar = currentBuilder.target.name[usedLetterUids.length];
+                const isHinted = showHint && !isUsed && item.char === expectedChar;
                 return (
                   <button
                     key={item.uid}
                     type="button"
                     disabled={locked || isUsed}
                     onClick={() => {
-                      const expectedChar = currentBuilder.target.name[usedLetterUids.length];
                       if (item.char === expectedChar) {
                         sfx('pop');
+                        setWrongAttempts(0);
                         const nextUsed = [...usedLetterUids, item.uid];
                         setUsedLetterUids(nextUsed);
                         if (nextUsed.length >= currentBuilder.target.name.length) {
@@ -525,7 +568,9 @@ export const LiteracyActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex h-14 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl sm:rounded-3xl font-display text-2xl sm:text-3xl font-bold border-4 cursor-pointer ${
                       isUsed
                         ? 'opacity-25 bg-slate-100 border-slate-200 text-slate-400'
-                        : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] text-[#A67800] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-rose-200 text-[#FF6B6B] hover:bg-rose-50'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     {item.char}

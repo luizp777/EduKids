@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Smile, Sun, Moon, HeartHandshake, ListOrdered } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
-import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
+import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES, FIGURES } from '../../data/catalog';
 import { pickRandom, shuffle } from '../../utils/gameGenerators';
 import { useTimers } from '../../utils/useTimers';
 import type { FigureId, MascotMood } from '../../types';
@@ -261,9 +261,11 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
   const [mood, setMood] = useState<MascotMood>('happy');
   const [feedback, setFeedback] = useState('');
   const [wrongId, setWrongId] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
   const [reward, setReward] = useState<{ starsAwarded: number; newStickerId: string | null } | null>(null);
   const { schedule, clearAll } = useTimers();
+  const showHint = wrongAttempts >= 2 && !locked;
 
   const [feelingQs, setFeelingQs] = useState(() => shuffle(FEELING_QUESTIONS).slice(0, 5));
   const [dayNightQs, setDayNightQs] = useState(() => shuffle(DAY_NIGHT_ITEMS).slice(0, 5));
@@ -315,6 +317,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setFeedback('');
     setWrongId(null);
+    setWrongAttempts(0);
     setLocked(false);
     setReward(null);
     setPickedRoutineIds([]);
@@ -324,14 +327,17 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     setRoutineQs(createRoutineOrderQuestions());
   };
 
-  const handleSuccess = () => {
+  const handleSuccess = (spokenFigureId?: FigureId) => {
     setLocked(true);
     setMood('excited');
     sfx('success');
     recordCorrectAnswer('emotions-routine');
     const praise = pickRandom(CELEBRATE_PHRASES);
-    setFeedback(praise);
-    say(praise);
+    const figName = spokenFigureId
+      ? FIGURES.find((f) => f.id === spokenFigureId)?.name
+      : undefined;
+    setFeedback(figName ? `${praise} ${figName}!` : praise);
+    say(figName ? `${praise} Isso! ${figName.toLowerCase()}!` : praise);
     schedule(() => {
       if (step + 1 >= totalSteps) {
         sfx('celebration');
@@ -340,6 +346,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
         setStep((s) => s + 1);
         setMood('happy');
         setFeedback('');
+        setWrongAttempts(0);
         setLocked(false);
         setPickedRoutineIds([]);
       }
@@ -350,6 +357,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
     sfx('encourage');
     setMood('encouraging');
     setWrongId(id);
+    setWrongAttempts((c) => c + 1);
     const phrase = pickRandom(ENCOURAGE_PHRASES);
     setFeedback(phrase);
     say(phrase);
@@ -425,6 +433,7 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
               {FEELINGS.map((f) => {
                 const isShaking = wrongId === f.id;
                 const isRight = locked && f.id === currentFeeling.answer;
+                const isHinted = showHint && f.id === currentFeeling.answer;
                 return (
                   <button
                     key={f.id}
@@ -436,7 +445,9 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-sky-100 hover:border-sky-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-sky-100 hover:border-sky-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FeelingFaceSvg id={f.id} size={58} />
@@ -466,14 +477,21 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
               ].map(({ id, label, icon: Icon, bg, text }) => {
                 const isShaking = wrongId === id;
                 const isRight = locked && id === currentDN.period;
+                const isHinted = showHint && id === currentDN.period;
                 return (
                   <button
                     key={id}
                     type="button"
                     disabled={locked}
-                    onClick={() => (id === currentDN.period ? handleSuccess() : handleWrong(id))}
+                    onClick={() =>
+                      id === currentDN.period ? handleSuccess(currentDN.figureId) : handleWrong(id)
+                    }
                     className={`btn-3d flex flex-col items-center justify-center gap-2 rounded-[24px] sm:rounded-[28px] py-5 sm:py-6 border-4 border-white cursor-pointer ${
-                      isRight ? 'ring-4 ring-[#52B788] scale-105' : ''
+                      isRight
+                        ? 'ring-4 ring-[#52B788] scale-105'
+                        : isHinted
+                          ? 'ring-4 ring-[#FFCA3A] animate-pulse'
+                          : ''
                     } ${isShaking ? 'animate-gentle-shake' : ''}`}
                     style={{ backgroundColor: bg, color: text }}
                   >
@@ -502,16 +520,19 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
               {currentHabit.options.map((opt) => {
                 const isShaking = wrongId === opt.id;
                 const showRight = locked && opt.isRight;
+                const isHinted = showHint && opt.isRight;
                 return (
                   <button
                     key={opt.id}
                     type="button"
                     disabled={locked}
-                    onClick={() => (opt.isRight ? handleSuccess() : handleWrong(opt.id))}
+                    onClick={() => (opt.isRight ? handleSuccess(opt.fig) : handleWrong(opt.id))}
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
                       showRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-sky-100 hover:border-sky-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-sky-100 hover:border-sky-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={opt.fig} size={68} className="sm:w-[88px] sm:h-[88px]" />
@@ -530,15 +551,17 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
               const pickedOrder = pickedRoutineIds.indexOf(item.id) + 1;
               const isPicked = pickedOrder > 0;
               const isShaking = wrongId === item.id;
+              const expectedOrder = pickedRoutineIds.length + 1;
+              const isHinted = showHint && !isPicked && item.order === expectedOrder;
               return (
                 <button
                   key={item.id}
                   type="button"
                   disabled={locked || isPicked}
                   onClick={() => {
-                    const expectedOrder = pickedRoutineIds.length + 1;
                     if (item.order === expectedOrder) {
                       sfx('pop');
+                      setWrongAttempts(0);
                       const next = [...pickedRoutineIds, item.id];
                       setPickedRoutineIds(next);
                       if (next.length >= currentRoutine.items.length) {
@@ -551,7 +574,9 @@ export const EmotionsRoutineActivity: React.FC<Props> = ({ onBack }) => {
                   className={`btn-3d relative flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3 sm:p-5 border-4 cursor-pointer ${
                     isPicked
                       ? 'bg-[#D3F9D8] border-[#52B788] scale-95'
-                      : 'bg-white border-sky-100 hover:border-sky-300'
+                      : isHinted
+                        ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                        : 'bg-white border-sky-100 hover:border-sky-300'
                   } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                 >
                   {isPicked && (

@@ -49,6 +49,10 @@ export interface ChildProfile {
   unlockedStickers: string[];
   /** Métricas acumuladas indexadas por pilar pedagógico. */
   stats: Record<PillarId, PillarStats>;
+  /** Data (YYYY-MM-DD) do último bônus diário de Aventura do Dia resgatado. */
+  dailyBonusDate?: string;
+  /** Pilar concluído no último bônus diário de Aventura do Dia. */
+  dailyBonusPillar?: PillarId;
   /** Data/hora ISO de criação do perfil. */
   createdAt: string;
 }

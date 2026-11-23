@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Star, RotateCcw, Home, Sparkles } from 'lucide-react';
 import { STICKERS } from '../../data/catalog';
 import { FigureSvg } from '../illustrations/FigureSvg';
@@ -27,6 +27,14 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
 }) => {
   const sticker = STICKERS.find((s) => s.id === newStickerId) || null;
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onGoHome();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onGoHome]);
+
   const confettiPieces = useMemo(
     () =>
       Array.from({ length: 28 }, (_, i) => ({
@@ -41,7 +49,12 @@ export const CelebrationModal: React.FC<CelebrationModalProps> = ({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-hidden">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Parabéns! Atividade concluída"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-hidden"
+    >
       {/* Confetti */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         {confettiPieces.map((p) => (

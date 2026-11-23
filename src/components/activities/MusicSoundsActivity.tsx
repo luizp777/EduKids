@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Music, Sparkles, Volume2, AudioWaveform } from 'lucide-react';
+import { Music, Sparkles, Volume2, AudioWaveform, Play } from 'lucide-react';
 import { useApp } from '../../state/AppContext';
 import { CELEBRATE_PHRASES, ENCOURAGE_PHRASES } from '../../data/catalog';
 import { playMusicalNote, playPitchSound } from '../../utils/audio';
@@ -89,6 +89,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   // Xylophone guided melody progress
   const [songIdx, setSongIdx] = useState(0);
   const [guideStep, setGuideStep] = useState(0);
+  const [isDemoPlaying, setIsDemoPlaying] = useState(false);
   const currentSong = GUIDED_SONGS[songIdx % GUIDED_SONGS.length];
 
   // Simon musical memory state
@@ -109,7 +110,27 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   const [pitchStep, setPitchStep] = useState(0);
 
   const [wrongId, setWrongId] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
+  const showHint = wrongAttempts >= 2 && !locked;
+
+  const playSongDemo = () => {
+    clearAll();
+    setIsDemoPlaying(true);
+    setFeedback(`Ouvindo: ${currentSong.title}!`);
+    const stepMs = 480;
+    currentSong.notes.forEach((noteIdx, i) => {
+      schedule(() => {
+        setActiveKey(noteIdx);
+        playMusicalNote(noteIdx, state.audio.sfxEnabled);
+        schedule(() => setActiveKey(null), 280);
+      }, 150 + i * stepMs);
+    });
+    schedule(() => {
+      setIsDemoPlaying(false);
+      setFeedback('Sua vez! Siga a estrelinha nas teclas!');
+    }, 150 + currentSong.notes.length * stepMs + 200);
+  };
 
   const playSimonSequence = (seq: number[]) => {
     clearAll();
@@ -163,8 +184,10 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
     setMood('happy');
     setFeedback('');
     setActiveKey(null);
+    setIsDemoPlaying(false);
     setReward(null);
     setWrongId(null);
+    setWrongAttempts(0);
     setLocked(false);
 
     if (nextMode === 'xylophone') {
@@ -184,6 +207,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
   };
 
   const handleXylophoneTap = (idx: number) => {
+    if (isDemoPlaying) return;
     playMusicalNote(idx, state.audio.sfxEnabled);
     setActiveKey(idx);
     schedule(() => setActiveKey(null), 220);
@@ -269,6 +293,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
           setAnimalStep((s) => s + 1);
           setMood('happy');
           setFeedback('');
+          setWrongAttempts(0);
           setLocked(false);
         }
       }, 1250);
@@ -276,6 +301,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
       sfx('encourage');
       setMood('encouraging');
       setWrongId(figId);
+      setWrongAttempts((c) => c + 1);
       const phrase = pickRandom(ENCOURAGE_PHRASES);
       setFeedback(phrase);
       say(phrase);
@@ -367,19 +393,21 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
         {(mode === 'xylophone' || mode === 'simon') && (
           <div className="w-full max-w-2xl flex flex-col items-center gap-3 sm:gap-4">
             {mode === 'xylophone' && (
-              <div className="w-full flex items-center sm:justify-center gap-1.5 overflow-x-auto no-scrollbar snap-x px-1">
+              <div className="w-full flex flex-wrap items-center justify-center gap-1.5 px-1">
                 {GUIDED_SONGS.map((s, idx) => (
                   <button
                     key={s.id}
                     type="button"
                     aria-pressed={idx === songIdx}
                     onClick={() => {
+                      clearAll();
+                      setIsDemoPlaying(false);
                       sfx('pop');
                       setSongIdx(idx);
                       setGuideStep(0);
                       setFeedback('');
                     }}
-                    className={`snap-start shrink-0 rounded-xl px-3 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
+                    className={`shrink-0 rounded-xl px-3 py-1 font-display text-xs sm:text-sm font-bold border-2 cursor-pointer transition-colors ${
                       idx === songIdx
                         ? 'bg-[#FFE5F1] border-[#F15BB5] text-[#C9368C]'
                         : 'bg-white/80 border-pink-100 text-slate-600 hover:bg-white'
@@ -388,6 +416,15 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                     {s.title}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  disabled={isDemoPlaying}
+                  onClick={playSongDemo}
+                  className="btn-3d shrink-0 flex items-center gap-1 rounded-xl bg-[#F15BB5] px-3 py-1 font-display text-xs sm:text-sm font-bold text-white cursor-pointer disabled:opacity-50"
+                >
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                  Ouvir Música
+                </button>
               </div>
             )}
 
@@ -451,6 +488,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
               {animalQs[animalStep].options.map((fig) => {
                 const isShaking = wrongId === fig.id;
                 const isRight = locked && fig.id === animalQs[animalStep].target.id;
+                const isHinted = showHint && fig.id === animalQs[animalStep].target.id;
                 return (
                   <button
                     key={fig.id}
@@ -460,7 +498,9 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-pink-100 hover:border-pink-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-pink-100 hover:border-pink-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={fig.id} size={66} className="sm:w-[84px] sm:h-[84px]" />
@@ -493,6 +533,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
               ].map((opt) => {
                 const isShaking = wrongId === opt.kind;
                 const isRight = locked && opt.kind === pitchQs[pitchStep].kind;
+                const isHinted = showHint && opt.kind === pitchQs[pitchStep].kind;
                 return (
                   <button
                     key={opt.kind}
@@ -515,6 +556,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                             setPitchStep((s) => s + 1);
                             setMood('happy');
                             setFeedback('');
+                            setWrongAttempts(0);
                             setLocked(false);
                           }
                         }, 1150);
@@ -522,6 +564,7 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                         sfx('encourage');
                         setMood('encouraging');
                         setWrongId(opt.kind);
+                        setWrongAttempts((c) => c + 1);
                         const phrase = pickRandom(ENCOURAGE_PHRASES);
                         setFeedback(phrase);
                         say(phrase);
@@ -531,7 +574,9 @@ export const MusicSoundsActivity: React.FC<Props> = ({ onBack }) => {
                     className={`btn-3d flex flex-col items-center justify-center gap-1.5 sm:gap-2 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 border-4 cursor-pointer ${
                       isRight
                         ? 'bg-[#D3F9D8] border-[#52B788] scale-105'
-                        : 'bg-white border-pink-100 hover:border-pink-300'
+                        : isHinted
+                          ? 'bg-amber-50 border-[#FFCA3A] ring-4 ring-amber-300/70 animate-pulse'
+                          : 'bg-white border-pink-100 hover:border-pink-300'
                     } ${isShaking ? 'animate-gentle-shake border-amber-300' : ''}`}
                   >
                     <FigureSvg figureId={opt.fig} size={68} className="sm:w-[86px] sm:h-[86px]" />

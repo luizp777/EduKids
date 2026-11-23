@@ -303,24 +303,46 @@ export const TracingActivity: React.FC<Props> = ({ onBack }) => {
                   return (
                     <g key={idx}>
                       {isNext && (
-                        <circle
-                          cx={cp.x}
-                          cy={cp.y}
-                          r={6.8}
-                          fill="none"
-                          stroke="#FF6B6B"
-                          strokeWidth="1.5"
-                          opacity="0.7"
-                        />
+                        <>
+                          <circle
+                            cx={cp.x}
+                            cy={cp.y}
+                            r={8}
+                            fill="#FF6B6B"
+                            opacity="0.2"
+                            className="animate-pulse"
+                          />
+                          <circle
+                            cx={cp.x}
+                            cy={cp.y}
+                            r={6.6}
+                            fill="none"
+                            stroke="#FF6B6B"
+                            strokeWidth="1.6"
+                            opacity="0.85"
+                          />
+                        </>
                       )}
                       <circle
                         cx={cp.x}
                         cy={cp.y}
-                        r={hit ? 4.2 : isNext ? 4.5 : 3.4}
+                        r={hit ? 4.2 : isNext ? 5.2 : 3.4}
                         fill={hit ? '#52B788' : isNext ? '#FF6B6B' : '#FFCA3A'}
                         stroke="#FFFFFF"
                         strokeWidth="1.2"
                       />
+                      {isNext && (
+                        <text
+                          x={cp.x}
+                          y={cp.y + 1.8}
+                          textAnchor="middle"
+                          fontSize="5.2"
+                          fontWeight="800"
+                          fill="#FFFFFF"
+                        >
+                          {idx + 1}
+                        </text>
+                      )}
                     </g>
                   );
                 });
