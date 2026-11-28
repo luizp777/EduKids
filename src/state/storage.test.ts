@@ -7,6 +7,7 @@ import {
   createDefaultState,
   createProfile,
   getLocalDateKey,
+  getPillarForSticker,
   getPillarTier,
   getRecommendedPillar,
   getUnlockedAccessories,
@@ -82,10 +83,29 @@ describe('storage utilities', () => {
       expect(pickNextSticker(allIds)).toBeNull();
     });
 
+    it('prioritizes preferredId when it is a valid locked sticker, and falls back otherwise', () => {
+      const unlocked = ['stk-abelha'];
+      expect(pickNextSticker(unlocked, 'stk-foguete')).toBe('stk-foguete');
+      const fallback = pickNextSticker(unlocked, 'stk-abelha');
+      expect(fallback).not.toBeNull();
+      expect(fallback).not.toBe('stk-abelha');
+      expect(pickNextSticker(unlocked, 'stk-inexistente')).not.toBe('stk-inexistente');
+    });
+
     it('promotes only unlocked non-golden stickers and returns null when all are golden', () => {
       const unlocked = ['stk-abelha', 'stk-bola'];
       expect(pickNextGoldenSticker(unlocked, ['stk-abelha'])).toBe('stk-bola');
       expect(pickNextGoldenSticker(unlocked, unlocked)).toBeNull();
+    });
+
+    it('maps locked stickers to thematic pillars prioritizing least played ones', () => {
+      const profile = createProfile('Lia', 'cat', '3-4');
+      const animalSticker = STICKERS.find((s) => s.theme === 'Animais')!;
+      profile.stats['nature-habitats'].completedRounds = 5;
+      profile.stats['music-sounds'].completedRounds = 5;
+      profile.stats.literacy.completedRounds = 5;
+      profile.stats['figures-logic'].completedRounds = 0;
+      expect(getPillarForSticker(animalSticker, profile)).toBe('figures-logic');
     });
   });
 

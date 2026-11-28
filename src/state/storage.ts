@@ -9,6 +9,8 @@ import type {
   PillarId,
   PillarStats,
   SavedPainting,
+  StickerItem,
+  StickerTheme,
 } from '../types';
 import { LUMI_ACCESSORIES, PILLARS, STICKERS } from '../data/catalog';
 
@@ -334,14 +336,48 @@ export function saveAppState(state: AppState): void {
 
 /**
  * Sorteia a próxima figurinha ainda bloqueada no álbum.
+ * Se `preferredId` for informado e ainda estiver bloqueado, garante o desbloqueio dele.
  *
- * @returns ID da figurinha sorteada ou `null` quando o álbum estiver completo.
+ * @returns ID da figurinha escolhida ou `null` quando o álbum estiver completo.
  */
-export function pickNextSticker(unlockedIds: string[]): string | null {
+export function pickNextSticker(
+  unlockedIds: string[],
+  preferredId?: string | null
+): string | null {
   const locked = STICKERS.filter((s) => !unlockedIds.includes(s.id));
   if (locked.length === 0) return null;
+  if (preferredId && locked.some((s) => s.id === preferredId)) {
+    return preferredId;
+  }
   const idx = Math.floor(Math.random() * locked.length);
   return locked[idx].id;
+}
+
+const STICKER_THEME_PILLARS: Record<StickerTheme, PillarId[]> = {
+  Animais: ['nature-habitats', 'music-sounds', 'literacy', 'figures-logic'],
+  Espaço: ['math', 'tracing', 'stories', 'figures-logic'],
+  Natureza: ['nature-habitats', 'shapes-colors', 'literacy', 'stories'],
+  Frutas: ['math', 'shapes-colors', 'languages', 'literacy'],
+  'Objetos e Amigos': ['literacy', 'emotions-routine', 'figures-logic', 'tracing'],
+};
+
+/**
+ * Escolhe o pilar pedagógico mais indicado para o desafio de desbloquear uma figurinha específica.
+ * Prioriza pilares relacionados ao tema da figurinha com menos rodadas concluídas.
+ */
+export function getPillarForSticker(sticker: StickerItem, profile: ChildProfile): PillarId {
+  const candidates = STICKER_THEME_PILLARS[sticker.theme] || ['literacy'];
+  let hash = 0;
+  for (let i = 0; i < sticker.id.length; i += 1) {
+    hash = (hash * 31 + sticker.id.charCodeAt(i)) >>> 0;
+  }
+  const ordered = candidates.map((id, idx) => ({
+    id,
+    rounds: profile.stats[id]?.completedRounds ?? 0,
+    tieBreaker: (idx + hash) % candidates.length,
+  }));
+  ordered.sort((a, b) => a.rounds - b.rounds || a.tieBreaker - b.tieBreaker);
+  return ordered[0].id;
 }
 
 /**

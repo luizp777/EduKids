@@ -95,6 +95,8 @@ interface AppContextValue {
   importBackupState: (raw: unknown) => boolean;
   /** Atualiza as preferências globais de áudio e volume. */
   updateAudio: (patch: Partial<AudioSettings>) => void;
+  /** Define (ou limpa) a figurinha-alvo do próximo exercício concluído. */
+  setTargetStickerId: (stickerId: string | null) => void;
   /** Registra um acerto individual e soma 1 estrela no pilar informado. */
   recordCorrectAnswer: (pillar: PillarId) => void;
   /** Conclui uma rodada, concede estrelas bônus e sorteia uma nova figurinha (ou evolução dourada). */
@@ -113,6 +115,11 @@ const AppContext = createContext<AppContextValue | null>(null);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<AppState>(() => loadAppState());
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const targetStickerIdRef = useRef<string | null>(null);
+
+  const setTargetStickerId = useCallback((stickerId: string | null) => {
+    targetStickerIdRef.current = stickerId;
+  }, []);
 
   useEffect(() => {
     saveAppState(state);
@@ -160,10 +167,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [activeProfile.unlockedStickers, activeProfile.goldenStickers]);
 
   const setActiveProfile = (id: string) => {
+    setTargetStickerId(null);
     setState((prev) => ({ ...prev, activeProfileId: id }));
   };
 
   const addProfile = (name: string, avatar: AvatarId, ageLevel: AgeLevel) => {
+    setTargetStickerId(null);
     const profile = createProfile(name, avatar, ageLevel);
     setState((prev) => ({
       ...prev,
@@ -183,6 +192,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteProfile = (id: string) => {
+    setTargetStickerId(null);
     setState((prev) => {
       if (prev.profiles.length <= 1) return prev;
       const nextProfiles = prev.profiles.filter((p) => p.id !== id);
@@ -304,6 +314,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resetProfileProgress = (id: string) => {
+    setTargetStickerId(null);
     setState((prev) => ({
       ...prev,
       profiles: prev.profiles.map((p) =>
@@ -330,6 +341,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const importBackupState = (raw: unknown): boolean => {
     const normalized = validateAndNormalizeState(raw);
     if (!normalized) return false;
+    setTargetStickerId(null);
     setState(normalized);
     return true;
   };
@@ -368,7 +380,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const isDailyBonus = pillar === recommendedPillar && !dailyBonusClaimed;
     const isChallengeBonus = isPillarChallengeActive(activeProfile.stats[pillar]);
     const totalStars = starsAwarded + (isDailyBonus ? 2 : 0) + (isChallengeBonus ? 1 : 0);
-    const newStickerId = pickNextSticker(unlockedStickersRef.current);
+    const newStickerId = pickNextSticker(unlockedStickersRef.current, targetStickerIdRef.current);
+    setTargetStickerId(null);
     let newGoldenStickerId: string | null = null;
 
     if (newStickerId && !unlockedStickersRef.current.includes(newStickerId)) {
@@ -482,6 +495,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetProfileProgress,
         importBackupState,
         updateAudio,
+        setTargetStickerId,
         recordCorrectAnswer,
         completeRound,
         say,

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Sparkles,
@@ -10,10 +10,20 @@ import {
   Star,
   Palette,
   Trash2,
+  Play,
 } from 'lucide-react';
 import { useApp } from '../state/AppContext';
-import { FIGURES, LUMI_ACCESSORIES, PAINT_DRAWINGS, PILLARS, STICKERS } from '../data/catalog';
-import type { FigureItem, StickerItem, StickerTheme } from '../types';
+import {
+  FIGURES,
+  LUMI_ACCESSORIES,
+  PAINT_DRAWINGS,
+  PILLARS,
+  STICKERS,
+  type PillarMeta,
+} from '../data/catalog';
+import { getPillarForSticker } from '../state/storage';
+import type { FigureItem, LumiAccessoryId, PillarId, StickerItem, StickerTheme } from '../types';
+import { prefetchPillar } from '../utils/activityLoaders';
 import { useModalFocusTrap } from '../utils/useModalFocusTrap';
 import { useTimers } from '../utils/useTimers';
 import { FigureSvg } from '../components/illustrations/FigureSvg';
@@ -194,17 +204,133 @@ const StickerDetailModal: React.FC<StickerDetailModalProps> = ({
   );
 };
 
+interface LockedStickerModalProps {
+  sticker: StickerItem;
+  pillar: PillarMeta;
+  lumiAccessory: LumiAccessoryId;
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+const LockedStickerModal: React.FC<LockedStickerModalProps> = ({
+  sticker,
+  pillar,
+  lumiAccessory,
+  onConfirm,
+  onClose,
+}) => {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalFocusTrap(dialogRef);
+
+  useEffect(() => {
+    prefetchPillar(pillar.id);
+  }, [pillar.id]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Quer fazer um exercício para ganhar esta figurinha?"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="animate-pop-in relative w-full max-w-sm rounded-[32px] bg-[#FFF9F0] border-4 border-[#FFCA3A] p-6 text-center shadow-2xl outline-none"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-2 text-slate-400 hover:bg-amber-100 hover:text-slate-700 cursor-pointer"
+          aria-label="Fechar"
+        >
+          <X className="h-6 w-6" />
+        </button>
+
+        <span className="inline-block rounded-full bg-purple-100 px-3 py-0.5 text-xs font-extrabold uppercase tracking-wider text-[#6C5CE7]">
+          {sticker.theme}
+        </span>
+
+        <div className="mt-3 flex items-center justify-center gap-3">
+          <LumiMascot mood="encouraging" accessory={lumiAccessory} size={78} />
+          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl border-4 border-dashed border-slate-300 bg-slate-100">
+            <FigureSvg figureId={sticker.figureId} size={68} silhouette />
+            <span className="absolute -bottom-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-[#FFCA3A] text-[#5C4100] shadow">
+              <Lock className="h-4 w-4" />
+            </span>
+          </div>
+        </div>
+
+        <h2 className="mt-4 font-display text-2xl font-bold text-slate-800 leading-tight">
+          Quer ganhar esta figurinha?
+        </h2>
+        <p className="mt-1.5 text-sm font-bold text-slate-600">
+          Faça um exercício agora para desbloquear esta figurinha no seu álbum!
+        </p>
+
+        <div
+          className={`mt-4 rounded-2xl bg-gradient-to-r ${pillar.bgGradient} px-4 py-3 text-white shadow-sm`}
+        >
+          <div className="text-[11px] font-extrabold uppercase tracking-wider opacity-90">
+            Exercício sugerido
+          </div>
+          <div className="font-display text-lg font-bold leading-tight">{pillar.title}</div>
+          <div className="text-xs font-bold opacity-90 mt-0.5">{pillar.subtitle}</div>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-3d flex items-center justify-center rounded-2xl bg-slate-200 py-3 px-3 font-display text-sm sm:text-base font-bold text-slate-700 hover:bg-slate-300 cursor-pointer"
+          >
+            Agora não
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="btn-3d flex items-center justify-center gap-1.5 rounded-2xl bg-[#6BCB77] py-3 px-3 font-display text-sm sm:text-base font-bold text-white hover:bg-[#57ba64] cursor-pointer"
+          >
+            <Play className="h-4 w-4 fill-white" />
+            Vamos lá!
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface Props {
   onBack: () => void;
+  onStartStickerExercise: (stickerId: string, pillar: PillarId) => void;
 }
 
 const THEMES: StickerTheme[] = ['Animais', 'Espaço', 'Natureza', 'Frutas', 'Objetos e Amigos'];
 
 /** Álbum de Figurinhas (36 itens + Douradas Brilhantes) e espaço Lumi, Troféus e Galeria de Pinturas. */
-export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
+export const StickerAlbumPage: React.FC<Props> = ({ onBack, onStartStickerExercise }) => {
   const { activeProfile, setLumiAccessory, deletePainting, say, sfx } = useApp();
   const [activeTab, setActiveTab] = useState<'stickers' | 'lumi-trophies'>('stickers');
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
+  const [lockedStickerPrompt, setLockedStickerPrompt] = useState<StickerItem | null>(null);
+
+  const closeSelectedModal = useCallback(() => {
+    setSelectedSticker(null);
+  }, []);
+
+  const closeLockedModal = useCallback(() => {
+    setLockedStickerPrompt(null);
+  }, []);
 
   const unlockedCount = activeProfile.unlockedStickers.length;
   const goldenIds = activeProfile.goldenStickers || [];
@@ -213,6 +339,10 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
     ? FIGURES.find((f) => f.id === selectedSticker.figureId) || null
     : null;
   const selectedIsGolden = selectedSticker ? goldenIds.includes(selectedSticker.id) : false;
+  const lockedStickerPillar = lockedStickerPrompt
+    ? PILLARS.find((p) => p.id === getPillarForSticker(lockedStickerPrompt, activeProfile)) ||
+      PILLARS[0]
+    : null;
 
   const totalRounds = PILLARS.reduce(
     (sum, p) => sum + (activeProfile.stats[p.id]?.completedRounds || 0),
@@ -360,6 +490,11 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
                       <button
                         key={sticker.id}
                         type="button"
+                        aria-label={
+                          unlocked
+                            ? sticker.name
+                            : 'Figurinha bloqueada. Toque para fazer um exercício e desbloquear'
+                        }
                         onClick={() => {
                           if (unlocked) {
                             sfx('success');
@@ -368,6 +503,7 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
                           } else {
                             sfx('pop');
                             say('Jogue mais atividades para ganhar esta figurinha!');
+                            setLockedStickerPrompt(sticker);
                           }
                         }}
                         className={`btn-3d relative flex flex-col items-center justify-center gap-2 rounded-3xl p-4 border-4 cursor-pointer ${
@@ -580,9 +716,26 @@ export const StickerAlbumPage: React.FC<Props> = ({ onBack }) => {
           sticker={selectedSticker}
           figure={selectedFigure}
           isGolden={selectedIsGolden}
-          onClose={() => setSelectedSticker(null)}
+          onClose={closeSelectedModal}
           onSay={say}
           onPop={() => sfx('pop')}
+        />
+      )}
+
+      {/* Locked Sticker Exercise Prompt */}
+      {lockedStickerPrompt && lockedStickerPillar && (
+        <LockedStickerModal
+          sticker={lockedStickerPrompt}
+          pillar={lockedStickerPillar}
+          lumiAccessory={activeProfile.lumiAccessory}
+          onClose={closeLockedModal}
+          onConfirm={() => {
+            sfx('success');
+            const stickerId = lockedStickerPrompt.id;
+            const pillarId = lockedStickerPillar.id;
+            setLockedStickerPrompt(null);
+            onStartStickerExercise(stickerId, pillarId);
+          }}
         />
       )}
     </div>
